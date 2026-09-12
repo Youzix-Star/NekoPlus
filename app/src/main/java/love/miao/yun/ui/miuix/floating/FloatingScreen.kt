@@ -40,6 +40,7 @@ import love.miao.yun.floating.FloatingAction
 import love.miao.yun.floating.FloatingIcon
 import love.miao.yun.floating.FloatingItem
 import love.miao.yun.floating.FloatingOptions
+import love.miao.yun.floating.FloatingShape
 import love.miao.yun.floating.FloatingWindowPrefs
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
@@ -151,7 +152,7 @@ fun FloatingScreen(
                     items.forEach { item ->
                         ArrowPreference(
                             title = item.displayName + "  ·  " + item.actionEntry.label,
-                            summary = itemSummary(item),
+                            summary = item.summary,
                             startAction = {
                                 if (item.showsText) {
                                     Text(item.label, style = MiuixTheme.textStyles.title4)
@@ -217,12 +218,6 @@ fun FloatingScreen(
             onNotify = onNotify,
         )
     }
-}
-
-/** One line describing a button's shape, so the list stays readable. */
-private fun itemSummary(item: FloatingItem): String {
-    val shape = if (item.effectiveCornerDp >= item.sizeDp / 2) "圆形" else "${item.cornerDp} dp 圆角"
-    return "${item.sizeDp} dp · $shape · ${item.opacity}%"
 }
 
 /**
@@ -295,20 +290,52 @@ private fun FloatingItemDialog(
                 },
             )
 
+            SmallTitle(text = "形状")
+            TextChips(
+                labels = FloatingShape.entries.map { it.label },
+                // Nothing is highlighted for a hand-made size, which is the honest answer.
+                selectedIndex = FloatingShape.of(item)
+                    ?.let { FloatingShape.entries.indexOf(it) }
+                    ?: -1,
+                onSelect = { index ->
+                    FloatingShape.entries.getOrNull(index)?.let { shape ->
+                        onChange(shape.apply(item))
+                    }
+                },
+            )
+
             Card(modifier = Modifier.fillMaxWidth()) {
                 SliderPreference(
-                    value = item.sizeDp.toFloat(),
-                    onValueChange = { size ->
-                        val next = size.roundToInt()
+                    value = item.widthDp.toFloat(),
+                    onValueChange = { width ->
+                        val next = width.roundToInt()
                         onChange(
                             item.copy(
-                                sizeDp = next,
-                                cornerDp = item.cornerDp.coerceAtMost(next / 2),
+                                widthDp = next,
+                                cornerDp = item.cornerDp
+                                    .coerceAtMost(minOf(next, item.heightDp) / 2),
                             ),
                         )
                     },
-                    title = "大小",
-                    valueText = "${item.sizeDp} dp",
+                    title = "宽度",
+                    valueText = "${item.widthDp} dp",
+                    valueRange = FloatingWindowPrefs.MIN_SIZE_DP.toFloat()..FloatingWindowPrefs.MAX_SIZE_DP.toFloat(),
+                    steps = FloatingWindowPrefs.MAX_SIZE_DP - FloatingWindowPrefs.MIN_SIZE_DP - 1,
+                )
+                SliderPreference(
+                    value = item.heightDp.toFloat(),
+                    onValueChange = { height ->
+                        val next = height.roundToInt()
+                        onChange(
+                            item.copy(
+                                heightDp = next,
+                                cornerDp = item.cornerDp
+                                    .coerceAtMost(minOf(item.widthDp, next) / 2),
+                            ),
+                        )
+                    },
+                    title = "高度",
+                    valueText = "${item.heightDp} dp",
                     valueRange = FloatingWindowPrefs.MIN_SIZE_DP.toFloat()..FloatingWindowPrefs.MAX_SIZE_DP.toFloat(),
                     steps = FloatingWindowPrefs.MAX_SIZE_DP - FloatingWindowPrefs.MIN_SIZE_DP - 1,
                 )
@@ -316,13 +343,13 @@ private fun FloatingItemDialog(
                     value = item.effectiveCornerDp.toFloat(),
                     onValueChange = { corner -> onChange(item.copy(cornerDp = corner.roundToInt())) },
                     title = "圆角",
-                    valueText = if (item.effectiveCornerDp >= item.sizeDp / 2) {
-                        "圆形"
+                    valueText = if (item.effectiveCornerDp >= item.shortEdgeDp / 2) {
+                        "胶囊"
                     } else {
                         "${item.cornerDp} dp"
                     },
-                    valueRange = 0f..(item.sizeDp / 2).toFloat(),
-                    steps = (item.sizeDp / 2 - 1).coerceAtLeast(0),
+                    valueRange = 0f..(item.shortEdgeDp / 2).toFloat(),
+                    steps = (item.shortEdgeDp / 2 - 1).coerceAtLeast(0),
                 )
                 SliderPreference(
                     value = item.opacity.toFloat(),
@@ -332,6 +359,15 @@ private fun FloatingItemDialog(
                     valueRange = FloatingWindowPrefs.MIN_OPACITY.toFloat()..
                         FloatingWindowPrefs.MAX_OPACITY.toFloat(),
                     steps = FloatingWindowPrefs.MAX_OPACITY - FloatingWindowPrefs.MIN_OPACITY - 1,
+                )
+            }
+
+            if (!item.showsText && !item.iconVisible) {
+                Text(
+                    text = "当前尺寸不显示图标：短边不足 ${FloatingWindowPrefs.MIN_ICON_EDGE_DP} dp，" +
+                        "或者已经是一条悬浮条。想给悬浮条加字就切到文字模式。",
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 )
             }
 

@@ -47,6 +47,7 @@ import love.miao.yun.floating.FloatingAction
 import love.miao.yun.floating.FloatingIcon
 import love.miao.yun.floating.FloatingItem
 import love.miao.yun.floating.FloatingOptions
+import love.miao.yun.floating.FloatingShape
 import love.miao.yun.floating.FloatingWindowPrefs
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
@@ -174,7 +175,7 @@ fun MaterialFloatingScreen(
                             NavigationItemWidget(
                                 icon = AppIcons.Floating,
                                 title = entry.displayName + "  ·  " + entry.actionEntry.label,
-                                description = itemSummary(entry) + " · 点按编辑",
+                                description = entry.summary + " · 点按编辑",
                                 onClick = {
                                     expandedId = if (expandedId == entry.id) null else entry.id
                                 },
@@ -244,19 +245,59 @@ fun MaterialFloatingScreen(
                                 }
                             }
 
-                            item(key = entry.id + "-size") {
+                            item(key = entry.id + "-shape") {
+                                BaseItemContainer {
+                                    TextChips(
+                                        labels = FloatingShape.entries.map { it.label },
+                                        // Nothing highlighted for a hand-made size, which is the
+                                        // honest answer.
+                                        selectedIndex = FloatingShape.of(entry)
+                                            ?.let { FloatingShape.entries.indexOf(it) }
+                                            ?: -1,
+                                        onSelect = { index ->
+                                            FloatingShape.entries.getOrNull(index)?.let { shape ->
+                                                replace(entry.id) { shape.apply(it) }
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+
+                            item(key = entry.id + "-width") {
                                 BaseItemContainer {
                                     IntNumberPickerWidget(
-                                        title = "大小",
-                                        value = entry.sizeDp,
+                                        title = "宽度",
+                                        value = entry.widthDp,
                                         startInt = FloatingWindowPrefs.MIN_SIZE_DP,
                                         endInt = FloatingWindowPrefs.MAX_SIZE_DP,
                                         valueSuffix = " dp",
-                                        onValueChange = { size ->
+                                        onValueChange = { width ->
                                             replace(entry.id) {
                                                 it.copy(
-                                                    sizeDp = size,
-                                                    cornerDp = it.cornerDp.coerceAtMost(size / 2),
+                                                    widthDp = width,
+                                                    cornerDp = it.cornerDp
+                                                        .coerceAtMost(minOf(width, it.heightDp) / 2),
+                                                )
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+
+                            item(key = entry.id + "-height") {
+                                BaseItemContainer {
+                                    IntNumberPickerWidget(
+                                        title = "高度",
+                                        value = entry.heightDp,
+                                        startInt = FloatingWindowPrefs.MIN_SIZE_DP,
+                                        endInt = FloatingWindowPrefs.MAX_SIZE_DP,
+                                        valueSuffix = " dp",
+                                        onValueChange = { height ->
+                                            replace(entry.id) {
+                                                it.copy(
+                                                    heightDp = height,
+                                                    cornerDp = it.cornerDp
+                                                        .coerceAtMost(minOf(it.widthDp, height) / 2),
                                                 )
                                             }
                                         },
@@ -270,11 +311,27 @@ fun MaterialFloatingScreen(
                                         title = "圆角",
                                         value = entry.effectiveCornerDp,
                                         startInt = 0,
-                                        endInt = (entry.sizeDp / 2).coerceAtLeast(1),
+                                        endInt = (entry.shortEdgeDp / 2).coerceAtLeast(1),
                                         valueSuffix = " dp",
                                         onValueChange = { corner ->
                                             replace(entry.id) { it.copy(cornerDp = corner) }
                                         },
+                                    )
+                                }
+                            }
+
+                            if (!entry.showsText && !entry.iconVisible) {
+                                item(key = entry.id + "-no-icon") {
+                                    Text(
+                                        text = "当前尺寸不显示图标：短边不足 " +
+                                            "${FloatingWindowPrefs.MIN_ICON_EDGE_DP} dp，" +
+                                            "或者已经是一条悬浮条。",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(
+                                            horizontal = 28.dp,
+                                            vertical = 8.dp,
+                                        ),
                                     )
                                 }
                             }
@@ -365,12 +422,6 @@ fun MaterialFloatingScreen(
             }
         }
     }
-}
-
-/** One line describing a button's shape, so the list stays readable. */
-private fun itemSummary(item: FloatingItem): String {
-    val shape = if (item.effectiveCornerDp >= item.sizeDp / 2) "圆形" else "${item.cornerDp} dp 圆角"
-    return "${item.sizeDp} dp · $shape · ${item.opacity}%"
 }
 
 /** The icon set, wrapped into rows so all of it is visible at once. */

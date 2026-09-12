@@ -87,6 +87,42 @@ enum class FloatingIcon(val id: String, val label: String, @DrawableRes val res:
 }
 
 /**
+ * Ready-made shapes.
+ *
+ * Width and height are independent, which is what makes a thin strip along a screen edge possible;
+ * these are the combinations worth one tap, because dragging two sliders to line them up is not.
+ */
+enum class FloatingShape(
+    val label: String,
+    val widthDp: Int,
+    val heightDp: Int,
+    /** Corner radius as a share of the shorter edge; 0.5 is a capsule. */
+    val cornerRatio: Float,
+) {
+    Circle("圆形", 56, 56, 0.5f),
+    Rounded("方形", 56, 56, 0.2f),
+    BarHorizontal("横条", 132, 40, 0.5f),
+    BarVertical("竖条", 40, 132, 0.5f),
+    ;
+
+    /** Applies this shape to an item, keeping its position and everything else. */
+    fun apply(item: FloatingItem): FloatingItem {
+        val shorter = minOf(widthDp, heightDp)
+        return item.copy(
+            widthDp = widthDp,
+            heightDp = heightDp,
+            cornerDp = (shorter * cornerRatio).roundToInt(),
+        )
+    }
+
+    companion object {
+        /** The shape an item currently matches, or `null` when it is a custom size. */
+        fun of(item: FloatingItem): FloatingShape? =
+            entries.firstOrNull { it.widthDp == item.widthDp && it.heightDp == item.heightDp }
+    }
+}
+
+/**
  * One draggable button on the overlay.
  *
  * @param id stable identity, so a drag can be saved without rebuilding the button.
@@ -94,8 +130,9 @@ enum class FloatingIcon(val id: String, val label: String, @DrawableRes val res:
  * @param text the label, used when [icon] is [FloatingIcon.Text].
  * @param action one of [FloatingAction]'s ids; what a tap does.
  * @param holdAction one of [FloatingAction]'s ids, or empty for nothing; what a long press does.
- * @param sizeDp the button's edge length.
- * @param cornerDp corner radius; half of [sizeDp] is a circle.
+ * @param widthDp the button's width; independent of [heightDp], so it can be a strip.
+ * @param heightDp the button's height.
+ * @param cornerDp corner radius; half of the shorter edge is a capsule.
  * @param opacity how opaque the button is, in percent.
  * @param x horizontal offset in raw pixels, as the window manager stores it.
  * @param y vertical offset in raw pixels.
@@ -106,7 +143,8 @@ data class FloatingItem(
     val text: String,
     val action: String,
     val holdAction: String,
-    val sizeDp: Int,
+    val widthDp: Int,
+    val heightDp: Int,
     val cornerDp: Int,
     val opacity: Int,
     val x: Int,
@@ -122,12 +160,41 @@ data class FloatingItem(
     /** What a typed-label button paints; falls back so it can never be invisible. */
     val label: String get() = text.ifBlank { "AI" }
 
-    /** The corner radius actually allowed for this button's size. */
-    val effectiveCornerDp: Int get() = cornerDp.coerceIn(0, sizeDp / 2)
+    val shortEdgeDp: Int get() = minOf(widthDp, heightDp)
+    val longEdgeDp: Int get() = maxOf(widthDp, heightDp)
+
+    /** The corner radius actually allowed at this size. */
+    val effectiveCornerDp: Int get() = cornerDp.coerceIn(0, shortEdgeDp / 2)
+
+    /**
+     * Whether the icon is drawn at all.
+     *
+     * An icon is square art, so it is dropped rather than squeezed in two cases: when the shorter
+     * edge leaves no room for it, and when the button has become a strip, where a square block
+     * floating in the middle reads as a mistake. What is left is a plain bar — which is the point
+     * of being able to size the two edges separately. A typed label has no such problem: it reads
+     * along the long edge, so text mode stays usable on a strip.
+     */
+    val iconVisible: Boolean
+        get() = !showsText &&
+            shortEdgeDp >= FloatingWindowPrefs.MIN_ICON_EDGE_DP &&
+            longEdgeDp <= (shortEdgeDp * FloatingWindowPrefs.ICON_MAX_ASPECT).roundToInt()
 
     /** How the button looks in a list: its icon name, or the label it shows. */
     val displayName: String
         get() = if (showsText) label else iconEntry.label
+
+    /** "56×56 dp · 圆形 · 100%", or the reason the icon is not drawn. */
+    val summary: String
+        get() {
+            val shape = when {
+                effectiveCornerDp == 0 -> "直角"
+                effectiveCornerDp >= shortEdgeDp / 2 -> "胶囊"
+                else -> "${cornerDp} dp 圆角"
+            }
+            val tail = if (showsText || iconVisible) "" else " · 不显示图标"
+            return "${widthDp}×${heightDp} dp · $shape · $opacity%$tail"
+        }
 }
 
 /**
@@ -153,11 +220,18 @@ object FloatingWindowPrefs {
     private const val KEY_SNAP = "snap_to_edge"
     private const val KEY_HAPTIC = "drag_haptic"
 
-    const val MIN_SIZE_DP = 36
-    const val MAX_SIZE_DP = 88
+    /** Each edge is set on its own, so the range covers a small chip and a screen-edge strip. */
+    const val MIN_SIZE_DP = 24
+    const val MAX_SIZE_DP = 160
     const val DEFAULT_SIZE_DP = 56
     const val MIN_OPACITY = 30
     const val MAX_OPACITY = 100
+
+    /** Below this shorter edge an icon is unreadable. */
+    const val MIN_ICON_EDGE_DP = 30
+
+    /** Past this long-to-short ratio the button is a strip, and the icon is left out. */
+    const val ICON_MAX_ASPECT = 2.2f
 
     /** Where the first button appears, and how far apart fresh ones are stacked. */
     private const val START_X_DP = 24
@@ -183,7 +257,8 @@ object FloatingWindowPrefs {
                     put("text", item.text)
                     put("action", item.action)
                     put("hold", item.holdAction)
-                    put("size", item.sizeDp)
+                    put("width", item.widthDp)
+                    put("height", item.heightDp)
                     put("corner", item.cornerDp)
                     put("opacity", item.opacity)
                     put("x", item.x)
@@ -228,7 +303,8 @@ object FloatingWindowPrefs {
                 text = "",
                 action = FloatingAction.AiModify.id,
                 holdAction = "",
-                sizeDp = DEFAULT_SIZE_DP,
+                widthDp = DEFAULT_SIZE_DP,
+                heightDp = DEFAULT_SIZE_DP,
                 cornerDp = DEFAULT_SIZE_DP / 2,
                 opacity = 100,
                 // Positions are raw pixels — that is what the window manager stores — so the
@@ -255,7 +331,8 @@ object FloatingWindowPrefs {
             text = "",
             action = FloatingAction.AiModify.id,
             holdAction = "",
-            sizeDp = DEFAULT_SIZE_DP,
+            widthDp = DEFAULT_SIZE_DP,
+            heightDp = DEFAULT_SIZE_DP,
             cornerDp = DEFAULT_SIZE_DP / 2,
             opacity = 100,
             x = (START_X_DP * density).roundToInt(),
@@ -303,13 +380,18 @@ object FloatingWindowPrefs {
                 val json = array.optJSONObject(index) ?: return@mapNotNull null
                 val id = json.optString("id")
                 if (id.isBlank()) return@mapNotNull null
-                val size = json.optInt("size", DEFAULT_SIZE_DP).coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
-                // `round` is what an earlier build stored; a button saved back then keeps the
+                // `size` is what an earlier build stored, before the two edges were split.
+                val legacySize = json.optInt("size", DEFAULT_SIZE_DP)
+                    .coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
+                val width = json.optInt("width", legacySize).coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
+                val height = json.optInt("height", legacySize).coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
+                val shorter = minOf(width, height)
+                // `round` is what the first build stored; a button saved back then keeps the
                 // shape it was given instead of jumping to a default.
                 val corner = if (json.has("corner")) {
-                    json.optInt("corner", size / 2)
+                    json.optInt("corner", shorter / 2)
                 } else {
-                    if (json.optBoolean("round", true)) size / 2 else size / 3
+                    if (json.optBoolean("round", true)) shorter / 2 else shorter / 3
                 }
                 FloatingItem(
                     id = id,
@@ -317,8 +399,9 @@ object FloatingWindowPrefs {
                     text = json.optString("text", ""),
                     action = FloatingAction.from(json.optString("action")).id,
                     holdAction = json.optString("hold", ""),
-                    sizeDp = size,
-                    cornerDp = corner.coerceIn(0, size / 2),
+                    widthDp = width,
+                    heightDp = height,
+                    cornerDp = corner.coerceIn(0, shorter / 2),
                     opacity = json.optInt("opacity", MAX_OPACITY)
                         .coerceIn(MIN_OPACITY, MAX_OPACITY),
                     x = json.optInt("x", 24),

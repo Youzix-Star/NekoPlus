@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">喵喵助手</string>
+    <string name="accessibility_description">喵喵助手无障碍服务，用于在指定应用中自动改写文本，添加喵喵风格。</string>
+    <string name="channel_name">喵喵助手服务</string>
+    <string name="channel_description">喵喵助手后台服务通知</string>
+</resources>

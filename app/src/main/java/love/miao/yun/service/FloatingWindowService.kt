@@ -15,6 +15,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
+import android.content.res.ColorStateList
 import android.graphics.PixelFormat
 import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
@@ -29,6 +30,7 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import kotlin.math.abs
@@ -87,6 +89,7 @@ class FloatingWindowService : Service() {
         val view: FrameLayout,
         val icon: ImageView,
         val label: TextView,
+        val spinner: ProgressBar,
         val params: WindowManager.LayoutParams,
         val background: GradientDrawable,
     ) {
@@ -145,7 +148,6 @@ class FloatingWindowService : Service() {
 
     private fun addButton(item: FloatingItem) {
         val buttonBackground = GradientDrawable()
-        val sizePx = sizePx(item)
 
         val iconView = ImageView(this).apply {
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -153,6 +155,12 @@ class FloatingWindowService : Service() {
         val labelView = TextView(this).apply {
             gravity = Gravity.CENTER
             maxLines = 1
+        }
+        // The framework's indeterminate spinner: the same "something is happening" affordance the
+        // two UI engines use, in the one form an overlay window can host.
+        val spinnerView = ProgressBar(this).apply {
+            isIndeterminate = true
+            visibility = View.GONE
         }
 
         val container = FrameLayout(this).apply {
@@ -171,6 +179,14 @@ class FloatingWindowService : Service() {
                     Gravity.CENTER,
                 ),
             )
+            addView(
+                spinnerView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.CENTER,
+                ),
+            )
             // Named apart from the view's own `background` property on purpose: inside `apply`
             // the two would otherwise resolve against each other.
             background = buttonBackground
@@ -179,8 +195,8 @@ class FloatingWindowService : Service() {
         }
 
         val params = WindowManager.LayoutParams(
-            sizePx,
-            sizePx,
+            widthPx(item),
+            heightPx(item),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
@@ -195,6 +211,7 @@ class FloatingWindowService : Service() {
             view = container,
             icon = iconView,
             label = labelView,
+            spinner = spinnerView,
             params = params,
             background = buttonBackground,
         )
@@ -208,10 +225,11 @@ class FloatingWindowService : Service() {
     }
 
     private fun updateButton(button: FloatingButton, item: FloatingItem) {
-        val size = sizePx(item)
-        val resized = button.params.width != size || button.params.height != size
-        button.params.width = size
-        button.params.height = size
+        val width = widthPx(item)
+        val height = heightPx(item)
+        val resized = button.params.width != width || button.params.height != height
+        button.params.width = width
+        button.params.height = height
         paint(button, item)
         if (resized || button.params.x != item.x || button.params.y != item.y) {
             runCatching { windowManager.updateViewLayout(button.view, button.params) }
@@ -223,7 +241,9 @@ class FloatingWindowService : Service() {
         runCatching { windowManager.removeView(button.view) }
     }
 
-    private fun sizePx(item: FloatingItem): Int = (item.sizeDp * density).roundToInt()
+    private fun widthPx(item: FloatingItem): Int = (item.widthDp * density).roundToInt()
+
+    private fun heightPx(item: FloatingItem): Int = (item.heightDp * density).roundToInt()
 
     private fun screenWidth(): Int = resources.displayMetrics.widthPixels
 
@@ -231,20 +251,26 @@ class FloatingWindowService : Service() {
 
     /** Applies everything about a button that comes from its own settings. */
     private fun paint(button: FloatingButton, item: FloatingItem) {
-        val size = sizePx(item)
+        val shortEdgePx = (item.shortEdgeDp * density).roundToInt()
         button.background.cornerRadius = item.effectiveCornerDp * density
 
-        // A busy button always falls back to the typed face, so progress is readable no matter
-        // which face the button normally wears.
+        // The spinner is square and centred, so it stays a circle on a strip instead of being
+        // stretched into an ellipse.
+        val spinnerEdge = (shortEdgePx * SPINNER_EDGE_FRACTION).roundToInt()
+        button.spinner.layoutParams = (button.spinner.layoutParams as FrameLayout.LayoutParams).apply {
+            width = spinnerEdge
+            height = spinnerEdge
+        }
+
         when {
             button.busy -> {
                 button.icon.visibility = View.GONE
-                button.label.visibility = View.VISIBLE
-                button.label.text = "…"
-                button.label.setTextSize(TypedValue.COMPLEX_UNIT_SP, item.sizeDp * 0.4f)
+                button.label.visibility = View.GONE
+                button.spinner.visibility = View.VISIBLE
             }
 
             item.showsText -> {
+                button.spinner.visibility = View.GONE
                 button.icon.visibility = View.GONE
                 button.label.visibility = View.VISIBLE
                 val label = item.label
@@ -252,21 +278,30 @@ class FloatingWindowService : Service() {
                 button.label.setTextSize(
                     TypedValue.COMPLEX_UNIT_SP,
                     when (label.length) {
-                        1 -> item.sizeDp * 0.44f
-                        2 -> item.sizeDp * 0.34f
-                        else -> item.sizeDp * 0.25f
+                        1 -> item.shortEdgeDp * 0.44f
+                        2 -> item.shortEdgeDp * 0.34f
+                        else -> item.shortEdgeDp * 0.25f
                     },
                 )
             }
 
-            else -> {
+            item.iconVisible -> {
+                button.spinner.visibility = View.GONE
                 button.label.visibility = View.GONE
                 button.icon.visibility = View.VISIBLE
                 button.icon.setImageResource(item.iconEntry.res)
-                // Inset rather than resized: the artwork keeps its own aspect and padding stays
-                // in step with the button, at any size.
-                val inset = (size * ICON_INSET_FRACTION).roundToInt()
+                // Inset rather than resized: the artwork keeps its own aspect and the padding
+                // stays in step with the button, at any size.
+                val inset = (shortEdgePx * ICON_INSET_FRACTION).roundToInt()
                 button.icon.setPadding(inset, inset, inset, inset)
+            }
+
+            else -> {
+                // A strip with no room for square art: leave it blank rather than let the icon
+                // squeeze out of shape. Text mode is the way to label a bar.
+                button.spinner.visibility = View.GONE
+                button.icon.visibility = View.GONE
+                button.label.visibility = View.GONE
             }
         }
     }
@@ -290,6 +325,7 @@ class FloatingWindowService : Service() {
         button.view.alpha = (button.item?.opacity ?: 100) / 100f
         button.icon.setColorFilter(colors.onContainer, PorterDuff.Mode.SRC_IN)
         button.label.setTextColor(colors.onContainer)
+        button.spinner.indeterminateTintList = ColorStateList.valueOf(colors.onContainer)
     }
 
     // ------------------------------------------------------------------ dragging
@@ -547,5 +583,8 @@ class FloatingWindowService : Service() {
 
         /** Share of the button's edge the icon leaves as padding, so the art is ~55% of it. */
         const val ICON_INSET_FRACTION = 0.225f
+
+        /** The spinner's edge, as a share of the button's shorter edge. */
+        const val SPINNER_EDGE_FRACTION = 0.55f
     }
 }
