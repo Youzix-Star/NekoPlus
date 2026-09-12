@@ -18,10 +18,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
@@ -32,6 +34,7 @@ import love.miao.yun.ui.ThemeModeOptions
 @Composable
 fun SettingsScreen(
     contentPadding: PaddingValues,
+    scrollBehavior: ScrollBehavior,
     colorSchemeMode: ColorSchemeMode,
     onColorSchemeModeChange: (ColorSchemeMode) -> Unit,
     useLiquidGlass: Boolean,
@@ -50,6 +53,7 @@ fun SettingsScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .overScrollVertical(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),

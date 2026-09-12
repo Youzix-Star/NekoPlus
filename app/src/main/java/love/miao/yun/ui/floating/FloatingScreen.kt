@@ -20,10 +20,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SliderPreference
@@ -35,6 +37,7 @@ import kotlin.math.roundToInt
 @Composable
 fun FloatingScreen(
     contentPadding: PaddingValues,
+    scrollBehavior: ScrollBehavior,
     floatingRunning: Boolean,
     onToggleFloating: () -> Unit,
     onNotify: (String) -> Unit,
@@ -48,6 +51,7 @@ fun FloatingScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .overScrollVertical(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),

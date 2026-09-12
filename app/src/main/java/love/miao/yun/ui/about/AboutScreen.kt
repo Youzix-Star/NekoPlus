@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
@@ -48,6 +50,7 @@ private const val DEVELOPER_URL = "https://github.com/Youzix-Star"
 @Composable
 fun AboutScreen(
     contentPadding: PaddingValues,
+    scrollBehavior: ScrollBehavior,
     onNotify: (String) -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -56,6 +59,7 @@ fun AboutScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
             .overScrollVertical(),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
