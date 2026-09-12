@@ -62,11 +62,21 @@ jobs:
       - name: List build outputs
         run: ls -l app/build/outputs/apk/release/
 
+      # A release asset called `app-release.apk` tells the user nothing; the ref (a tag on
+      # release builds) does.
+      - name: Name the APK after the ref
+        run: |
+          mkdir -p dist
+          for apk in app/build/outputs/apk/release/*.apk; do
+            cp "$apk" "dist/MiaoAssistant-${GITHUB_REF_NAME}.apk"
+          done
+          ls -l dist/
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: MiaoAssistant-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: dist/*.apk
           if-no-files-found: error
 
   release:
