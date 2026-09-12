@@ -126,10 +126,14 @@ enum class FloatingShape(
  * One draggable button on the overlay.
  *
  * @param id stable identity, so a drag can be saved without rebuilding the button.
+ * @param enabled whether the button is on screen at all; a button can be parked without being
+ *   deleted, and it keeps every setting while it is away.
  * @param icon one of [FloatingIcon]'s ids.
+ * @param showIcon whether to draw [icon]; drawing it is the user's call, never inferred, because
+ *   only they know whether a small or oddly shaped one looks right to them.
  * @param text the label, used when [icon] is [FloatingIcon.Text].
- * @param action one of [FloatingAction]'s ids; what a tap does.
- * @param holdAction one of [FloatingAction]'s ids, or empty for nothing; what a long press does.
+ * @param actions one of [FloatingAction]'s ids each; what a tap runs, in order.
+ * @param holdActions the same for a long press; empty means a long press does nothing.
  * @param widthDp the button's width; independent of [heightDp], so it can be a strip.
  * @param heightDp the button's height.
  * @param cornerDp corner radius; half of the shorter edge is a capsule.
@@ -139,10 +143,12 @@ enum class FloatingShape(
  */
 data class FloatingItem(
     val id: String,
+    val enabled: Boolean,
     val icon: String,
+    val showIcon: Boolean,
     val text: String,
-    val action: String,
-    val holdAction: String,
+    val actions: List<String>,
+    val holdActions: List<String>,
     val widthDp: Int,
     val heightDp: Int,
     val cornerDp: Int,
@@ -151,8 +157,15 @@ data class FloatingItem(
     val y: Int,
 ) {
     val iconEntry: FloatingIcon get() = FloatingIcon.from(icon)
-    val actionEntry: FloatingAction get() = FloatingAction.from(action)
-    val holdActionEntry: FloatingAction? get() = FloatingAction.fromOrNull(holdAction)
+
+    /** The tap chain; never empty, so a button always does something. */
+    val actionEntries: List<FloatingAction>
+        get() = actions.mapNotNull { FloatingAction.fromOrNull(it) }
+            .ifEmpty { listOf(FloatingAction.AiModify) }
+
+    /** The hold chain; empty when a long press is not wired up. */
+    val holdActionEntries: List<FloatingAction>
+        get() = holdActions.mapNotNull { FloatingAction.fromOrNull(it) }
 
     /** True when the button draws a typed label rather than an icon. */
     val showsText: Boolean get() = iconEntry.isText
@@ -166,25 +179,30 @@ data class FloatingItem(
     /** The corner radius actually allowed at this size. */
     val effectiveCornerDp: Int get() = cornerDp.coerceIn(0, shortEdgeDp / 2)
 
+    /** Whether the icon is actually painted: the user's switch, and never on a text button. */
+    val iconVisible: Boolean get() = showIcon && !showsText
+
     /**
-     * Whether the icon is drawn at all.
+     * Whether this size leaves the square artwork uncomfortably squeezed.
      *
-     * An icon is square art, so it is dropped rather than squeezed in two cases: when the shorter
-     * edge leaves no room for it, and when the button has become a strip, where a square block
-     * floating in the middle reads as a mistake. What is left is a plain bar — which is the point
-     * of being able to size the two edges separately. A typed label has no such problem: it reads
-     * along the long edge, so text mode stays usable on a strip.
+     * Only ever a hint for the editor — the decision to hide it stays with the user, because a
+     * small icon on a strip is a perfectly reasonable look and only they can judge it.
      */
-    val iconVisible: Boolean
-        get() = !showsText &&
-            shortEdgeDp >= FloatingWindowPrefs.MIN_ICON_EDGE_DP &&
-            longEdgeDp <= (shortEdgeDp * FloatingWindowPrefs.ICON_MAX_ASPECT).roundToInt()
+    val iconCramped: Boolean
+        get() = shortEdgeDp < FloatingWindowPrefs.MIN_ICON_EDGE_DP ||
+            longEdgeDp > (shortEdgeDp * FloatingWindowPrefs.ICON_MAX_ASPECT).roundToInt()
+
+    /** "AI 修改 → 复制文本" */
+    val actionSummary: String get() = actionEntries.joinToString(" → ") { it.label }
+
+    /** "" when a long press is not wired up. */
+    val holdActionSummary: String get() = holdActionEntries.joinToString(" → ") { it.label }
 
     /** How the button looks in a list: its icon name, or the label it shows. */
     val displayName: String
         get() = if (showsText) label else iconEntry.label
 
-    /** "56×56 dp · 圆形 · 100%", or the reason the icon is not drawn. */
+    /** "132×40 dp · 胶囊 · 100% · 不显示图标" */
     val summary: String
         get() {
             val shape = when {
@@ -192,8 +210,8 @@ data class FloatingItem(
                 effectiveCornerDp >= shortEdgeDp / 2 -> "胶囊"
                 else -> "${cornerDp} dp 圆角"
             }
-            val tail = if (showsText || iconVisible) "" else " · 不显示图标"
-            return "${widthDp}×${heightDp} dp · $shape · $opacity%$tail"
+            val icon = if (iconVisible) "" else " · 不显示图标"
+            return "${widthDp}×${heightDp} dp · $shape · $opacity%$icon"
         }
 }
 
@@ -230,8 +248,11 @@ object FloatingWindowPrefs {
     /** Below this shorter edge an icon is unreadable. */
     const val MIN_ICON_EDGE_DP = 30
 
-    /** Past this long-to-short ratio the button is a strip, and the icon is left out. */
+    /** Past this long-to-short ratio the button counts as a strip; used for the editor's hint. */
     const val ICON_MAX_ASPECT = 2.2f
+
+    /** How many steps one button's tap and hold chains may hold. */
+    const val MAX_CHAIN = 3
 
     /** Where the first button appears, and how far apart fresh ones are stacked. */
     private const val START_X_DP = 24
@@ -253,10 +274,12 @@ object FloatingWindowPrefs {
             array.put(
                 JSONObject().apply {
                     put("id", item.id)
+                    put("enabled", item.enabled)
                     put("icon", item.icon)
+                    put("showIcon", item.showIcon)
                     put("text", item.text)
-                    put("action", item.action)
-                    put("hold", item.holdAction)
+                    put("actions", JSONArray(item.actions))
+                    put("holds", JSONArray(item.holdActions))
                     put("width", item.widthDp)
                     put("height", item.heightDp)
                     put("corner", item.cornerDp)
@@ -299,10 +322,12 @@ object FloatingWindowPrefs {
         return listOf(
             FloatingItem(
                 id = "ai",
+                enabled = true,
                 icon = FloatingIcon.AutoAwesome.id,
+                showIcon = true,
                 text = "",
-                action = FloatingAction.AiModify.id,
-                holdAction = "",
+                actions = listOf(FloatingAction.AiModify.id),
+                holdActions = emptyList(),
                 widthDp = DEFAULT_SIZE_DP,
                 heightDp = DEFAULT_SIZE_DP,
                 cornerDp = DEFAULT_SIZE_DP / 2,
@@ -327,10 +352,12 @@ object FloatingWindowPrefs {
         val stepPx = ((DEFAULT_SIZE_DP + ITEM_GAP_DP) * density).roundToInt()
         return FloatingItem(
             id = "item-" + System.currentTimeMillis().toString(36),
+            enabled = true,
             icon = icon.id,
+            showIcon = true,
             text = "",
-            action = FloatingAction.AiModify.id,
-            holdAction = "",
+            actions = listOf(FloatingAction.AiModify.id),
+            holdActions = emptyList(),
             widthDp = DEFAULT_SIZE_DP,
             heightDp = DEFAULT_SIZE_DP,
             cornerDp = DEFAULT_SIZE_DP / 2,
@@ -372,6 +399,14 @@ object FloatingWindowPrefs {
     private fun densityOf(context: Context): Float =
         context.resources.displayMetrics.density
 
+    /** Reads a stored chain, dropping anything no longer recognised. */
+    private fun readChain(array: JSONArray?): List<String> {
+        if (array == null) return emptyList()
+        return (0 until array.length())
+            .mapNotNull { array.optString(it).takeIf { id -> FloatingAction.fromOrNull(id) != null } }
+            .take(MAX_CHAIN)
+    }
+
     private fun parse(raw: String?): List<FloatingItem> {
         if (raw.isNullOrBlank()) return emptyList()
         return runCatching {
@@ -395,10 +430,20 @@ object FloatingWindowPrefs {
                 }
                 FloatingItem(
                     id = id,
+                    enabled = json.optBoolean("enabled", true),
                     icon = FloatingIcon.from(json.optString("icon")).id,
+                    showIcon = json.optBoolean("showIcon", true),
                     text = json.optString("text", ""),
-                    action = FloatingAction.from(json.optString("action")).id,
-                    holdAction = json.optString("hold", ""),
+                    // `action` / `hold` are what the first build stored: one action each, before
+                    // a button could run a chain.
+                    actions = readChain(json.optJSONArray("actions"))
+                        .ifEmpty { listOf(FloatingAction.from(json.optString("action")).id) },
+                    holdActions = readChain(json.optJSONArray("holds"))
+                        .ifEmpty {
+                            listOfNotNull(
+                                FloatingAction.fromOrNull(json.optString("hold"))?.id,
+                            )
+                        },
                     widthDp = width,
                     heightDp = height,
                     cornerDp = corner.coerceIn(0, shorter / 2),

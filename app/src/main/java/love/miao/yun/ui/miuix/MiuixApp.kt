@@ -51,6 +51,8 @@ import love.miao.yun.ui.miuix.home.HomeScreen
 import love.miao.yun.ui.miuix.licenses.LicensesScreen
 import love.miao.yun.ui.miuix.liquid.FloatingBottomBar
 import love.miao.yun.ui.miuix.settings.SettingsScreen
+import love.miao.yun.ui.onboarding.MiuixOnboarding
+import love.miao.yun.ui.onboarding.OnboardingPrefs
 import love.miao.yun.ui.rememberMainPagerState
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -195,6 +197,7 @@ fun MiaoShell(
     // The gesture, its animation and the two stacked layers all live in PredictiveBackHost, which
     // both engines share. The shell only says what the level-one content and the page are; it no
     // longer owns any transition state of its own.
+    Box(modifier = Modifier.fillMaxSize()) {
     PredictiveBackHost(
         subPageOpen = subPage != null,
         style = MiaoState.predictiveBackStyle,
@@ -267,6 +270,26 @@ fun MiaoShell(
             }
         },
     )
+
+    if (MiaoState.showOnboarding) {
+        MiuixOnboarding(
+            accessibilityEnabled = MiaoState.accessibilityEnabled,
+            hasOverlayPermission = hasOverlayPermission,
+            onOpenAccessibility = {
+                runCatching {
+                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }
+            },
+            onRequestOverlay = requestOverlay,
+            onFinish = {
+                // Marked seen on the way out whichever exit was taken, so a skipped guide never
+                // comes back on its own.
+                OnboardingPrefs.setDone(context, true)
+                MiaoState.showOnboarding = false
+            },
+        )
+    }
+    }
 }
 
 /** Level one: the four tabs. Switching between them is a pager animation, nothing more. */

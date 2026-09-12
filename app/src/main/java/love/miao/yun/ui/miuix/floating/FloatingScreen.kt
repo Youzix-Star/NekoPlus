@@ -52,6 +52,7 @@ import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Switch
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
@@ -151,10 +152,10 @@ fun FloatingScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     items.forEach { item ->
                         ArrowPreference(
-                            title = item.displayName + "  ·  " + item.actionEntry.label,
+                            title = item.displayName + "  ·  " + item.actionSummary,
                             summary = item.summary,
                             startAction = {
-                                if (item.showsText) {
+                                if (item.showsText || !item.showIcon) {
                                     Text(item.label, style = MiuixTheme.textStyles.title4)
                                 } else {
                                     Image(
@@ -164,6 +165,24 @@ fun FloatingScreen(
                                         modifier = Modifier.size(24.dp),
                                     )
                                 }
+                            },
+                            // A button can be parked without being deleted: the switch takes it off
+                            // the screen and leaves every one of its settings alone.
+                            endActions = {
+                                Switch(
+                                    checked = item.enabled,
+                                    onCheckedChange = { enabled ->
+                                        persist(
+                                            items.map {
+                                                if (it.id == item.id) {
+                                                    it.copy(enabled = enabled)
+                                                } else {
+                                                    it
+                                                }
+                                            },
+                                        )
+                                    },
+                                )
                             },
                             onClick = { editingId = item.id },
                         )
@@ -267,28 +286,44 @@ private fun FloatingItemDialog(
                 )
             }
 
-            SmallTitle(text = "点击")
-            TextChips(
-                labels = FloatingAction.entries.map { it.label },
-                selectedIndex = FloatingAction.entries.indexOf(item.actionEntry).coerceAtLeast(0),
-                onSelect = { index ->
-                    FloatingAction.entries.getOrNull(index)?.let { action ->
-                        onChange(item.copy(action = action.id))
-                    }
+            ActionChain(
+                title = "点击",
+                actions = item.actionEntries,
+                allowNone = false,
+                onChange = { chain ->
+                    onChange(item.copy(actions = chain.map { it.id }))
                 },
             )
 
-            SmallTitle(text = "长按")
-            TextChips(
-                labels = listOf("无") + FloatingAction.entries.map { it.label },
-                selectedIndex = item.holdActionEntry
-                    ?.let { FloatingAction.entries.indexOf(it) + 1 }
-                    ?: 0,
-                onSelect = { index ->
-                    val action = FloatingAction.entries.getOrNull(index - 1)
-                    onChange(item.copy(holdAction = action?.id.orEmpty()))
+            ActionChain(
+                title = "长按",
+                actions = item.holdActionEntries,
+                allowNone = true,
+                onChange = { chain ->
+                    onChange(item.copy(holdActions = chain.map { it.id }))
                 },
             )
+
+            Card(modifier = Modifier.fillMaxWidth()) {
+                SwitchPreference(
+                    title = "在屏幕上显示",
+                    summary = "关掉就把它收起来，设置都留着",
+                    checked = item.enabled,
+                    onCheckedChange = { enabled -> onChange(item.copy(enabled = enabled)) },
+                )
+                if (!item.showsText) {
+                    SwitchPreference(
+                        title = "显示图标",
+                        summary = if (item.iconCramped && item.showIcon) {
+                            "当前尺寸下图标会偏小或被压扁"
+                        } else {
+                            "关掉就是一条纯色块"
+                        },
+                        checked = item.showIcon,
+                        onCheckedChange = { show -> onChange(item.copy(showIcon = show)) },
+                    )
+                }
+            }
 
             SmallTitle(text = "形状")
             TextChips(
@@ -362,15 +397,6 @@ private fun FloatingItemDialog(
                 )
             }
 
-            if (!item.showsText && !item.iconVisible) {
-                Text(
-                    text = "当前尺寸不显示图标：短边不足 ${FloatingWindowPrefs.MIN_ICON_EDGE_DP} dp，" +
-                        "或者已经是一条悬浮条。想给悬浮条加字就切到文字模式。",
-                    style = MiuixTheme.textStyles.footnote1,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                )
-            }
-
             Card(modifier = Modifier.fillMaxWidth()) {
                 ArrowPreference(
                     title = "重置位置",
@@ -417,6 +443,94 @@ private fun IconGrid(selected: FloatingIcon, onSelect: (FloatingIcon) -> Unit) {
                         contentDescription = icon.label,
                         modifier = Modifier.size(24.dp),
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The steps one gesture runs, in order.
+ *
+ * A chain rather than a single action, because the useful combinations are sequential: rewrite
+ * with the model first and post-process the result afterwards, for instance. [allowNone] adds a
+ * "无" choice in front of the very first step — that is how a hold gesture is switched off.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ActionChain(
+    title: String,
+    actions: List<FloatingAction>,
+    allowNone: Boolean,
+    onChange: (List<FloatingAction>) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SmallTitle(text = title)
+
+        val labels = FloatingAction.entries.map { it.label }
+
+        if (actions.isEmpty() && allowNone) {
+            // Only reachable for a hold gesture that is switched off: the first step still has to
+            // be on screen, or there would be no way to switch it back on.
+            Text(
+                text = "第 1 步",
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+            TextChips(
+                labels = listOf("无") + labels,
+                selectedIndex = 0,
+                onSelect = { index ->
+                    FloatingAction.entries.getOrNull(index - 1)?.let { onChange(listOf(it)) }
+                },
+            )
+            return@Column
+        }
+
+        actions.forEachIndexed { index, action ->
+            Text(
+                text = "第 ${index + 1} 步",
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            )
+            TextChips(
+                labels = if (allowNone && index == 0) listOf("无") + labels else labels,
+                selectedIndex = if (allowNone && index == 0) {
+                    FloatingAction.entries.indexOf(action) + 1
+                } else {
+                    FloatingAction.entries.indexOf(action)
+                },
+                onSelect = { choice ->
+                    if (allowNone && index == 0 && choice == 0) {
+                        onChange(emptyList())
+                    } else {
+                        val picked = FloatingAction.entries.getOrNull(
+                            if (allowNone && index == 0) choice - 1 else choice,
+                        ) ?: return@TextChips
+                        onChange(actions.toMutableList().also { it[index] = picked })
+                    }
+                },
+            )
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (actions.size < FloatingWindowPrefs.MAX_CHAIN) {
+                ChoiceCell(
+                    selected = false,
+                    onClick = { onChange(actions + FloatingAction.entries.first()) },
+                    wide = true,
+                ) {
+                    Text("＋ 添加一步", style = MiuixTheme.textStyles.footnote1)
+                }
+            }
+            // The tap chain always keeps one step; a hold chain can be emptied right out.
+            if (actions.size > if (allowNone) 0 else 1) {
+                ChoiceCell(
+                    selected = false,
+                    onClick = { onChange(actions.dropLast(1)) },
+                    wide = true,
+                ) {
+                    Text("− 删掉最后一步", style = MiuixTheme.textStyles.footnote1)
                 }
             }
         }

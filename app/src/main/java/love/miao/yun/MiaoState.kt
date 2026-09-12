@@ -46,6 +46,14 @@ object MiaoState {
     /** Which predictive-back animation plays on second-level pages. */
     var predictiveBackStyle by mutableStateOf(PredictiveBackStyle.Aosp)
 
+    /**
+     * Whether the first-run guide is on screen.
+     *
+     * Set once at startup from [love.miao.yun.ui.onboarding.OnboardingPrefs], and set again from
+     * About, which is the only other way in.
+     */
+    var showOnboarding by mutableStateOf(false)
+
     /** Placeholder counters so the home page has something to draw. */
     var todayCount by mutableStateOf(0)
     var ruleCount by mutableStateOf(0)

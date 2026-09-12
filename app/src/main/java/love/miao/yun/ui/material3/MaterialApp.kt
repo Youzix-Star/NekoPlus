@@ -17,6 +17,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -48,6 +49,8 @@ import love.miao.yun.ui.material3.floating.MaterialFloatingScreen
 import love.miao.yun.ui.material3.home.MaterialHomeScreen
 import love.miao.yun.ui.material3.licenses.MaterialLicensesScreen
 import love.miao.yun.ui.material3.settings.MaterialSettingsScreen
+import love.miao.yun.ui.onboarding.MaterialOnboarding
+import love.miao.yun.ui.onboarding.OnboardingPrefs
 import love.miao.yun.ui.material3.widgets.SwipeableSnackbarHost
 import love.miao.yun.ui.predictiveback.PredictiveBackHost
 import love.miao.yun.ui.rememberMainPagerState
@@ -159,6 +162,7 @@ private fun MaterialShell(
     // A level-two page owns its whole surface, app bar included, exactly as the four tabs do. The
     // shell used to stack a second, large app bar on top of the page's own, which is what pushed
     // that page's first control a third of a screen down the screen.
+    Box(modifier = Modifier.fillMaxSize()) {
     PredictiveBackHost(
         subPageOpen = subPage != null,
         style = MiaoState.predictiveBackStyle,
@@ -247,4 +251,24 @@ private fun MaterialShell(
             }
         },
     )
+
+    if (MiaoState.showOnboarding) {
+        MaterialOnboarding(
+            accessibilityEnabled = MiaoState.accessibilityEnabled,
+            hasOverlayPermission = hasOverlayPermission,
+            onOpenAccessibility = {
+                runCatching {
+                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                }
+            },
+            onRequestOverlay = requestOverlay,
+            onFinish = {
+                // Marked seen on the way out whichever exit was taken, so a skipped guide never
+                // comes back on its own.
+                OnboardingPrefs.setDone(context, true)
+                MiaoState.showOnboarding = false
+            },
+        )
+    }
+    }
 }

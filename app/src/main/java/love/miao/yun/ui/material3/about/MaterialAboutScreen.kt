@@ -35,6 +35,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import love.miao.yun.BuildConfig
+import love.miao.yun.MiaoState
 import love.miao.yun.R
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.material3.material3AppBarColor
@@ -100,6 +101,17 @@ fun MaterialAboutScreen(
                             title = "开源许可",
                             description = "依赖的许可证",
                             onClick = onOpenLicenses,
+                        )
+                    }
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Sparkle,
+                            title = "新手引导",
+                            description = "再看一遍怎么用",
+                            onClick = {
+                                MiaoState.showOnboarding = true
+                                onNotify("已打开新手引导")
+                            },
                         )
                     }
                     item {

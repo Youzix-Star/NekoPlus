@@ -13,6 +13,7 @@ import love.miao.yun.service.MiaoAccessibilityService
 import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.MaterialApp
+import love.miao.yun.ui.onboarding.OnboardingPrefs
 import love.miao.yun.ui.miuix.MiuixApp
 
 /**
@@ -29,6 +30,9 @@ class MainActivity : ComponentActivity() {
         MiaoState.useBlur = UiEnginePrefs.loadUseBlur(this)
         MiaoState.floatingColorSource = UiEnginePrefs.loadFloatingColor(this)
         MiaoState.predictiveBackStyle = UiEnginePrefs.loadPredictiveBackStyle(this)
+        // A first run walks through the guide; every later start goes straight to the app, and
+        // About can bring the guide back.
+        MiaoState.showOnboarding = !OnboardingPrefs.isDone(this)
         setContent {
             when (MiaoState.engine) {
                 UiEngine.Miuix -> MiuixApp()

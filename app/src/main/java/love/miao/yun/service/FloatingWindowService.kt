@@ -128,7 +128,9 @@ class FloatingWindowService : Service() {
 
     /** Brings the on-screen buttons in line with the preferences: add, drop, update, repaint. */
     private fun syncButtons() {
-        val items = FloatingWindowPrefs.load(this)
+        // A switched-off button is simply not on screen, so it is treated exactly like a deleted
+        // one here and keeps all of its settings in the preferences.
+        val items = FloatingWindowPrefs.load(this).filter { it.enabled }
         val wanted = items.map { it.id }.toSet()
 
         buttons.keys.filterNot { it in wanted }.forEach { id -> removeButton(id) }
@@ -399,7 +401,7 @@ class FloatingWindowService : Service() {
                             button.params.y,
                         )
                     } else if (event.actionMasked == MotionEvent.ACTION_UP && !longPressed) {
-                        button.item?.let { perform(it.actionEntry, button) }
+                        button.item?.let { runChain(it.actionEntries, button) }
                     }
                     dragging = false
                     return true
@@ -412,7 +414,11 @@ class FloatingWindowService : Service() {
             if (dragging) return@Runnable
             longPressed = true
             buttons[id]?.let { button ->
-                button.item?.holdActionEntry?.let { action -> perform(action, button) }
+                button.item?.let { item ->
+                    if (item.holdActionEntries.isNotEmpty()) {
+                        runChain(item.holdActionEntries, button)
+                    }
+                }
             }
         }
 
@@ -431,36 +437,73 @@ class FloatingWindowService : Service() {
 
     // ------------------------------------------------------------------ actions
 
-    private fun perform(action: FloatingAction, button: FloatingButton) {
+    /**
+     * Runs one button's actions in order.
+     *
+     * Steps are chained by callback rather than fired together, because not every action finishes
+     * at once: the point of the chain is that the next step sees what the previous one produced —
+     * rewriting with the model and then post-processing the result, for instance.
+     */
+    private fun runChain(actions: List<FloatingAction>, button: FloatingButton) {
+        if (actions.isEmpty()) return
+        setBusy(button, true)
+
+        fun step(index: Int) {
+            val action = actions.getOrNull(index)
+            if (action == null) {
+                setBusy(button, false)
+                return
+            }
+            perform(action, button) {
+                if (index == actions.lastIndex) setBusy(button, false) else step(index + 1)
+            }
+        }
+
+        step(0)
+    }
+
+    /** One step. [onDone] must run exactly once, unless the step takes the button away. */
+    private fun perform(action: FloatingAction, button: FloatingButton, onDone: () -> Unit) {
         when (action) {
-            FloatingAction.AiModify -> runAiModify(button)
-            FloatingAction.Capture -> captureToClipboard()
-            FloatingAction.OpenApp -> openApp()
+            FloatingAction.AiModify -> runAiModify(button, onDone)
+            FloatingAction.Capture -> {
+                captureToClipboard()
+                onDone()
+            }
+
+            FloatingAction.OpenApp -> {
+                openApp()
+                onDone()
+            }
+
+            // The last step of all: the buttons are gone, so there is nothing left to continue to.
             FloatingAction.Close -> stopSelf()
         }
     }
 
     /** Capture the focused field, let the model rewrite it, and write the result back. */
-    private fun runAiModify(button: FloatingButton) {
+    private fun runAiModify(button: FloatingButton, onDone: () -> Unit) {
         val service = MiaoAccessibilityService.instance()
         if (service == null) {
             toast(getString(R.string.ai_need_accessibility))
+            onDone()
             return
         }
 
         val original = service.getCurrentWindowText()
         if (original.isEmpty()) {
             toast(getString(R.string.ai_no_input))
+            onDone()
             return
         }
 
         val config = AiManager.load(this)
         if (config.apiKey.isNullOrBlank()) {
             toast(getString(R.string.ai_need_api_key))
+            onDone()
             return
         }
 
-        setBusy(button, true)
         AiManager.modifyText(
             config,
             original,
@@ -477,17 +520,17 @@ class FloatingWindowService : Service() {
                         )
                     }
                     val written = service.replaceInputText(modifiedText)
-                    setBusy(button, false)
                     toast(
                         getString(
                             if (written) R.string.ai_replaced else R.string.ai_replace_failed,
                         ),
                     )
+                    onDone()
                 }
 
                 override fun onError(message: String) {
-                    setBusy(button, false)
                     toast(getString(R.string.ai_failed) + "：" + message)
+                    onDone()
                 }
             },
         )

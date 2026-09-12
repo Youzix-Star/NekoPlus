@@ -8,18 +8,21 @@ package love.miao.yun.ui
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Article
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PictureInPicture
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -41,4 +44,9 @@ object AppIcons {
     val Grant: ImageVector = Icons.Rounded.CheckCircle
     val Tune: ImageVector = Icons.Rounded.Tune
     val Back: ImageVector = Icons.AutoMirrored.Rounded.ArrowBack
+
+    // Used by the first-run guide.
+    val Sparkle: ImageVector = Icons.Rounded.AutoAwesome
+    val Touch: ImageVector = Icons.Rounded.TouchApp
+    val Key: ImageVector = Icons.Rounded.Key
 }

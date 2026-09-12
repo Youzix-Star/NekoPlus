@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import love.miao.yun.BuildConfig
+import love.miao.yun.MiaoState
 import love.miao.yun.R
 import love.miao.yun.ui.AppIcons
 import top.yukonga.miuix.kmp.basic.Card
@@ -89,6 +90,21 @@ fun AboutScreen(
                             )
                         },
                         onClick = onOpenLicenses,
+                    )
+                    ArrowPreference(
+                        title = "新手引导",
+                        summary = "再看一遍怎么用",
+                        startAction = {
+                            Icon(
+                                imageVector = AppIcons.Sparkle,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        },
+                        onClick = {
+                            MiaoState.showOnboarding = true
+                            onNotify("已打开新手引导")
+                        },
                     )
                     ArrowPreference(
                         title = "检查更新",

@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -56,6 +57,7 @@ import love.miao.yun.ui.material3.material3AppBarColor
 import love.miao.yun.ui.material3.material3BlurEffect
 import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
 import love.miao.yun.ui.material3.widgets.BaseItemContainer
+import love.miao.yun.ui.material3.widgets.BaseWidget
 import love.miao.yun.ui.material3.widgets.DropDownMenuWidget
 import love.miao.yun.ui.material3.widgets.IntNumberPickerWidget
 import love.miao.yun.ui.material3.widgets.NavigationItemWidget
@@ -172,12 +174,22 @@ fun MaterialFloatingScreen(
                 SegmentedColumn(title = "悬浮窗按钮") {
                     items.forEach { entry ->
                         item(key = entry.id) {
-                            NavigationItemWidget(
+                            // A button can be parked without being deleted: the switch takes it off
+                            // the screen and leaves every one of its settings alone.
+                            BaseWidget(
                                 icon = AppIcons.Floating,
-                                title = entry.displayName + "  ·  " + entry.actionEntry.label,
+                                title = entry.displayName + "  ·  " + entry.actionSummary,
                                 description = entry.summary + " · 点按编辑",
                                 onClick = {
                                     expandedId = if (expandedId == entry.id) null else entry.id
+                                },
+                                trailingContent = { _ ->
+                                    Switch(
+                                        checked = entry.enabled,
+                                        onCheckedChange = { enabled ->
+                                            replace(entry.id) { it.copy(enabled = enabled) }
+                                        },
+                                    )
                                 },
                             )
                         }
@@ -214,15 +226,12 @@ fun MaterialFloatingScreen(
 
                             item(key = entry.id + "-action") {
                                 BaseItemContainer {
-                                    TextChips(
-                                        labels = FloatingAction.entries.map { it.label },
-                                        selectedIndex = FloatingAction.entries
-                                            .indexOf(entry.actionEntry)
-                                            .coerceAtLeast(0),
-                                        onSelect = { index ->
-                                            FloatingAction.entries.getOrNull(index)?.let { action ->
-                                                replace(entry.id) { it.copy(action = action.id) }
-                                            }
+                                    ActionChain(
+                                        title = "点击",
+                                        actions = entry.actionEntries,
+                                        allowNone = false,
+                                        onChange = { chain ->
+                                            replace(entry.id) { it.copy(actions = chain.map { a -> a.id }) }
                                         },
                                     )
                                 }
@@ -230,16 +239,44 @@ fun MaterialFloatingScreen(
 
                             item(key = entry.id + "-hold") {
                                 BaseItemContainer {
-                                    TextChips(
-                                        labels = listOf("无") + FloatingAction.entries.map { it.label },
-                                        selectedIndex = entry.holdActionEntry
-                                            ?.let { FloatingAction.entries.indexOf(it) + 1 }
-                                            ?: 0,
-                                        onSelect = { index ->
-                                            val action = FloatingAction.entries.getOrNull(index - 1)
+                                    ActionChain(
+                                        title = "长按",
+                                        actions = entry.holdActionEntries,
+                                        allowNone = true,
+                                        onChange = { chain ->
                                             replace(entry.id) {
-                                                it.copy(holdAction = action?.id.orEmpty())
+                                                it.copy(holdActions = chain.map { a -> a.id })
                                             }
+                                        },
+                                    )
+                                }
+                            }
+
+                            item(key = entry.id + "-enabled") {
+                                SwitchWidget(
+                                    icon = AppIcons.Tune,
+                                    title = "在屏幕上显示",
+                                    description = "关掉就把它收起来，设置都留着",
+                                    checked = entry.enabled,
+                                    onCheckedChange = { enabled ->
+                                        replace(entry.id) { it.copy(enabled = enabled) }
+                                    },
+                                )
+                            }
+
+                            if (!entry.showsText) {
+                                item(key = entry.id + "-show-icon") {
+                                    SwitchWidget(
+                                        icon = AppIcons.Tune,
+                                        title = "显示图标",
+                                        description = if (entry.iconCramped && entry.showIcon) {
+                                            "当前尺寸下图标会偏小或被压扁"
+                                        } else {
+                                            "关掉就是一条纯色块"
+                                        },
+                                        checked = entry.showIcon,
+                                        onCheckedChange = { show ->
+                                            replace(entry.id) { it.copy(showIcon = show) }
                                         },
                                     )
                                 }
@@ -316,22 +353,6 @@ fun MaterialFloatingScreen(
                                         onValueChange = { corner ->
                                             replace(entry.id) { it.copy(cornerDp = corner) }
                                         },
-                                    )
-                                }
-                            }
-
-                            if (!entry.showsText && !entry.iconVisible) {
-                                item(key = entry.id + "-no-icon") {
-                                    Text(
-                                        text = "当前尺寸不显示图标：短边不足 " +
-                                            "${FloatingWindowPrefs.MIN_ICON_EDGE_DP} dp，" +
-                                            "或者已经是一条悬浮条。",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(
-                                            horizontal = 28.dp,
-                                            vertical = 8.dp,
-                                        ),
                                     )
                                 }
                             }
@@ -451,18 +472,111 @@ private fun IconGrid(selected: FloatingIcon, onSelect: (FloatingIcon) -> Unit) {
     }
 }
 
-/** A row of worded choices wrapping onto as many lines as it needs. */
+/**
+ * The steps one gesture runs, in order.
+ *
+ * A chain rather than a single action, because the useful combinations are sequential: rewrite
+ * with the model first and post-process the result afterwards, for instance. [allowNone] adds a
+ * "无" choice in front of the very first step — that is how a hold gesture is switched off.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TextChips(labels: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit) {
-    FlowRow(
+private fun ActionChain(
+    title: String,
+    actions: List<FloatingAction>,
+    allowNone: Boolean,
+    onChange: (List<FloatingAction>) -> Unit,
+) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextChips(
+            labels = FloatingAction.entries.map { it.label },
+            selectedIndex = when {
+                actions.isEmpty() -> if (allowNone) 0 else -1
+                allowNone -> FloatingAction.entries.indexOf(actions.first()) + 1
+                else -> FloatingAction.entries.indexOf(actions.first())
+            },
+            onSelect = { choice ->
+                val picked = FloatingAction.entries.getOrNull(
+                    if (allowNone) choice - 1 else choice,
+                )
+                when {
+                    allowNone && choice == 0 -> onChange(emptyList())
+                    picked != null -> onChange(listOf(picked) + actions.drop(1))
+                }
+            },
+            noneLabel = allowNone,
+            pad = false,
+        )
+
+        actions.drop(1).forEachIndexed { index, action ->
+            TextChips(
+                labels = FloatingAction.entries.map { it.label },
+                selectedIndex = FloatingAction.entries.indexOf(action),
+                onSelect = { choice ->
+                    FloatingAction.entries.getOrNull(choice)?.let { picked ->
+                        val next = actions.toMutableList()
+                        next[index + 1] = picked
+                        onChange(next)
+                    }
+                },
+                noneLabel = false,
+                pad = false,
+            )
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (actions.size < FloatingWindowPrefs.MAX_CHAIN) {
+                ChoiceCell(
+                    selected = false,
+                    onClick = { onChange(actions + FloatingAction.entries.first()) },
+                    wide = true,
+                ) {
+                    Text("＋ 添加一步", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+            // The tap chain always keeps one step; a hold chain can be emptied right out.
+            if (actions.size > if (allowNone) 0 else 1) {
+                ChoiceCell(
+                    selected = false,
+                    onClick = { onChange(actions.dropLast(1)) },
+                    wide = true,
+                ) {
+                    Text("− 删掉最后一步", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+    }
+}
+
+/** A row of worded choices wrapping onto as many lines as it needs. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TextChips(
+    labels: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    noneLabel: Boolean = false,
+    pad: Boolean = true,
+) {
+    val options = if (noneLabel) listOf("无") + labels else labels
+    FlowRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (pad) Modifier.padding(horizontal = 16.dp, vertical = 12.dp) else Modifier),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        labels.forEachIndexed { index, label ->
+        options.forEachIndexed { index, label ->
             ChoiceCell(selected = index == selectedIndex, onClick = { onSelect(index) }, wide = true) {
                 Text(text = label, style = MaterialTheme.typography.labelLarge)
             }
