@@ -186,7 +186,7 @@ fun FloatingScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     WindowSpinnerPreference(
                         title = "取色来源",
-                        summary = "动态取色 / Miuix / Material Design",
+                        summary = "悬浮窗的取色来源",
                         items = floatingColorItems,
                         selectedIndex = FloatingColorSource.entries
                             .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),

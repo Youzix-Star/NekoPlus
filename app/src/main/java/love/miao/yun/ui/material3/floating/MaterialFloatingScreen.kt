@@ -349,7 +349,7 @@ fun MaterialFloatingScreen(
                         DropDownMenuWidget(
                             icon = AppIcons.Floating,
                             title = "取色来源",
-                            description = "动态取色 / Miuix / Material Design",
+                            description = "悬浮窗的取色来源",
                             choice = FloatingColorSource.entries
                                 .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
                             data = FloatingColorSource.entries.map { it.label },
