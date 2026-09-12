@@ -3,16 +3,25 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
-package love.miao.yun.ui.floating
+package love.miao.yun.ui.material3.floating
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Card
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -22,22 +31,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.SliderPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.utils.overScrollVertical
 import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.material3.LabeledSlider
+import love.miao.yun.ui.material3.SectionLabel
+import love.miao.yun.ui.material3.SwitchRow
 import kotlin.math.roundToInt
 
 @Composable
-fun FloatingScreen(
+fun MaterialFloatingScreen(
     contentPadding: PaddingValues,
-    scrollBehavior: ScrollBehavior,
+    scrollBehavior: TopAppBarScrollBehavior,
     floatingRunning: Boolean,
     onToggleFloating: () -> Unit,
     onNotify: (String) -> Unit,
@@ -51,39 +54,34 @@ fun FloatingScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .overScrollVertical(),
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "window") {
-            Column {
-                SmallTitle(text = "悬浮窗")
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SectionLabel("悬浮窗")
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    ArrowPreference(
-                        title = if (floatingRunning) "收起悬浮窗" else "启动悬浮窗",
-                        summary = if (floatingRunning) "当前正在屏幕上显示" else "还没有启动",
-                        startAction = {
-                            Icon(
-                                imageVector = AppIcons.Floating,
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                            )
+                    ListItem(
+                        headlineContent = { Text(if (floatingRunning) "收起悬浮窗" else "启动悬浮窗") },
+                        supportingContent = {
+                            Text(if (floatingRunning) "当前正在屏幕上显示" else "还没有启动")
                         },
-                        onClick = {
+                        leadingContent = { Icon(AppIcons.Floating, contentDescription = null) },
+                        modifier = Modifier.clickable {
                             onToggleFloating()
                             onNotify(if (floatingRunning) "悬浮窗已收起" else "悬浮窗已启动")
                         },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SwitchPreference(
+                    SwitchRow(
                         title = "贴边吸附",
                         summary = "松手后自动吸到屏幕边缘",
                         checked = snapToEdge,
                         onCheckedChange = { snapToEdge = it },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SwitchPreference(
+                    SwitchRow(
                         title = "拖动反馈",
                         summary = "拖动时轻微震动",
                         checked = haptic,
@@ -94,34 +92,34 @@ fun FloatingScreen(
         }
 
         item(key = "appearance") {
-            Column {
-                SmallTitle(text = "外观")
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                SectionLabel("外观")
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    SliderPreference(
-                        value = size,
-                        onValueChange = { size = it },
-                        title = "悬浮窗大小",
+                    LabeledSlider(
+                        label = "悬浮窗大小",
                         valueText = "${size.roundToInt()} dp",
-                        valueRange = 32f..80f,
+                        value = size,
+                        range = 32f..80f,
                         steps = 47,
+                        onValueChange = { size = it },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SliderPreference(
-                        value = corner,
-                        onValueChange = { corner = it },
-                        title = "圆角半径",
+                    LabeledSlider(
+                        label = "圆角半径",
                         valueText = "${corner.roundToInt()} dp",
-                        valueRange = 0f..40f,
+                        value = corner,
+                        range = 0f..40f,
                         steps = 39,
+                        onValueChange = { corner = it },
                     )
                     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SliderPreference(
-                        value = opacity,
-                        onValueChange = { opacity = it },
-                        title = "不透明度",
+                    LabeledSlider(
+                        label = "不透明度",
                         valueText = "${(opacity * 100).roundToInt()}%",
-                        valueRange = 0.3f..1f,
+                        value = opacity,
+                        range = 0.3f..1f,
                         steps = 13,
+                        onValueChange = { opacity = it },
                     )
                 }
             }

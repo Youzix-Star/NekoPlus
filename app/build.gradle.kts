@@ -100,6 +100,9 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.material.icons)
 
+    // The second UI engine is written against Material Design.
+    implementation(libs.compose.material3)
+
     implementation(libs.miuix.ui)
     implementation(libs.miuix.preference)
     // The liquid-glass floating bottom bar is built on miuix-blur, which requires minSdk 33.

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
-package love.miao.yun.ui.home
+package love.miao.yun.ui.miuix.home
 
 import android.os.Build
 import androidx.compose.foundation.layout.Arrangement

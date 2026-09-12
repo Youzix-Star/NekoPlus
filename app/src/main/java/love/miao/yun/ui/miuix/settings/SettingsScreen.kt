@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
-package love.miao.yun.ui.settings
+package love.miao.yun.ui.miuix.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,6 +30,7 @@ import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 import love.miao.yun.ui.ThemeModeOptions
+import love.miao.yun.ui.UiEngine
 
 @Composable
 fun SettingsScreen(
@@ -39,6 +40,8 @@ fun SettingsScreen(
     onColorSchemeModeChange: (ColorSchemeMode) -> Unit,
     useLiquidGlass: Boolean,
     onUseLiquidGlassChange: (Boolean) -> Unit,
+    engine: UiEngine,
+    onEngineChange: (UiEngine) -> Unit,
     onNotify: (String) -> Unit,
 ) {
     var autoStart by remember { mutableStateOf(false) }
@@ -46,6 +49,7 @@ fun SettingsScreen(
 
     // One row that opens a chooser, mirroring how the reference app picks its UI engine.
     val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
+    val engineItems = remember { UiEngine.entries.map { DropdownItem(text = it.label) } }
     val selectedThemeIndex = ThemeModeOptions
         .indexOfFirst { it.first == colorSchemeMode }
         .coerceAtLeast(0)
@@ -76,6 +80,23 @@ fun SettingsScreen(
                         summary = "底部导航使用实时毛玻璃与高光；关闭后变为不透明悬浮样式",
                         checked = useLiquidGlass,
                         onCheckedChange = onUseLiquidGlassChange,
+                    )
+                }
+            }
+        }
+
+        item(key = "engine") {
+            Column {
+                SmallTitle(text = "界面引擎")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    WindowSpinnerPreference(
+                        title = "界面引擎",
+                        summary = "Miuix 与 Material Design 是两套完整的界面实现，可随时切换",
+                        items = engineItems,
+                        selectedIndex = UiEngine.entries.indexOf(engine).coerceAtLeast(0),
+                        onSelectedIndexChange = { index ->
+                            UiEngine.entries.getOrNull(index)?.let(onEngineChange)
+                        },
                     )
                 }
             }

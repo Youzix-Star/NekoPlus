@@ -5,7 +5,7 @@
 //   example/shared/src/commonMain/kotlin/component/{liquid,animation}
 // Adapted for NekoEdit: repackaged and wired to this app's theme.
 
-package love.miao.yun.ui.liquid
+package love.miao.yun.ui.miuix.liquid
 
 // Adapted from Kyant0/AndroidLiquidGlass — https://github.com/Kyant0/AndroidLiquidGlass (Apache 2.0).
 
@@ -72,8 +72,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
-import love.miao.yun.ui.animation.DampedDragAnimation
-import love.miao.yun.ui.animation.InteractiveHighlight
+import love.miao.yun.ui.miuix.animation.DampedDragAnimation
+import love.miao.yun.ui.miuix.animation.InteractiveHighlight
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.BadgedBox
 import top.yukonga.miuix.kmp.basic.Icon

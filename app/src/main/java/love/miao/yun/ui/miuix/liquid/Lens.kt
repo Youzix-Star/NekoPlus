@@ -5,7 +5,7 @@
 //   example/shared/src/commonMain/kotlin/component/{liquid,animation}
 // Adapted for NekoEdit: repackaged and wired to this app's theme.
 
-package love.miao.yun.ui.liquid
+package love.miao.yun.ui.miuix.liquid
 
 // Adapted from Kyant0/AndroidLiquidGlass — https://github.com/Kyant0/AndroidLiquidGlass (Apache 2.0).
 

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
-package love.miao.yun.ui
+package love.miao.yun.ui.miuix
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
@@ -36,7 +36,7 @@ val ThemeModeOptions: List<Pair<ColorSchemeMode, String>> = listOf(
 )
 
 @Composable
-fun MiaoTheme(
+fun MiuixAppTheme(
     colorSchemeMode: ColorSchemeMode,
     content: @Composable () -> Unit,
 ) {
