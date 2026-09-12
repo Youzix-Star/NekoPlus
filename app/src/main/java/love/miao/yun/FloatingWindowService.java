@@ -349,14 +349,20 @@ public class FloatingWindowService extends Service implements Logger.LogListener
                 }
 
                 // 加载规则并应用
-                java.util.List<RuleManager.Rule> rules = RuleManager.load(FloatingWindowService.this);
+                java.util.List<love.miao.yun.rule.Rule> rules =
+                        love.miao.yun.rule.RuleStore.INSTANCE.load(FloatingWindowService.this);
                 if (rules.isEmpty()) {
                     Toast.makeText(FloatingWindowService.this,
                             getString(R.string.rules_none_hint), Toast.LENGTH_SHORT).show();
                     return;
                 }
 
-                String result = RuleManager.applyRules(text, rules);
+                love.miao.yun.rule.RuleEngine.Result outcome =
+                        love.miao.yun.rule.RuleRunner.INSTANCE.run(text, rules, currentPackage());
+                for (String error : outcome.getErrors()) {
+                    Logger.w(error);
+                }
+                String result = outcome.getText();
                 Logger.i("规则应用完成: " + text + " → " + result);
                 updateCapturedText(result);
 
@@ -449,6 +455,12 @@ public class FloatingWindowService extends Service implements Logger.LogListener
     @Override
     public void onLogAdded(String logEntry) {
         updateLogDisplay();
+    }
+
+    /** Package of the app whose input field is focused, used to filter rules by scope. */
+    private String currentPackage() {
+        AccessibilityService service = AccessibilityService.getInstance();
+        return service == null ? null : service.getCurrentPackageName();
     }
 
     private void updateCapturedText(String text) {
@@ -753,7 +765,8 @@ public class FloatingWindowService extends Service implements Logger.LogListener
             return;
         }
 
-        java.util.List<RuleManager.Rule> rules = RuleManager.load(this);
+        java.util.List<love.miao.yun.rule.Rule> rules =
+                love.miao.yun.rule.RuleStore.INSTANCE.load(this);
         if (rules.isEmpty()) {
             Toast.makeText(this, R.string.rules_none_hint, Toast.LENGTH_SHORT).show();
             setQuickBallLoading(false);
@@ -761,7 +774,12 @@ public class FloatingWindowService extends Service implements Logger.LogListener
             return;
         }
 
-        String result = RuleManager.applyRules(rawText, rules);
+        love.miao.yun.rule.RuleEngine.Result outcome =
+                love.miao.yun.rule.RuleRunner.INSTANCE.run(rawText, rules, currentPackage());
+        for (String error : outcome.getErrors()) {
+            Logger.w(error);
+        }
+        String result = outcome.getText();
         Logger.i("快捷球：规则应用完成: " + rawText + " → " + result);
 
         boolean replaced = service != null && service.replaceInputText(result);

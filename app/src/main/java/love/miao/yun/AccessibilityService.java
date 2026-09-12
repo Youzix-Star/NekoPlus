@@ -62,6 +62,25 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
      *
      * @return true 表示操作成功；false 表示未找到输入框或应用不支持该操作
      */
+    /**
+     * Package name of the app that currently owns the focused input, or null.
+     *
+     * Used to decide which rules apply: a rule with an empty scope runs everywhere, otherwise it
+     * only runs when this matches one of its packages.
+     */
+    public String getCurrentPackageName() {
+        AccessibilityNodeInfo root = getRootInActiveWindow();
+        if (root == null) {
+            return null;
+        }
+        try {
+            CharSequence pkg = root.getPackageName();
+            return pkg == null ? null : pkg.toString();
+        } finally {
+            root.recycle();
+        }
+    }
+
     public boolean replaceInputText(String newText) {
         Logger.d("手动替换输入框内容");
 
