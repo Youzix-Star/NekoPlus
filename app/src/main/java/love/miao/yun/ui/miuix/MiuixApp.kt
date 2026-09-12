@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.BackEventCompat
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -54,6 +55,7 @@ import love.miao.yun.service.FloatingWindowService
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
+import love.miao.yun.ui.rememberMainPagerState
 import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.miuix.about.AboutScreen
 import love.miao.yun.ui.miuix.floating.FloatingScreen
@@ -163,7 +165,7 @@ fun MiaoShell(
     val titles = remember { listOf("喵喵助手", "悬浮窗", "设置", "关于") }
 
     val pagerState = rememberPagerState(pageCount = { navigationItems.size })
-    val currentPage = pagerState.currentPage
+    val mainPagerState = rememberMainPagerState(pagerState)
     val mainScrollBehavior = MiuixScrollBehavior()
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -177,8 +179,21 @@ fun MiaoShell(
         drawContent()
     }
 
-    LaunchedEffect(currentPage) {
+    // Adopt the pager's position after the user swipes between tabs by hand.
+    LaunchedEffect(pagerState.currentPage) {
+        mainPagerState.syncPage()
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
         hasOverlayPermission = Settings.canDrawOverlays(context)
+    }
+
+    // ---- level-1 back: no predictive visual, just the tab-switch animation back to home ----
+    // Armed only while a tab is showing and it is not the first one, mirroring the reference
+    // project's "we are on the main route and the back stack is empty" condition. While a
+    // second-level page is open, its own PredictiveBackHandler owns the gesture instead.
+    BackHandler(enabled = subPage == null && mainPagerState.selectedPage != 0) {
+        mainPagerState.animateToPage(0)
     }
 
     // ---- second-level pages: slide in, and follow the back gesture the AOSP way ----
@@ -237,7 +252,7 @@ fun MiaoShell(
             titles = titles,
             navigationItems = navigationItems,
             pagerState = pagerState,
-            currentPage = currentPage,
+            selectedPage = mainPagerState.selectedPage,
             scrollBehavior = mainScrollBehavior,
             backdrop = backdrop,
             useLiquidGlass = useLiquidGlass,
@@ -252,9 +267,7 @@ fun MiaoShell(
             onRequestOverlay = requestOverlay,
             onNotify = notify,
             onOpenLicenses = { subPage = MiuixSubPage.Licenses },
-            onTabSelected = { index ->
-                coroutineScope.launch { pagerState.animateScrollToPage(index) }
-            },
+            onTabSelected = { index -> mainPagerState.animateToPage(index) },
         )
 
         val openSubPage = subPage
@@ -314,7 +327,7 @@ private fun MiaoTabs(
     titles: List<String>,
     navigationItems: List<NavigationItem>,
     pagerState: PagerState,
-    currentPage: Int,
+    selectedPage: Int,
     scrollBehavior: ScrollBehavior,
     backdrop: LayerBackdrop,
     useLiquidGlass: Boolean,
@@ -334,8 +347,10 @@ private fun MiaoTabs(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = titles[currentPage],
-                largeTitle = titles[currentPage],
+                // Follows the requested tab, not the pager, so the title flips together
+                // with the bottom-bar highlight the instant a tab is tapped.
+                title = titles[selectedPage],
+                largeTitle = titles[selectedPage],
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -343,7 +358,7 @@ private fun MiaoTabs(
             Box(modifier = Modifier.fillMaxWidth()) {
                 FloatingBottomBar(
                     items = navigationItems,
-                    selectedIndex = currentPage,
+                    selectedIndex = selectedPage,
                     onItemClick = onTabSelected,
                     backdrop = backdrop,
                     isBlurActive = useLiquidGlass,

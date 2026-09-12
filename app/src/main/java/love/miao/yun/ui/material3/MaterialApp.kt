@@ -14,6 +14,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import androidx.activity.BackEventCompat
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -60,6 +61,7 @@ import kotlinx.coroutines.launch
 import love.miao.yun.MiaoState
 import love.miao.yun.service.FloatingWindowService
 import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.rememberMainPagerState
 import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.material3.about.MaterialAboutScreen
 import love.miao.yun.ui.material3.floating.MaterialFloatingScreen
@@ -146,15 +148,28 @@ private fun MaterialShell(
     )
 
     val pagerState = rememberPagerState(pageCount = { labels.size })
-    val currentPage = pagerState.currentPage
+    val mainPagerState = rememberMainPagerState(pagerState)
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val notify: (String) -> Unit = { message ->
         coroutineScope.launch { snackbarHostState.showSnackbar(message) }
     }
 
-    LaunchedEffect(currentPage) {
+    // Adopt the pager's position after the user swipes between tabs by hand.
+    LaunchedEffect(pagerState.currentPage) {
+        mainPagerState.syncPage()
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
         hasOverlayPermission = Settings.canDrawOverlays(context)
+    }
+
+    // ---- level-1 back: no predictive visual, just the tab-switch animation back to home ----
+    // Only armed while a tab is showing and it is not the first one, mirroring the reference
+    // project's "we are on the main route and the back stack is empty" condition. When a
+    // second-level page is open, its own PredictiveBackHandler owns the gesture instead.
+    BackHandler(enabled = subPage == null && mainPagerState.selectedPage != 0) {
+        mainPagerState.animateToPage(0)
     }
 
     // ---- second-level pages: slide in, and follow the back gesture the AOSP way ----
@@ -215,10 +230,10 @@ private fun MaterialShell(
                 NavigationBar {
                     labels.forEachIndexed { index, label ->
                         NavigationBarItem(
-                            selected = currentPage == index,
-                            onClick = {
-                                coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                            },
+                            // Driven by selectedPage, not the pager's currentPage, so the
+                            // highlight lands the moment the tab is tapped.
+                            selected = mainPagerState.selectedPage == index,
+                            onClick = { mainPagerState.animateToPage(index) },
                             icon = { Icon(imageVector = icons[index], contentDescription = label) },
                             label = { Text(label) },
                         )
