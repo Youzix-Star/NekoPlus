@@ -108,7 +108,7 @@ fun FloatingScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     ArrowPreference(
                         title = if (floatingRunning) "收起悬浮窗" else "启动悬浮窗",
-                        summary = if (floatingRunning) "${items.size} 个按钮" else "未启动",
+                        summary = if (floatingRunning) "${items.count { it.enabled }} 个按钮" else "未启动",
                         startAction = {
                             Icon(
                                 imageVector = AppIcons.Floating,

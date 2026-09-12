@@ -132,7 +132,7 @@ fun MaterialFloatingScreen(
                         NavigationItemWidget(
                             icon = AppIcons.Floating,
                             title = if (floatingRunning) "收起悬浮窗" else "启动悬浮窗",
-                            description = if (floatingRunning) "${items.size} 个按钮" else "未启动",
+                            description = if (floatingRunning) "${items.count { it.enabled }} 个按钮" else "未启动",
                             onClick = {
                                 onToggleFloating()
                                 onNotify(if (floatingRunning) "悬浮窗已收起" else "悬浮窗已启动")
