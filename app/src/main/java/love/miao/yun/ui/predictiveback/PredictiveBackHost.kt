@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlin.coroutines.cancellation.CancellationException
@@ -67,6 +68,7 @@ internal class BackLayerInfo(
     val fromRight: Boolean,
     val touchY: Float,
     val touchYStart: Float,
+    val rtl: Boolean,
 )
 
 /**
@@ -148,7 +150,8 @@ private fun rememberBackController(): BackController {
  * @param style which motion the drag follows.
  * @param onDismissed invoked once a committed dismissal has finished animating, and only then.
  * @param levelOne the tab content, revealed as the page above it leaves.
- * @param subPage the second-level page; only composed while [subPageOpen] is true.
+ * @param subPage the second-level page, given the action that closes it; only composed while
+ *   [subPageOpen] is true.
  */
 @Composable
 fun PredictiveBackHost(
@@ -156,7 +159,7 @@ fun PredictiveBackHost(
     style: PredictiveBackStyle,
     onDismissed: () -> Unit,
     levelOne: @Composable () -> Unit,
-    subPage: @Composable () -> Unit,
+    subPage: @Composable (close: () -> Unit) -> Unit,
 ) {
     val controller = rememberBackController()
     val dismiss by rememberUpdatedState(onDismissed)
@@ -201,6 +204,15 @@ fun PredictiveBackHost(
         }
     }
 
+    // Read here rather than inside the layer: a graphics layer knows its density but not which
+    // way the layout runs, and the drag has to be mirrored in RTL.
+    val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    // A back button plays the same dismissal as the gesture: the page travels the rest of the way
+    // out and only then is it taken down, so neither route can leave a half-moved page behind.
+    val close: () -> Unit = {
+        controller.settle(commit = true, spec = config.commitSpec) { dismiss() }
+    }
+
     val coveredInfo = {
         BackLayerInfo(
             role = BackLayerRole.Covered,
@@ -209,6 +221,7 @@ fun PredictiveBackHost(
             fromRight = controller.fromRight,
             touchY = controller.touchY,
             touchYStart = controller.touchYStart,
+            rtl = rtl,
         )
     }
     val outgoingInfo = {
@@ -219,6 +232,7 @@ fun PredictiveBackHost(
             fromRight = controller.fromRight,
             touchY = controller.touchY,
             touchYStart = controller.touchYStart,
+            rtl = rtl,
         )
     }
 
@@ -245,7 +259,7 @@ fun PredictiveBackHost(
                     .fillMaxSize()
                     .backLayer(style, outgoingInfo),
             ) {
-                subPage()
+                subPage(close)
             }
         }
     }
@@ -266,7 +280,7 @@ internal fun Modifier.backLayer(style: PredictiveBackStyle, info: () -> BackLaye
 
         // In LTR a drag from the left edge carries the page to the right; a drag from the right
         // edge carries it the other way. RTL mirrors both.
-        val layoutSign = if (layoutDirection == LayoutDirection.Ltr) 1f else -1f
+        val layoutSign = if (state.rtl) -1f else 1f
         val sign = if (state.fromRight) -layoutSign else layoutSign
 
         when (state.role) {
