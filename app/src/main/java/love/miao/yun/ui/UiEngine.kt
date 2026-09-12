@@ -28,6 +28,7 @@ object UiEnginePrefs {
     private const val PREFS = "ui_prefs"
     private const val KEY_ENGINE = "ui_engine"
     private const val KEY_USE_BLUR = "use_blur"
+    private const val KEY_FLOATING_COLOR = "floating_color"
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -49,4 +50,34 @@ object UiEnginePrefs {
     fun saveUseBlur(context: Context, useBlur: Boolean) {
         prefs(context).edit().putBoolean(KEY_USE_BLUR, useBlur).apply()
     }
+
+    /** Which palette the floating window draws itself with. */
+    fun loadFloatingColor(context: Context): FloatingColorSource =
+        FloatingColorSource.from(prefs(context).getString(KEY_FLOATING_COLOR, null))
+
+    fun saveFloatingColor(context: Context, source: FloatingColorSource) {
+        prefs(context).edit().putString(KEY_FLOATING_COLOR, source.id).apply()
+    }
+
+    /**
+     * Observable access for [love.miao.yun.service.FloatingWindowService]: the overlay lives
+     * outside the activity, so it watches the preference instead of reading [MiaoState] once.
+     * Pair every call with [unregisterListener].
+     */
+    fun registerListener(
+        context: Context,
+        listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener,
+    ) {
+        prefs(context).registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun unregisterListener(
+        context: Context,
+        listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener,
+    ) {
+        prefs(context).unregisterOnSharedPreferenceChangeListener(listener)
+    }
+
+    /** True when [key] is the floating window's palette, i.e. the overlay must restyle. */
+    fun isFloatingColorKey(key: String?): Boolean = key == KEY_FLOATING_COLOR
 }

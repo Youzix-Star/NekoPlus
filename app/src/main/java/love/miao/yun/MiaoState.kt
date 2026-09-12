@@ -8,6 +8,7 @@ package love.miao.yun
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.UiEngine
 
 /**
@@ -29,6 +30,9 @@ object MiaoState {
      * on devices that can technically render it.
      */
     var useBlur by mutableStateOf(true)
+
+    /** Which palette the floating window uses; persisted alongside the engine. */
+    var floatingColorSource by mutableStateOf(FloatingColorSource.Dynamic)
 
     /** Placeholder counters so the home page has something to draw. */
     var todayCount by mutableStateOf(0)

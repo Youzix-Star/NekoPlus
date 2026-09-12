@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import love.miao.yun.MiaoState
 import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.ThemeMode
@@ -103,6 +104,22 @@ fun MaterialSettingsScreen(
                             description = "Android 12+ 跟随壁纸取色",
                             checked = dynamicColor,
                             onCheckedChange = onDynamicColorChange,
+                        )
+                    }
+                    item {
+                        DropDownMenuWidget(
+                            icon = AppIcons.Floating,
+                            title = "悬浮窗取色",
+                            description = "悬浮层独立取色，可跟随动态取色、Miuix 或 Material Design",
+                            choice = FloatingColorSource.entries
+                                .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
+                            data = FloatingColorSource.entries.map { it.label },
+                            onChoiceChange = { index ->
+                                FloatingColorSource.entries.getOrNull(index)?.let {
+                                    MiaoState.floatingColorSource = it
+                                    UiEnginePrefs.saveFloatingColor(context, it)
+                                }
+                            },
                         )
                     }
                     item {

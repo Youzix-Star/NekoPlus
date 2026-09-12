@@ -41,6 +41,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 @Composable
@@ -57,6 +58,13 @@ fun IntNumberPickerWidget(
     valueSuffix: String = "",
     subduedValue: Boolean = false,
     onValueClick: (() -> Unit)? = null,
+    // The reference indents the track to `start = 56.dp, end = 36.dp` so that it lines up under
+    // the title text rather than under the icon. In this project that read as a stubby, cramped
+    // slider next to the miuix engine's full-width one, so the track now spans the card and only
+    // keeps the standard list-item inset. Pass the reference values back if the aligned look is
+    // ever wanted.
+    sliderStartPadding: Dp = 16.dp,
+    sliderEndPadding: Dp = 16.dp,
     onValueChange: (Int) -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
@@ -103,7 +111,7 @@ fun IntNumberPickerWidget(
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(start = 56.dp, end = 36.dp),
+            modifier = Modifier.padding(start = sliderStartPadding, end = sliderEndPadding),
         ) {
             Slider(
                 value = value.toFloat(),

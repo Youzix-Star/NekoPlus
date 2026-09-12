@@ -11,8 +11,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
@@ -28,6 +28,8 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import love.miao.yun.MainActivity
 import love.miao.yun.MiaoState
+import love.miao.yun.ui.FloatingPalettes
+import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.R
 
 /**
@@ -45,11 +47,27 @@ class FloatingWindowService : Service() {
     private var rootView: View? = null
     private var layoutParams: WindowManager.LayoutParams? = null
 
+    /** Kept so the window can be repainted when the palette preference changes. */
+    private var panelBackground: GradientDrawable? = null
+    private var titleView: TextView? = null
+    private var subtitleView: TextView? = null
+    private var closeView: TextView? = null
+
+    /**
+     * The overlay outlives the activity, so it cannot read the palette once at startup: it
+     * subscribes to the preference and restyles itself while it is on screen.
+     */
+    private val paletteListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (UiEnginePrefs.isFloatingColorKey(key)) applyPalette()
+        }
+
     override fun onCreate() {
         super.onCreate()
         startForegroundNotification()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         showWindow()
+        UiEnginePrefs.registerListener(this, paletteListener)
         MiaoState.floatingRunning = true
     }
 
@@ -58,10 +76,28 @@ class FloatingWindowService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        UiEnginePrefs.unregisterListener(this, paletteListener)
         rootView?.let { view -> runCatching { windowManager.removeView(view) } }
         rootView = null
         MiaoState.floatingRunning = false
         super.onDestroy()
+    }
+
+    // ------------------------------------------------------------------ palette
+
+    /**
+     * Repaint the window from [MiaoState.floatingColorSource].
+     *
+     * The colours come from [FloatingPalettes], which reads the miuix, Material 3 or Monet
+     * colour scheme for this device's night mode without needing a composition.
+     */
+    private fun applyPalette() {
+        val source = UiEnginePrefs.loadFloatingColor(this)
+        val palette = FloatingPalettes.resolve(this, source)
+        panelBackground?.setColor(palette.container)
+        titleView?.setTextColor(palette.onContainer)
+        subtitleView?.setTextColor(palette.onContainerMuted)
+        closeView?.setTextColor(palette.onContainer)
     }
 
     // ------------------------------------------------------------------ overlay
@@ -81,8 +117,7 @@ class FloatingWindowService : Service() {
             )
             background = GradientDrawable().apply {
                 cornerRadius = 24f * density
-                setColor(Color.parseColor("#E64C8DFF"))
-            }
+            }.also { panelBackground = it }
         }
 
         val labels = LinearLayout(context).apply {
@@ -91,27 +126,27 @@ class FloatingWindowService : Service() {
         labels.addView(
             TextView(context).apply {
                 text = getString(R.string.notif_title)
-                setTextColor(Color.WHITE)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            },
+            }.also { titleView = it },
         )
         labels.addView(
             TextView(context).apply {
                 text = getString(R.string.app_subtitle)
-                setTextColor(Color.parseColor("#CCFFFFFF"))
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            },
+            }.also { subtitleView = it },
         )
         panel.addView(labels)
 
         val close = TextView(context).apply {
             text = "✕"
-            setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
             setPadding((14 * density).roundToInt(), 0, (6 * density).roundToInt(), 0)
             setOnClickListener { stopSelf() }
-        }
+        }.also { closeView = it }
         panel.addView(close)
+
+        // Paint before the window is added so it never flashes the default background.
+        applyPalette()
 
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,

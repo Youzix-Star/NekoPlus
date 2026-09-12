@@ -33,6 +33,7 @@ import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.material3.material3AppBarColor
 import love.miao.yun.ui.material3.material3BlurEffect
 import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
+import love.miao.yun.ui.material3.widgets.BaseItemContainer
 import love.miao.yun.ui.material3.widgets.IntNumberPickerWidget
 import love.miao.yun.ui.material3.widgets.NavigationItemWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
@@ -122,34 +123,46 @@ fun MaterialFloatingScreen(
             item {
                 SegmentedColumn(title = "外观") {
                     item {
-                        IntNumberPickerWidget(
-                            title = "悬浮窗大小",
-                            value = size,
-                            startInt = 32,
-                            endInt = 80,
-                            valueSuffix = " dp",
-                            onValueChange = { size = it },
-                        )
+                        // IntNumberPickerWidget paints no background of its own, so it has
+                        // to be wrapped in a container to sit on a card like every other row.
+                        BaseItemContainer {
+                            IntNumberPickerWidget(
+                                title = "悬浮窗大小",
+                                value = size,
+                                startInt = 32,
+                                endInt = 80,
+                                valueSuffix = " dp",
+                                onValueChange = { size = it },
+                            )
+                        }
                     }
                     item {
-                        IntNumberPickerWidget(
-                            title = "圆角半径",
-                            value = corner,
-                            startInt = 0,
-                            endInt = 40,
-                            valueSuffix = " dp",
-                            onValueChange = { corner = it },
-                        )
+                        // IntNumberPickerWidget paints no background of its own, so it has
+                        // to be wrapped in a container to sit on a card like every other row.
+                        BaseItemContainer {
+                            IntNumberPickerWidget(
+                                title = "圆角半径",
+                                value = corner,
+                                startInt = 0,
+                                endInt = 40,
+                                valueSuffix = " dp",
+                                onValueChange = { corner = it },
+                            )
+                        }
                     }
                     item {
-                        IntNumberPickerWidget(
-                            title = "不透明度",
-                            value = opacityPercent,
-                            startInt = 30,
-                            endInt = 100,
-                            valueSuffix = " %",
-                            onValueChange = { opacityPercent = it },
-                        )
+                        // IntNumberPickerWidget paints no background of its own, so it has
+                        // to be wrapped in a container to sit on a card like every other row.
+                        BaseItemContainer {
+                            IntNumberPickerWidget(
+                                title = "不透明度",
+                                value = opacityPercent,
+                                startInt = 30,
+                                endInt = 100,
+                                valueSuffix = " %",
+                                onValueChange = { opacityPercent = it },
+                            )
+                        }
                     }
                 }
             }

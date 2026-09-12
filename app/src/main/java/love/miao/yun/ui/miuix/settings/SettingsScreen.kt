@@ -18,9 +18,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
+import love.miao.yun.MiaoState
+import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.UiEngine
+import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.miuix.ThemeModeOptions
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
@@ -50,6 +54,8 @@ fun SettingsScreen(
     // One row that opens a chooser, mirroring how the reference app picks its UI engine.
     val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
     val engineItems = remember { UiEngine.entries.map { DropdownItem(text = it.label) } }
+    val context = LocalContext.current
+    val floatingColorItems = remember { FloatingColorSource.entries.map { DropdownItem(text = it.label) } }
     val selectedThemeIndex = ThemeModeOptions
         .indexOfFirst { it.first == colorSchemeMode }
         .coerceAtLeast(0)
@@ -80,6 +86,20 @@ fun SettingsScreen(
                         summary = "底部导航使用实时毛玻璃与高光；关闭后变为不透明悬浮样式",
                         checked = useLiquidGlass,
                         onCheckedChange = onUseLiquidGlassChange,
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    WindowSpinnerPreference(
+                        title = "悬浮窗取色",
+                        summary = "悬浮窗是独立于界面的悬浮层，取色可以单独跟随动态取色、Miuix 或 Material Design",
+                        items = floatingColorItems,
+                        selectedIndex = FloatingColorSource.entries
+                            .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
+                        onSelectedIndexChange = { index ->
+                            FloatingColorSource.entries.getOrNull(index)?.let {
+                                MiaoState.floatingColorSource = it
+                                UiEnginePrefs.saveFloatingColor(context, it)
+                            }
+                        },
                     )
                 }
             }
