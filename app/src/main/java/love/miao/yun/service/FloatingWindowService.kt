@@ -225,6 +225,10 @@ class FloatingWindowService : Service() {
 
     private fun sizePx(item: FloatingItem): Int = (item.sizeDp * density).roundToInt()
 
+    private fun screenWidth(): Int = resources.displayMetrics.widthPixels
+
+    private fun screenHeight(): Int = resources.displayMetrics.heightPixels
+
     /** Applies everything about a button that comes from its own settings. */
     private fun paint(button: FloatingButton, item: FloatingItem) {
         val size = sizePx(item)
@@ -334,8 +338,12 @@ class FloatingWindowService : Service() {
                         }
                     }
                     if (dragging) {
-                        button.params.x = startX + dx.roundToInt()
-                        button.params.y = startY + dy.roundToInt()
+                        // Clamped to the screen: a button dragged past an edge would otherwise be
+                        // gone for good, with no way to bring it back.
+                        button.params.x = (startX + dx.roundToInt())
+                            .coerceIn(0, (screenWidth() - button.params.width).coerceAtLeast(0))
+                        button.params.y = (startY + dy.roundToInt())
+                            .coerceIn(0, (screenHeight() - button.params.height).coerceAtLeast(0))
                         runCatching { windowManager.updateViewLayout(view, button.params) }
                     }
                     return true
@@ -374,12 +382,12 @@ class FloatingWindowService : Service() {
 
         /** Pulls the button to whichever side of the screen it is already closest to. */
         private fun snapToEdge(button: FloatingButton) {
-            val screenWidth = resources.displayMetrics.widthPixels
+            val screen = screenWidth()
             val left = button.params.x
-            button.params.x = if (left + button.params.width / 2 < screenWidth / 2) {
+            button.params.x = if (left + button.params.width / 2 < screen / 2) {
                 0
             } else {
-                screenWidth - button.params.width
+                screen - button.params.width
             }
             runCatching { windowManager.updateViewLayout(button.view, button.params) }
         }

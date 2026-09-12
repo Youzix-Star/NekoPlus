@@ -294,6 +294,22 @@ fun MaterialFloatingScreen(
                                 }
                             }
 
+                            item(key = entry.id + "-position") {
+                                NavigationItemWidget(
+                                    icon = AppIcons.Tune,
+                                    title = "重置位置",
+                                    description = "放回屏幕左上角那一列",
+                                    onClick = {
+                                        val (x, y) = FloatingWindowPrefs.startPosition(
+                                            context,
+                                            items.indexOfFirst { it.id == entry.id }
+                                                .coerceAtLeast(0),
+                                        )
+                                        replace(entry.id) { it.copy(x = x, y = y) }
+                                    },
+                                )
+                            }
+
                             item(key = entry.id + "-delete") {
                                 NavigationItemWidget(
                                     icon = AppIcons.Tune,

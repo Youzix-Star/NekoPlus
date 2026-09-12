@@ -263,7 +263,18 @@ object FloatingWindowPrefs {
         )
     }
 
-    /** Which palette the overlay paints itself with; persisted next to the engine choice. */
+    /**
+     * Where the button at [index] goes when its position is reset: the same staggered column a
+     * fresh button is born into.
+     */
+    fun startPosition(context: Context, index: Int): Pair<Int, Int> {
+        val density = densityOf(context)
+        val step = ((DEFAULT_SIZE_DP + ITEM_GAP_DP) * density).roundToInt()
+        return (START_X_DP * density).roundToInt() to
+            ((START_Y_DP * density).roundToInt() + index * step)
+    }
+
+    /** True when [key] is the button list, i.e. the overlay must be rebuilt. */
     fun isFloatingKey(key: String?): Boolean = key == KEY_ITEMS
 
     /** Observable access for the overlay, which outlives the activity. Pair with [unregister]. */

@@ -206,6 +206,7 @@ fun FloatingScreen(
     if (editing != null) {
         FloatingItemDialog(
             item = editing,
+            resetIndex = items.indexOfFirst { it.id == editing.id },
             canDelete = items.size > 1,
             onChange = { updated -> persist(items.map { if (it.id == updated.id) updated else it }) },
             onDelete = {
@@ -233,12 +234,14 @@ private fun itemSummary(item: FloatingItem): String {
 @Composable
 private fun FloatingItemDialog(
     item: FloatingItem,
+    resetIndex: Int,
     canDelete: Boolean,
     onChange: (FloatingItem) -> Unit,
     onDelete: () -> Unit,
     onDismiss: () -> Unit,
     onNotify: (String) -> Unit,
 ) {
+    val context = LocalContext.current
     OverlayDialog(
         show = true,
         title = "编辑悬浮窗",
@@ -333,6 +336,15 @@ private fun FloatingItemDialog(
             }
 
             Card(modifier = Modifier.fillMaxWidth()) {
+                ArrowPreference(
+                    title = "重置位置",
+                    summary = "放回屏幕左上角那一列",
+                    onClick = {
+                        val index = resetIndex.coerceAtLeast(0)
+                        val (x, y) = FloatingWindowPrefs.startPosition(context, index)
+                        onChange(item.copy(x = x, y = y))
+                    },
+                )
                 Button(
                     onClick = {
                         if (canDelete) onDelete() else onNotify("至少要留一个悬浮窗")
