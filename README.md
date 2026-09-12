@@ -220,6 +220,22 @@ SharedPreferences），**每个按钮各自独立**：
 - 常驻通知仍是矢量猫脸剪影（`drawable/ic_notification.xml`）：通知小图标只用 alpha 通道，
   一串文字在 24dp 上只会是一团糊。
 
+## 配置备份
+
+`util/PrefsBackup.kt` 把本应用的几个 SharedPreferences 文件整体导成一个 JSON：
+
+- **不做手写清单**，而是遍历 `ui_prefs` / `floating_window` / `ai_config` / `token_stats` /
+  `onboarding` 这些文件的所有键 —— 手写清单会在下一个功能加进来时悄悄漏掉它；
+- 每个值都带类型标签（`b`/`i`/`l`/`f`/`s`/`set`）：JSON 里的 `1` 分不出是 Int、Long 还是
+  Float，导入时必须知道；
+- 导入只覆盖文件里存在的键，不做清空。
+
+导出/导入走系统文件选择器（`CreateDocument` / `OpenDocument`），所以不需要存储权限，落在哪儿
+由用户决定；两个引擎共用 `ui/BackupActions.kt`，避免一边能备份一边不能。导入之后会把
+`MiaoState` 里的引擎、毛玻璃、悬浮窗取色、返回动画重新读一遍，不用重启。
+
+**导出的文件包含 API Key**，界面上也写明了这一点。
+
 ## 更新检测
 
 `util/UpdateChecker.kt`（移植自 NekoNeko）走 **GitHub Releases**：

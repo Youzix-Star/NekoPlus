@@ -35,6 +35,7 @@ import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.ThemeMode
 import love.miao.yun.ui.material3.material3AppBarColor
+import love.miao.yun.ui.rememberBackupActions
 import love.miao.yun.ui.material3.material3BlurEffect
 import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
 import love.miao.yun.ui.material3.widgets.DropDownMenuWidget
@@ -58,6 +59,7 @@ fun MaterialSettingsScreen(
     val context = LocalContext.current
     var autoStart by remember { mutableStateOf(false) }
     var keepAlive by remember { mutableStateOf(true) }
+    val backup = rememberBackupActions(onNotify)
     val engine = MiaoState.engine
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
@@ -169,6 +171,27 @@ fun MaterialSettingsScreen(
                             title = "AI 配置",
                             description = "接口、密钥与提示词",
                             onClick = onOpenAiConfig,
+                        )
+                    }
+                }
+            }
+
+            item {
+                SegmentedColumn(title = "备份") {
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Update,
+                            title = "导出配置",
+                            description = "全部设置存成一个 JSON",
+                            onClick = backup.export,
+                        )
+                    }
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Refresh,
+                            title = "导入配置",
+                            description = "从 JSON 恢复，注意文件里含 API Key",
+                            onClick = backup.import,
                         )
                     }
                 }
