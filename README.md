@@ -51,23 +51,33 @@
 - **二级页面**：AI 配置、开源许可。这一层是唯一挂载 `PredictiveBackHandler` 的位置，
   返回时的跟手动画可选三种风格（见下）。
 
+  二级页面自己就是一个完整页面，**自己带顶栏**（MD 用小的 pinned `TopAppBar`，miuix 用
+  带大标题的 `TopAppBar`）。之前 MD 那侧是外壳先画一条 `LargeFlexibleTopAppBar`、页面里再画
+  一条，两条叠起来把第一个控件压到了屏幕三分之一以下——现在外壳只负责两个层叠的层与动画。
+
+  顺带一个坑：miuix 的 `TopAppBar` 必须和页面拿到**同一个** `ScrollBehavior`。只把
+  `MiuixScrollBehavior()` 给列表、不给顶栏时，`TopAppBarState.heightOffsetLimit` 会停在
+  `-Float.MAX_VALUE`，于是那个 nested-scroll 连接会把每一次向上滚动全部吃掉——
+  AI 配置页因此完全滑不动。
+
 ### 预见式返回动画
 
-搬的是参考项目整套实现，而不是自己按 AOSP 那套写的近似物。设置里三选一：
-**AOSP**（默认）、**Miuix**、**无动画**。
+**整套自己实现，只读 androidx 的 `PredictiveBackHandler`**，不再依赖 `miuix-nav`。
+设置里三选一：**AOSP**（默认）、**Miuix**、**无动画**。
 
-- `miuix-nav-android` 提供了 `NavTransition` / `NavTransitions` / `NavGesture` /
-  `NavSettle` 这套抽象；`NavTransitions.MiuixDefault` 就是 Miuix 自带的那个效果。
-- `ui/predictiveback/AospNavTransition.kt`（连同缓动与像素对齐两个辅助文件）从参考项目
-  原样移植，AOSP 那套的常量与弹簧参数全部保留。
-- `ui/predictiveback/PredictiveBackScope.kt` 是这里唯一的自研部分：miuix 平时在它自己的
-  导航运行时里构造 `NavTransitionScope`，而本项目不用那套运行时（一级是 pager、
-  二级只有单个页面）。但变换真正读取的只有 `relativeDepth` / `role` / `gesture` /
-  `settle` / `layoutSize`，这些我们都有——于是参考项目的变换代码可以**不加改动**地跑起来，
-  这也正是能同时提供两种风格的原因。
-- 一级内容与二级页面喂给同一个变换：手势期间一级内容扮演 `covered` 角色（缩放并朝手势
-  方向靠拢），二级页面扮演 `outgoing`，与参考项目的栈行为一致。
-- 释放后的动画规格从所选样式自己的 `NavMotion` 上读，而不是写死。
+之前的版本把参考项目的变换代码原样搬过来，再手工拼一个 `NavTransitionScope` 喂给它，
+bug 就出在这一层：手势取消时，`androidx` 会立刻取消回调所在的协程，而从那个协程里启动的
+回弹动画会被一起取消——页面就那样卡在半路。现在：
+
+- `ui/predictiveback/PredictiveBackHost.kt` 是所有状态与几何的唯一实现，两个引擎都挂它。
+- **一个驱动值**：`progress` 从 `0`（二级页面完全展开）到 `1`（已经消失）。手指按下时
+  `snapTo` 直接跟手，松手后从手指离开的位置继续。
+- **释放动画跑在独立的 scope 上**（`rememberCoroutineScope`），手势协程被取消也杀不掉它。
+- **每个样式只是一组数字**（`BackMotionConfig`）：AOSP 是「缩小 + 跟手横移 + 随手势上下
+  漂移」，Miuix 是「整屏 1:1 跟手滑出 + 下层视差 1/4 屏」，无动画则完全不跟手。
+- 几何在 `graphicsLayer { }` 里**按绘制期求值**，整个手势期间零重组；不滑动时这个 modifier
+  根本不挂，所以一级页面（含液态玻璃底栏的 backdrop）在静止时与以前完全一致。
+- 关闭按钮与返回手势走同一条路径：页面先走完剩下的位移，再从组合里摘掉，不会出现「半路消失」。
 
 ## AI 修改文本
 
@@ -84,27 +94,49 @@
 - **配置**：两套引擎各有一个「AI 配置」二级页面（接口 / 连接测试 / 提示词 / 预设 /
   用量统计）。改动即时落盘，没有保存按钮。SharedPreferences 的文件名与键名与原项目
   逐字一致，可以直接沿用原来的配置。
-- **入口**：悬浮窗上的「AI」按钮。走完整条链路，状态与失败原因显示在药丸的第二行
-  ——悬浮层没有自己的窗口可以弹对话框。
+- **入口**：任何一个动作为「AI 修改」的悬浮窗按钮（默认就有一个 ✨）。走完整条链路，
+  结果与失败原因用 Toast 告知。
 
 需要授予无障碍权限（设置 → AI 修改文本 → 无障碍服务），
 `AndroidManifest.xml` 里的服务由 `BIND_ACCESSIBILITY_SERVICE` 保护。
 
 ## 首页
 
-首页是状态面板，两张并列的大卡片 —— **悬浮窗**与**无障碍服务** —— 是让这个应用真正
-能做事的两个开关，都可直接点按（启动/收起悬浮窗、跳转无障碍设置），配色随状态在
-`primaryContainer` 与 `errorContainer` 之间切换。
+首页是状态面板，两张卡片是让这个应用真正能做事的两个开关，都可直接点按
+（启动/收起悬浮窗、跳转无障碍设置），配色随状态在 `primaryContainer` 与
+`errorContainer` 之间切换。
+
+两张不是等重的：**悬浮窗**是主操作，占一张大卡片；**无障碍服务**改成一行高的紧凑卡片
+（`CompactStatusCard`），两条大色块叠在一起只会读成一堵墙。MD 引擎那侧保留两张等重卡片，
+但列表加了 `Arrangement.spacedBy(12.dp)`——它们原本是两个相邻 item，中间一条缝都没有。
 
 无障碍状态由 `MainActivity.onResume` 刷新：这个开关只能在系统设置里改，
 回到前台正是它可能变化的时刻。
 
 ## 悬浮窗
 
-`service/FloatingWindowService.kt` 用普通 `View`（非 Compose）实现一个圆角可拖拽药丸，
-上面有「AI」与「✕」两个按钮，通过 `TYPE_APPLICATION_OVERLAY` 叠加。前台服务类型为
-`specialUse`，并带一条常驻通知。悬浮窗开关会同步到首页的大卡片：关闭时显示「未在工作」，
-开启时整块变成「正在作为悬浮窗」并进入工作态配色。
+`service/FloatingWindowService.kt` 用普通 `View`（非 Compose）实现**一组可拖拽按钮**，
+通过 `TYPE_APPLICATION_OVERLAY` 叠加。前台服务类型为 `specialUse`，并带一条常驻通知。
+悬浮窗开关会同步到首页的大卡片：关闭时显示「未在工作」，开启时整块变成「正在作为悬浮窗」。
+
+### 可自定义，而且可以有多个
+
+`floating/FloatingWindowPrefs.kt` 把按钮列表存成 JSON（`floating_window` 这个
+SharedPreferences），**每个按钮各自独立**：
+
+| 项 | 说明 |
+| --- | --- |
+| 图标 / 文字 | 九个内置图标（沿用原 NekoNeko 那套动作），或者自己写 1–3 个字 |
+| 点击动作 | AI 修改 / 复制文本 / 打开应用 / 收起悬浮窗 |
+| 大小 | 36–88 dp |
+| 形状 | 圆形，或者圆角方形 |
+| 位置 | 拖动即移动，松手后写入偏好 |
+
+服务对这个偏好注册了 `OnSharedPreferenceChangeListener`：在任何一处改了按钮，屏幕上的
+按钮**当场**增删或改样子，不用重启。拖动位置只在拖动结束时落盘，所以单击永远不会写状态。
+
+执行结果用 Toast 反馈——一排按钮没有可以写状态行的面板。AI 修改运行期间按钮上的字会变成
+「…」，结束后恢复。
 
 ### 取色
 
@@ -142,17 +174,16 @@ Gradle 9.7.1、Compose BOM 2026.08.00、compileSdk 37 / minSdk 33 / targetSdk 35
 app/src/main/java/love/miao/yun/
 ├── MainActivity.kt              35 行分发器：读引擎选择 → 挂对应引擎的根 Composable
 ├── MiaoState.kt                 跨引擎共享的少量状态（悬浮窗运行中、今日计数、规则数）
+├── floating/                    悬浮窗按钮的模型与持久化（图标 / 文字 / 动作 / 大小 / 位置）
+│   └── FloatingWindowPrefs.kt
 ├── ai/                          AI 层（移植自原 NekoNeko）
 │   ├── AiManager.kt             OpenAI 兼容接口、配置、预设
 │   └── TokenStats.kt            用量统计
 ├── ui/
 │   ├── AppIcons.kt              统一图标入口
-│   ├── predictiveback/          预见式返回：移植参考项目的变换 + 自实现的 scope
-│   │   ├── AospNavTransition.kt AOSP 风格（原样移植）
-│   │   ├── PredictiveBackStyle.kt  AOSP / Miuix / 无动画
-│   │   ├── PredictiveBackState.kt  进度、手势与释放动画
-│   │   └── PredictiveBackScope.kt  NavTransitionScope 的实现
-│   ├── PredictiveBack.kt        旧的 AOSP 近似实现（已不再使用）
+│   ├── predictiveback/          预见式返回：自成一体的实现，只依赖 androidx
+│   │   ├── PredictiveBackHost.kt   两个层叠的层 + 手势驱动 + 每帧几何
+│   │   └── PredictiveBackStyle.kt  AOSP / Miuix / 无动画，每个只是一组数字
 │   ├── MainPagerState.kt        一级页签切换动画（移植自参考项目）
 │   ├── FloatingColorSource.kt   悬浮窗取色来源（动态取色 / Miuix / MD）
 │   ├── FloatingPalette.kt       把取色来源解析成 ARGB 调色板
@@ -169,7 +200,7 @@ app/src/main/java/love/miao/yun/
 │                                DropDownMenuWidget、SwipeableSnackbarHost
 │                                （GPL-3.0，来自 InstallerX-Revived）
 └── service/
-    ├── FloatingWindowService.kt 悬浮窗（普通 View）
+    ├── FloatingWindowService.kt 悬浮窗：一组可拖拽按钮（普通 View）
     └── MiaoAccessibilityService.kt  读取/写回当前输入框
 ```
 
