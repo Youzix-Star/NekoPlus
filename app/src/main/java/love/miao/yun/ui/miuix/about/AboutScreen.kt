@@ -5,7 +5,17 @@
 
 package love.miao.yun.ui.miuix.about
 
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import love.miao.yun.util.CrashHandler
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,14 +32,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import love.miao.yun.BuildConfig
 import love.miao.yun.MiaoState
-import love.miao.yun.R
 import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.AppIconText
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -50,6 +61,10 @@ fun AboutScreen(
     onNotify: (String) -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    var crashLog by remember { mutableStateOf(CrashHandler.read(context)) }
+    var showCrash by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -107,6 +122,21 @@ fun AboutScreen(
                         },
                     )
                     ArrowPreference(
+                        title = "崩溃日志",
+                        summary = if (crashLog.isNullOrBlank()) "没有记录" else "有一条记录，点按查看",
+                        startAction = {
+                            Icon(
+                                imageVector = AppIcons.Rule,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        },
+                        onClick = {
+                            crashLog = CrashHandler.read(context)
+                            showCrash = true
+                        },
+                    )
+                    ArrowPreference(
                         title = "检查更新",
                         summary = "尚未接入",
                         startAction = {
@@ -155,6 +185,56 @@ fun AboutScreen(
         }
     }
 
+    if (showCrash) {
+        val report = crashLog
+        OverlayDialog(
+            show = true,
+            title = "崩溃日志",
+            onDismissRequest = { showCrash = false },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (report.isNullOrBlank()) {
+                    Text("没有崩溃记录。")
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 360.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        Text(
+                            text = report,
+                            style = MiuixTheme.textStyles.footnote1,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            clipboard.setText(AnnotatedString(report))
+                            onNotify("已复制崩溃日志")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("复制")
+                    }
+                    Button(
+                        onClick = {
+                            CrashHandler.clear(context)
+                            crashLog = null
+                            showCrash = false
+                            onNotify("已清空")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("清空")
+                    }
+                }
+                Button(onClick = { showCrash = false }, modifier = Modifier.fillMaxWidth()) {
+                    Text("关闭")
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -165,11 +245,17 @@ private fun AppHeader() {
             .padding(top = 24.dp, bottom = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Image(
-            // The real launcher artwork, so About and the home screen never disagree.
-            painter = painterResource(R.mipmap.ic_launcher),
-            contentDescription = null,
-            modifier = Modifier.size(96.dp),
+        // The mark is drawn as text, not as the launcher bitmap: the launcher resource is an
+        // adaptive icon, which `painterResource` cannot load -- that mismatch is what used to
+        // take this page down. Text also follows the theme's ink instead of baking one in.
+        Text(
+            text = AppIconText,
+            fontSize = 52.sp,
+            color = MiuixTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp),
         )
         Spacer(modifier = Modifier.height(14.dp))
         Text(

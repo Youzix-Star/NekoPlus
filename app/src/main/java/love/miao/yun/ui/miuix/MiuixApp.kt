@@ -45,6 +45,7 @@ import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.miuix.about.AboutScreen
 import love.miao.yun.ui.predictiveback.PredictiveBackHost
+import love.miao.yun.util.CrashHandler
 import love.miao.yun.ui.miuix.ai.AiConfigScreen
 import love.miao.yun.ui.miuix.floating.FloatingScreen
 import love.miao.yun.ui.miuix.home.HomeScreen
@@ -179,6 +180,8 @@ fun MiaoShell(
     // Adopt the pager's position after the user swipes between tabs by hand.
     LaunchedEffect(pagerState.currentPage) {
         mainPagerState.syncPage()
+        // Breadcrumb: if the app dies, the report should say which tab was being built.
+        CrashHandler.note("页签 ${titles.getOrNull(pagerState.currentPage) ?: pagerState.currentPage}")
     }
 
     LaunchedEffect(pagerState.currentPage) {
@@ -234,6 +237,7 @@ fun MiaoShell(
                 // collapses the app bar on every upward drag, and with no app bar bound to it there
                 // was no height limit to stop at, so it swallowed the scroll for good.
                 val pageScrollBehavior = MiuixScrollBehavior()
+                LaunchedEffect(page) { CrashHandler.note("二级页面 ${page.title}") }
                 Scaffold(
                     topBar = {
                         TopAppBar(

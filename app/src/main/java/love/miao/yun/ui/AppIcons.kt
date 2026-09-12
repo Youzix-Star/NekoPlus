@@ -26,6 +26,16 @@ import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.ui.graphics.vector.ImageVector
 
+/**
+ * The app's mark, as text.
+ *
+ * The icon is a rendered string rather than artwork — the same string is baked into the launcher
+ * PNGs under `res/mipmap-*`, so this constant and those files have to stay in step.
+ *
+ * Codepoints: U+1BE0, U+035F x2, U+032B, U+035F x2, U+1BC4, U+0A6D.
+ */
+const val AppIconText = "ᯠ ͟͟    ̫  ͟͟ ᯄ ੭"
+
 /** Material icons used by the app. */
 object AppIcons {
     val Home: ImageVector = Icons.Rounded.Home

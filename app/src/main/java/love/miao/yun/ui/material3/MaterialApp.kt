@@ -53,6 +53,7 @@ import love.miao.yun.ui.onboarding.MaterialOnboarding
 import love.miao.yun.ui.onboarding.OnboardingPrefs
 import love.miao.yun.ui.material3.widgets.SwipeableSnackbarHost
 import love.miao.yun.ui.predictiveback.PredictiveBackHost
+import love.miao.yun.util.CrashHandler
 import love.miao.yun.ui.rememberMainPagerState
 
 private const val TAB_HOME = 0
@@ -144,6 +145,8 @@ private fun MaterialShell(
     // Adopt the pager's position after the user swipes between tabs by hand.
     LaunchedEffect(pagerState.currentPage) {
         mainPagerState.syncPage()
+        // Breadcrumb: if the app dies, the report should say which tab was being built.
+        CrashHandler.note("页签 ${labels.getOrNull(pagerState.currentPage) ?: pagerState.currentPage}")
     }
 
     LaunchedEffect(pagerState.currentPage) {
@@ -235,6 +238,9 @@ private fun MaterialShell(
             }
         },
         subPage = { closeSubPage ->
+            LaunchedEffect(subPage) {
+                CrashHandler.note("二级页面 ${subPage?.title ?: ""}")
+            }
             when (subPage) {
                 MaterialSubPage.AiConfig -> MaterialAiConfigScreen(
                     onBack = closeSubPage,
