@@ -386,6 +386,8 @@ fun MiaoPage(
                         onColorSchemeModeChange = onColorSchemeModeChange,
                         useLiquidGlass = useLiquidGlass,
                         onUseLiquidGlassChange = useLiquidGlassChange,
+                        engine = engine,
+                        onEngineChange = onEngineChange,
                         onNotify = onNotify,
                     )
 
