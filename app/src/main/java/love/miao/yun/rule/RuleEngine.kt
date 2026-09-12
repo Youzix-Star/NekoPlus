@@ -47,10 +47,11 @@ object RuleEngine {
     )
 
     fun apply(text: String?, rules: List<Rule>, context: RuleContext = RuleContext()): Result {
-        if (text.isNullOrEmpty()) return Result(text.orEmpty())
-        if (rules.isEmpty()) return Result(text)
+        // Bind first: relying on the smart cast from isNullOrEmpty() left `current` nullable.
+        val source = text ?: return Result("")
+        if (source.isEmpty() || rules.isEmpty()) return Result(source)
 
-        var current = text
+        var current: String = source
         val applied = mutableListOf<String>()
         val unchanged = mutableListOf<String>()
         val deferred = mutableListOf<Rule>()
