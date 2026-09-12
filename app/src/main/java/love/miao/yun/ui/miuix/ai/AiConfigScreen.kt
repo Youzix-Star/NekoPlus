@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +58,8 @@ fun AiConfigScreen(
     var showSaveDialog by remember { mutableStateOf(false) }
     var presetName by remember { mutableStateOf("") }
     var fetching by remember { mutableStateOf(false) }
+    var models by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showModelPicker by remember { mutableStateOf(false) }
 
     val presetNames = remember { AiManager.getAllPresetNames(context) }
     /** A single funnel for edits, so the local copy and SharedPreferences never drift apart. */
@@ -127,16 +132,16 @@ fun AiConfigScreen(
                             AiManager.listModels(
                                 config,
                                 object : AiManager.ListCallback {
-                                    override fun onSuccess(models: List<String>) {
+                                    override fun onSuccess(found: List<String>) {
                                         fetching = false
-                                        onNotify(
-                                            "连通，共 ${models.size} 个模型，例如 " +
-                                                models.take(2).joinToString("、"),
-                                        )
-                                        // Only adopt a model when the field is empty, so a
-                                        // deliberate choice is never overwritten.
-                                        if (config.model.isNullOrBlank() && models.isNotEmpty()) {
-                                            edit { it.model = models.first() }
+                                        // Straight into a picker: the list is the point of the
+                                        // request, and typing a model name by hand is exactly the
+                                        // busywork this saves.
+                                        if (found.isEmpty()) {
+                                            onNotify("连通，但接口没有返回模型")
+                                        } else {
+                                            models = found
+                                            showModelPicker = true
                                         }
                                     }
 
@@ -242,6 +247,32 @@ fun AiConfigScreen(
                 ) {
                     Text("刷新统计")
                 }
+            }
+        }
+    }
+
+    OverlayDialog(
+        show = showModelPicker,
+        title = "选择模型",
+        summary = "共 ${models.size} 个",
+        onDismissRequest = { showModelPicker = false },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 380.dp)
+                .verticalScroll(rememberScrollState()),
+        ) {
+            models.forEach { model ->
+                ArrowPreference(
+                    title = model,
+                    summary = if (model == config.model) "当前使用" else null,
+                    onClick = {
+                        edit { it.model = model }
+                        showModelPicker = false
+                        onNotify("已选择 $model")
+                    },
+                )
             }
         }
     }

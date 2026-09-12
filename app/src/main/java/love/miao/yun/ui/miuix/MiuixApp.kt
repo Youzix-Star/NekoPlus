@@ -214,7 +214,6 @@ fun MiaoShell(
                 scrollBehavior = mainScrollBehavior,
                 backdrop = backdrop,
                 useLiquidGlass = useLiquidGlass,
-                snackbarHostState = snackbarHostState,
                 colorSchemeMode = colorSchemeMode,
                 onColorSchemeModeChange = onColorSchemeModeChange,
                 useLiquidGlassChange = onUseLiquidGlassChange,
@@ -275,6 +274,19 @@ fun MiaoShell(
         },
     )
 
+    // The host lives here, not inside the tab Scaffold: a second-level page is drawn over that
+    // Scaffold, so a message posted from one used to appear behind it. From the root it sits on
+    // top of everything, the way a toast would.
+    SnackbarHost(
+        state = snackbarHostState,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(
+                bottom = 84.dp +
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+            ),
+    )
+
     if (MiaoState.showOnboarding) {
         MiuixOnboarding(
             accessibilityEnabled = MiaoState.accessibilityEnabled,
@@ -306,7 +318,6 @@ private fun MiaoTabs(
     scrollBehavior: ScrollBehavior,
     backdrop: LayerBackdrop,
     useLiquidGlass: Boolean,
-    snackbarHostState: SnackbarHostState,
     colorSchemeMode: ColorSchemeMode,
     onColorSchemeModeChange: (ColorSchemeMode) -> Unit,
     useLiquidGlassChange: (Boolean) -> Unit,
@@ -349,7 +360,6 @@ private fun MiaoTabs(
                 )
             }
         },
-        snackbarHost = { SnackbarHost(state = snackbarHostState) },
     ) { innerPadding ->
         val layoutDirection = LocalLayoutDirection.current
         val pagePadding = PaddingValues(

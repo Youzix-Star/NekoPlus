@@ -18,6 +18,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -36,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -190,7 +195,6 @@ private fun MaterialShell(
                         }
                     }
                 },
-                snackbarHost = { SwipeableSnackbarHost(hostState = snackbarHostState) },
             ) { outerPadding ->
                 HorizontalPager(
                     state = pagerState,
@@ -256,6 +260,19 @@ private fun MaterialShell(
                 null -> Unit
             }
         },
+    )
+
+    // The host lives here, not inside the tab Scaffold: a second-level page is drawn over that
+    // Scaffold, so a message posted from one used to appear behind it. From the root it sits on
+    // top of everything, the way a toast would.
+    SwipeableSnackbarHost(
+        hostState = snackbarHostState,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(
+                bottom = 88.dp +
+                    WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding(),
+            ),
     )
 
     if (MiaoState.showOnboarding) {

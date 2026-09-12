@@ -56,10 +56,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import love.miao.yun.util.CrashHandler
+import love.miao.yun.util.UpdateChecker
+import love.miao.yun.util.UpdateResult
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 private const val REPOSITORY_URL = "https://github.com/Youzix-Star/NekoPlus"
 private const val DEVELOPER_URL = "https://github.com/Youzix-Star"
+private const val AUTHOR_URL = "https://github.com/Xiao-youyu"
 
 @Composable
 fun MaterialAboutScreen(
@@ -73,6 +76,8 @@ fun MaterialAboutScreen(
     val context = LocalContext.current
     var crashLog by remember { mutableStateOf(CrashHandler.read(context)) }
     var showCrash by remember { mutableStateOf(false) }
+    var checking by remember { mutableStateOf(false) }
+    var update by remember { mutableStateOf<UpdateResult.Available?>(null) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
 
@@ -150,8 +155,24 @@ fun MaterialAboutScreen(
                         NavigationItemWidget(
                             icon = AppIcons.Update,
                             title = "检查更新",
-                            description = "尚未接入",
-                            onClick = { onNotify("暂未实现更新检查") },
+                            description = if (checking) {
+                                "检查中…"
+                            } else {
+                                "当前 v${BuildConfig.VERSION_NAME}"
+                            },
+                            onClick = {
+                                if (checking) return@NavigationItemWidget
+                                checking = true
+                                UpdateChecker.check { result ->
+                                    checking = false
+                                    when (result) {
+                                        is UpdateResult.Available -> update = result
+                                        UpdateResult.UpToDate -> onNotify("已是最新版本")
+                                        is UpdateResult.Failed ->
+                                            onNotify("检查失败：" + result.message)
+                                    }
+                                }
+                            },
                         )
                     }
                 }
@@ -160,10 +181,19 @@ fun MaterialAboutScreen(
             item {
                 SegmentedColumn(title = "开发者") {
                     item {
+                        // The original author of 喵喵助手, whose 1.1.8 this project is a rebuild of.
+                        NavigationItemWidget(
+                            icon = AppIcons.Developer,
+                            title = "Xiao-youyu",
+                            description = "原作者",
+                            onClick = { uriHandler.openUri(AUTHOR_URL) },
+                        )
+                    }
+                    item {
                         NavigationItemWidget(
                             icon = AppIcons.Developer,
                             title = "Youzix-Star",
-                            description = "github.com/Youzix-Star",
+                            description = "重构与维护",
                             onClick = { uriHandler.openUri(DEVELOPER_URL) },
                         )
                     }
@@ -182,6 +212,55 @@ fun MaterialAboutScreen(
                 )
             }
         }
+    }
+
+    update?.let { available ->
+        AlertDialog(
+            onDismissRequest = { update = null },
+            title = { Text("发现新版本 v${available.version}") },
+            text = {
+                if (available.notes.isBlank()) {
+                    Text("这个版本没有写更新说明。")
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 320.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        Text(
+                            text = available.notes,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val target = available.apkUrl
+                        if (target != null) {
+                            uriHandler.openUri(target)
+                        } else {
+                            UpdateChecker.openReleasePage(context)
+                        }
+                        update = null
+                    },
+                ) {
+                    Text(if (available.apkUrl != null) "下载" else "打开发布页")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        UpdateChecker.openReleasePage(context)
+                        update = null
+                    },
+                ) {
+                    Text("浏览器中查看")
+                }
+            },
+        )
     }
 
     val report = crashLog
@@ -269,7 +348,7 @@ private fun AppHeader() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "用 Material Design 拼起来的悬浮窗助手",
+            text = "Ciallo～(∠・ω c)⌒★",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,

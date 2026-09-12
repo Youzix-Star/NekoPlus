@@ -11,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -165,23 +164,19 @@ fun MiuixOnboarding(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (pagerState.currentPage > 0) {
-                Card(
-                    modifier = Modifier.weight(1f),
-                    insideMargin = PaddingValues(vertical = 12.dp),
-                    colors = CardDefaults.defaultColors(
-                        color = MiuixTheme.colorScheme.secondaryContainer,
-                    ),
+                // A Button, not a Card: the two actions have to be the same size, and a Button is
+                // the only thing that carries miuix's own min-height and inside margin.
+                Button(
                     onClick = {
                         scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
                     },
-                    showIndication = true,
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        color = MiuixTheme.colorScheme.secondaryContainer,
+                        contentColor = MiuixTheme.colorScheme.onSecondaryContainer,
+                    ),
                 ) {
-                    Text(
-                        text = "上一步",
-                        style = MiuixTheme.textStyles.body2,
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                    )
+                    Text("上一步")
                 }
             }
             Button(

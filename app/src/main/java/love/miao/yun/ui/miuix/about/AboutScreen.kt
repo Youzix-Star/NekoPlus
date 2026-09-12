@@ -14,6 +14,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import love.miao.yun.util.CrashHandler
+import love.miao.yun.util.UpdateChecker
+import love.miao.yun.util.UpdateResult
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +54,7 @@ import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 private const val REPOSITORY_URL = "https://github.com/Youzix-Star/NekoPlus"
 private const val DEVELOPER_URL = "https://github.com/Youzix-Star"
+private const val AUTHOR_URL = "https://github.com/Xiao-youyu"
 
 @Composable
 fun AboutScreen(
@@ -65,6 +68,8 @@ fun AboutScreen(
     val context = LocalContext.current
     var crashLog by remember { mutableStateOf(CrashHandler.read(context)) }
     var showCrash by remember { mutableStateOf(false) }
+    var checking by remember { mutableStateOf(false) }
+    var update by remember { mutableStateOf<UpdateResult.Available?>(null) }
 
     LazyColumn(
         modifier = Modifier
@@ -138,7 +143,7 @@ fun AboutScreen(
                     )
                     ArrowPreference(
                         title = "检查更新",
-                        summary = "尚未接入",
+                        summary = if (checking) "检查中…" else "当前 v${BuildConfig.VERSION_NAME}",
                         startAction = {
                             Icon(
                                 imageVector = AppIcons.Update,
@@ -146,7 +151,18 @@ fun AboutScreen(
                                 modifier = Modifier.size(22.dp),
                             )
                         },
-                        onClick = { onNotify("暂未实现更新检查") },
+                        onClick = {
+                            if (checking) return@ArrowPreference
+                            checking = true
+                            UpdateChecker.check { result ->
+                                checking = false
+                                when (result) {
+                                    is UpdateResult.Available -> update = result
+                                    UpdateResult.UpToDate -> onNotify("已是最新版本")
+                                    is UpdateResult.Failed -> onNotify("检查失败：" + result.message)
+                                }
+                            }
+                        },
                     )
                 }
             }
@@ -156,9 +172,22 @@ fun AboutScreen(
             Column {
                 SmallTitle(text = "开发者")
                 Card(modifier = Modifier.fillMaxWidth()) {
+                    // The original author of 喵喵助手, whose 1.1.8 this project is a rebuild of.
+                    ArrowPreference(
+                        title = "Xiao-youyu",
+                        summary = "原作者",
+                        startAction = {
+                            Icon(
+                                imageVector = AppIcons.Developer,
+                                contentDescription = null,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        },
+                        onClick = { uriHandler.openUri(AUTHOR_URL) },
+                    )
                     ArrowPreference(
                         title = "Youzix-Star",
-                        summary = "github.com/Youzix-Star",
+                        summary = "重构与维护",
                         startAction = {
                             Icon(
                                 imageVector = AppIcons.Developer,
@@ -182,6 +211,55 @@ fun AboutScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 20.dp),
             )
+        }
+    }
+
+    update?.let { available ->
+        OverlayDialog(
+            show = true,
+            title = "发现新版本 v${available.version}",
+            onDismissRequest = { update = null },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (available.notes.isBlank()) {
+                    Text("这个版本没有写更新说明。")
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 320.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        Text(
+                            text = available.notes,
+                            style = MiuixTheme.textStyles.footnote1,
+                        )
+                    }
+                }
+                Button(
+                    onClick = {
+                        val target = available.apkUrl
+                        if (target != null) {
+                            uriHandler.openUri(target)
+                        } else {
+                            UpdateChecker.openReleasePage(context)
+                        }
+                        update = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(if (available.apkUrl != null) "下载" else "打开发布页")
+                }
+                Button(
+                    onClick = {
+                        UpdateChecker.openReleasePage(context)
+                        update = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("在浏览器中查看")
+                }
+            }
         }
     }
 
@@ -271,7 +349,7 @@ private fun AppHeader() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "用 miuix 拼起来的悬浮窗助手",
+            text = "Ciallo～(∠・ω c)⌒★",
             style = MiuixTheme.textStyles.footnote2,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             textAlign = TextAlign.Center,

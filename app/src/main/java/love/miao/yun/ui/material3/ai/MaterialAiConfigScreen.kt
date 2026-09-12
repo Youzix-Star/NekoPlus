@@ -9,23 +9,29 @@
 
 package love.miao.yun.ui.material3.ai
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -77,6 +83,8 @@ fun MaterialAiConfigScreen(
     var stats by remember { mutableStateOf(TokenStats.query(context, 0L, null)) }
     var showPresetPicker by remember { mutableStateOf(false) }
     var fetching by remember { mutableStateOf(false) }
+    var models by remember { mutableStateOf<List<String>>(emptyList()) }
+    var showModelPicker by remember { mutableStateOf(false) }
 
     val presetNames = remember { AiManager.getAllPresetNames(context) }
 
@@ -175,16 +183,16 @@ fun MaterialAiConfigScreen(
                                 AiManager.listModels(
                                     config,
                                     object : AiManager.ListCallback {
-                                        override fun onSuccess(models: List<String>) {
+                                        override fun onSuccess(found: List<String>) {
                                             fetching = false
-                                            onNotify(
-                                                "连通，共 ${models.size} 个模型，例如 " +
-                                                    models.take(2).joinToString("、"),
-                                            )
-                                            // Only fill in a model when the field is empty, so a
-                                            // deliberate choice is never overwritten.
-                                            if (config.model.isNullOrBlank() && models.isNotEmpty()) {
-                                                edit { it.model = models.first() }
+                                            // Straight into a picker: the list is the point of
+                                            // the request, and typing a model name by hand is
+                                            // exactly the busywork this saves.
+                                            if (found.isEmpty()) {
+                                                onNotify("连通，但接口没有返回模型")
+                                            } else {
+                                                models = found
+                                                showModelPicker = true
                                             }
                                         }
 
@@ -312,6 +320,38 @@ fun MaterialAiConfigScreen(
                 )
             }
         }
+    }
+
+    if (showModelPicker) {
+        AlertDialog(
+            onDismissRequest = { showModelPicker = false },
+            title = { Text("选择模型") },
+            text = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    Column {
+                        models.forEach { model ->
+                            NavigationItemWidget(
+                                title = model,
+                                description = if (model == config.model) "当前使用" else "点按选用",
+                                onClick = {
+                                    edit { it.model = model }
+                                    showModelPicker = false
+                                    onNotify("已选择 $model")
+                                },
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showModelPicker = false }) { Text("取消") }
+            },
+        )
     }
 }
 
