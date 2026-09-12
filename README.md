@@ -48,11 +48,26 @@
   手动驱动，避免默认的吸附行为；用户中途手滑会中断动画并以实际落点为准。
 
   一级页面的返回键在非首个页签时，用同一个动画滑回首页，全程没有预见式视觉。
-- **二级页面**：目前只有「开源许可」。这一层是唯一挂载 `PredictiveBackHandler` 的
-  位置，返回时按 AOSP 的形体变换做预见式缩放与跟手位移，参数统一在
-  `ui/PredictiveBack.kt`（`aospPredictiveBack`）里定义：
-  最小缩放 0.9、缓动 `cubic-bezier(0.1, 0.1, 0, 1)`、边缘判定 8dp、
-  垂直方向按 `1-(1-r)²` 阻尼跟手并朝手势方向靠拢。
+- **二级页面**：AI 配置、开源许可。这一层是唯一挂载 `PredictiveBackHandler` 的位置，
+  返回时的跟手动画可选三种风格（见下）。
+
+### 预见式返回动画
+
+搬的是参考项目整套实现，而不是自己按 AOSP 那套写的近似物。设置里三选一：
+**AOSP**（默认）、**Miuix**、**无动画**。
+
+- `miuix-nav-android` 提供了 `NavTransition` / `NavTransitions` / `NavGesture` /
+  `NavSettle` 这套抽象；`NavTransitions.MiuixDefault` 就是 Miuix 自带的那个效果。
+- `ui/predictiveback/AospNavTransition.kt`（连同缓动与像素对齐两个辅助文件）从参考项目
+  原样移植，AOSP 那套的常量与弹簧参数全部保留。
+- `ui/predictiveback/PredictiveBackScope.kt` 是这里唯一的自研部分：miuix 平时在它自己的
+  导航运行时里构造 `NavTransitionScope`，而本项目不用那套运行时（一级是 pager、
+  二级只有单个页面）。但变换真正读取的只有 `relativeDepth` / `role` / `gesture` /
+  `settle` / `layoutSize`，这些我们都有——于是参考项目的变换代码可以**不加改动**地跑起来，
+  这也正是能同时提供两种风格的原因。
+- 一级内容与二级页面喂给同一个变换：手势期间一级内容扮演 `covered` 角色（缩放并朝手势
+  方向靠拢），二级页面扮演 `outgoing`，与参考项目的栈行为一致。
+- 释放后的动画规格从所选样式自己的 `NavMotion` 上读，而不是写死。
 
 ## AI 修改文本
 
@@ -75,6 +90,15 @@
 需要授予无障碍权限（设置 → AI 修改文本 → 无障碍服务），
 `AndroidManifest.xml` 里的服务由 `BIND_ACCESSIBILITY_SERVICE` 保护。
 
+## 首页
+
+首页是状态面板，两张并列的大卡片 —— **悬浮窗**与**无障碍服务** —— 是让这个应用真正
+能做事的两个开关，都可直接点按（启动/收起悬浮窗、跳转无障碍设置），配色随状态在
+`primaryContainer` 与 `errorContainer` 之间切换。
+
+无障碍状态由 `MainActivity.onResume` 刷新：这个开关只能在系统设置里改，
+回到前台正是它可能变化的时刻。
+
 ## 悬浮窗
 
 `service/FloatingWindowService.kt` 用普通 `View`（非 Compose）实现一个圆角可拖拽药丸，
@@ -84,7 +108,7 @@
 
 ### 取色
 
-悬浮窗位于任何 Compose 主题之外，颜色不能靠继承，所以在设置里三选一
+悬浮窗位于任何 Compose 主题之外，颜色不能靠继承，所以在**悬浮窗页签的外观分组**里三选一
 （`ui/FloatingColorSource.kt`）：**动态取色**（默认）、**跟随 Miuix**、**跟随 Material Design**。
 
 `ui/FloatingPalette.kt` 负责解析。关键在于 material3 与 miuix 的颜色方案工厂函数都是
@@ -123,7 +147,12 @@ app/src/main/java/love/miao/yun/
 │   └── TokenStats.kt            用量统计
 ├── ui/
 │   ├── AppIcons.kt              统一图标入口
-│   ├── PredictiveBack.kt        两套引擎共用的 AOSP 预见式返回变换
+│   ├── predictiveback/          预见式返回：移植参考项目的变换 + 自实现的 scope
+│   │   ├── AospNavTransition.kt AOSP 风格（原样移植）
+│   │   ├── PredictiveBackStyle.kt  AOSP / Miuix / 无动画
+│   │   ├── PredictiveBackState.kt  进度、手势与释放动画
+│   │   └── PredictiveBackScope.kt  NavTransitionScope 的实现
+│   ├── PredictiveBack.kt        旧的 AOSP 近似实现（已不再使用）
 │   ├── MainPagerState.kt        一级页签切换动画（移植自参考项目）
 │   ├── FloatingColorSource.kt   悬浮窗取色来源（动态取色 / Miuix / MD）
 │   ├── FloatingPalette.kt       把取色来源解析成 ARGB 调色板
