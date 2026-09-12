@@ -32,7 +32,6 @@ import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -51,10 +50,10 @@ private const val DEVELOPER_URL = "https://github.com/Youzix-Star"
 fun AboutScreen(
     contentPadding: PaddingValues,
     scrollBehavior: ScrollBehavior,
+    onOpenLicenses: () -> Unit,
     onNotify: (String) -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
-    var showLicenses by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -94,7 +93,7 @@ fun AboutScreen(
                                 modifier = Modifier.size(22.dp),
                             )
                         },
-                        onClick = { showLicenses = true },
+                        onClick = onOpenLicenses,
                     )
                     ArrowPreference(
                         title = "检查更新",
@@ -145,7 +144,6 @@ fun AboutScreen(
         }
     }
 
-    LicenseDialog(show = showLicenses, onDismiss = { showLicenses = false })
 }
 
 @Composable
@@ -179,49 +177,6 @@ private fun AppHeader() {
             style = MiuixTheme.textStyles.footnote2,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun LicenseDialog(show: Boolean, onDismiss: () -> Unit) {
-    val licenses = remember {
-        listOf(
-            "miuix" to "Apache License 2.0",
-            "AndroidX / Jetpack Compose" to "Apache License 2.0",
-            "Material Icons Extended" to "Apache License 2.0",
-            "AndroidLiquidGlass (Kyant0)" to "Apache License 2.0",
-            "Kotlin / kotlinx.coroutines" to "Apache License 2.0",
-        )
-    }
-
-    OverlayDialog(
-        show = show,
-        title = "开源许可",
-        summary = "本项目基于 AGPL-3.0 开源",
-        onDismissRequest = onDismiss,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            licenses.forEach { (name, license) ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(text = name, style = MiuixTheme.textStyles.body2)
-                    Text(
-                        text = license,
-                        style = MiuixTheme.textStyles.footnote2,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    )
-                }
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        TextButton(
-            text = "知道了",
-            onClick = onDismiss,
-            colors = ButtonDefaults.textButtonColorsPrimary(),
-            modifier = Modifier.fillMaxWidth(),
         )
     }
 }

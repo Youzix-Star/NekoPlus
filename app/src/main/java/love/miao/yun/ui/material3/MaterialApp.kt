@@ -1,41 +1,38 @@
 /*
  * Copyright 2026, Youzix-Star
  * SPDX-License-Identifier: AGPL-3.0
+ *
+ * The shell follows InstallerX-Revived's Material 3 layout (GPL-3.0): an outer Scaffold that owns
+ * only the bottom navigation, with each page carrying its own large top app bar.
  */
 
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
 package love.miao.yun.ui.material3
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.BackEventCompat
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -44,8 +41,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,36 +51,36 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import love.miao.yun.MiaoState
-import love.miao.yun.R
 import love.miao.yun.service.FloatingWindowService
 import love.miao.yun.ui.AppIcons
-import love.miao.yun.ui.UiEngine
-import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.material3.about.MaterialAboutScreen
 import love.miao.yun.ui.material3.floating.MaterialFloatingScreen
 import love.miao.yun.ui.material3.home.MaterialHomeScreen
+import love.miao.yun.ui.material3.licenses.MaterialLicensesScreen
 import love.miao.yun.ui.material3.settings.MaterialSettingsScreen
 import kotlin.coroutines.cancellation.CancellationException
 
 private const val TAB_HOME = 0
+private const val TAB_FLOATING = 1
+private const val TAB_SETTINGS = 2
+private const val TAB_ABOUT = 3
 
 /**
- * The Material Design engine: the same four screens as the miuix engine, rebuilt from Material 3
- * components, with the same AOSP predictive back behaviour so the two feel alike during a gesture.
+ * Second-level pages. Only these take part in predictive back: switching between the bottom
+ * navigation tabs moves between siblings, so there is no parent screen to preview.
  */
+private enum class MaterialSubPage(val title: String) {
+    Licenses("开源许可"),
+}
+
 @Composable
 fun MaterialApp() {
     var themeMode by remember { mutableStateOf(ThemeMode.System) }
@@ -106,7 +101,6 @@ fun MaterialApp() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MaterialShell(
     themeMode: ThemeMode,
@@ -116,9 +110,7 @@ private fun MaterialShell(
 ) {
     val context = LocalContext.current
     var hasOverlayPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
-    var backSwipeEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
-    var backTouchDeltaY by remember { mutableFloatStateOf(0f) }
-    var backStartTouchY by remember { mutableFloatStateOf(Float.NaN) }
+    var subPage by remember { mutableStateOf<MaterialSubPage?>(null) }
 
     val overlayPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -145,13 +137,13 @@ private fun MaterialShell(
         }
     }
 
-    val labels = listOf(
-        stringResource(R.string.tab_home),
-        stringResource(R.string.tab_floating),
-        stringResource(R.string.tab_settings),
-        stringResource(R.string.tab_about),
+    val labels = listOf("首页", "悬浮窗", "设置", "关于")
+    val icons: List<ImageVector> = listOf(
+        AppIcons.Home,
+        AppIcons.Floating,
+        AppIcons.Settings,
+        AppIcons.About,
     )
-    val icons = listOf(AppIcons.Home, AppIcons.Floating, AppIcons.Settings, AppIcons.About)
 
     val pagerState = rememberPagerState(pageCount = { labels.size })
     val currentPage = pagerState.currentPage
@@ -160,33 +152,54 @@ private fun MaterialShell(
     val notify: (String) -> Unit = { message ->
         coroutineScope.launch { snackbarHostState.showSnackbar(message) }
     }
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     LaunchedEffect(currentPage) {
         hasOverlayPermission = Settings.canDrawOverlays(context)
     }
 
-    val backProgress = remember { Animatable(0f) }
+    // ---- second-level pages: slide in, and follow the back gesture the AOSP way ----
+    val subEnter = remember { Animatable(0f) }
+    val subBack = remember { Animatable(0f) }
+    var backSwipeEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
+    var backTouchDeltaY by remember { mutableFloatStateOf(0f) }
+    var backStartTouchY by remember { mutableFloatStateOf(Float.NaN) }
     val settleScope = rememberCoroutineScope()
 
-    PredictiveBackHandler(enabled = currentPage != TAB_HOME) { progress ->
+    val closeSubPage: () -> Unit = {
+        settleScope.launch {
+            subBack.snapTo(0f)
+            subEnter.animateTo(0f, tween(durationMillis = 200, easing = FastOutSlowInEasing))
+            subPage = null
+        }
+    }
+
+    LaunchedEffect(subPage) {
+        if (subPage != null) {
+            subBack.snapTo(0f)
+            subEnter.snapTo(0f)
+            subEnter.animateTo(1f, tween(durationMillis = 280, easing = FastOutSlowInEasing))
+        }
+    }
+
+    PredictiveBackHandler(enabled = subPage != null) { progress ->
         try {
             progress.collect { event ->
                 backSwipeEdge = event.swipeEdge
                 if (backStartTouchY.isNaN()) backStartTouchY = event.touchY
                 backTouchDeltaY = event.touchY - backStartTouchY
-                backProgress.snapTo(event.progress)
+                subBack.snapTo(event.progress)
             }
             settleScope.launch {
-                backProgress.animateTo(1f, tween(durationMillis = 140))
-                pagerState.scrollToPage(TAB_HOME)
+                subBack.animateTo(1f, tween(durationMillis = 140))
+                subPage = null
+                subBack.snapTo(0f)
+                subEnter.snapTo(0f)
                 backStartTouchY = Float.NaN
                 backTouchDeltaY = 0f
-                backProgress.animateTo(0f, tween(durationMillis = 220))
             }
         } catch (cancelled: CancellationException) {
             settleScope.launch {
-                backProgress.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
+                subBack.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
                 backStartTouchY = Float.NaN
                 backTouchDeltaY = 0f
             }
@@ -194,158 +207,110 @@ private fun MaterialShell(
         }
     }
 
-    val backAmount = backProgress.value
-    val revealScrim = 0.45f * (1f - backAmount)
-
     Box(modifier = Modifier.fillMaxSize()) {
-        if (backAmount > 0f && currentPage != TAB_HOME) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                MaterialPage(
-                    labels = labels,
-                    icons = icons,
-                    pagerState = pagerState,
-                    currentPage = TAB_HOME,
-                    scrollBehavior = scrollBehavior,
-                    snackbarHostState = snackbarHostState,
-                    themeMode = themeMode,
-                    onThemeModeChange = onThemeModeChange,
-                    dynamicColor = dynamicColor,
-                    onDynamicColorChange = onDynamicColorChange,
-                    hasOverlayPermission = hasOverlayPermission,
-                    onToggleFloating = toggleFloating,
-                    onRequestOverlay = requestOverlay,
-                    onNotify = notify,
-                    onTabSelected = {},
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = revealScrim)),
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    aospPredictiveBack(
-                        progress = backAmount,
-                        swipeEdge = backSwipeEdge,
-                        touchDeltaY = backTouchDeltaY,
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            bottomBar = {
+                NavigationBar {
+                    labels.forEachIndexed { index, label ->
+                        NavigationBarItem(
+                            selected = currentPage == index,
+                            onClick = {
+                                coroutineScope.launch { pagerState.animateScrollToPage(index) }
+                            },
+                            icon = { Icon(imageVector = icons[index], contentDescription = label) },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { outerPadding ->
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                userScrollEnabled = true,
+            ) { page ->
+                when (page) {
+                    TAB_HOME -> MaterialHomeScreen(
+                        outerPadding = outerPadding,
+                        floatingRunning = MiaoState.floatingRunning,
+                        hasOverlayPermission = hasOverlayPermission,
+                        onToggleFloating = toggleFloating,
+                        onRequestOverlay = requestOverlay,
+                        onNotify = notify,
                     )
-                },
-        ) {
-            MaterialPage(
-                labels = labels,
-                icons = icons,
-                pagerState = pagerState,
-                currentPage = currentPage,
-                scrollBehavior = scrollBehavior,
-                snackbarHostState = snackbarHostState,
-                themeMode = themeMode,
-                onThemeModeChange = onThemeModeChange,
-                dynamicColor = dynamicColor,
-                onDynamicColorChange = onDynamicColorChange,
-                hasOverlayPermission = hasOverlayPermission,
-                onToggleFloating = toggleFloating,
-                onRequestOverlay = requestOverlay,
-                onNotify = notify,
-                onTabSelected = { index ->
-                    coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                },
-            )
-        }
-    }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun MaterialPage(
-    labels: List<String>,
-    icons: List<ImageVector>,
-    pagerState: PagerState,
-    currentPage: Int,
-    scrollBehavior: TopAppBarScrollBehavior,
-    snackbarHostState: SnackbarHostState,
-    themeMode: ThemeMode,
-    onThemeModeChange: (ThemeMode) -> Unit,
-    dynamicColor: Boolean,
-    onDynamicColorChange: (Boolean) -> Unit,
-    hasOverlayPermission: Boolean,
-    onToggleFloating: () -> Unit,
-    onRequestOverlay: () -> Unit,
-    onNotify: (String) -> Unit,
-    onTabSelected: (Int) -> Unit,
-) {
-    Scaffold(
-        topBar = {
-            LargeTopAppBar(
-                title = { Text(labels[currentPage]) },
-                scrollBehavior = scrollBehavior,
-            )
-        },
-        bottomBar = {
-            NavigationBar {
-                labels.forEachIndexed { index, label ->
-                    NavigationBarItem(
-                        selected = currentPage == index,
-                        onClick = { onTabSelected(index) },
-                        icon = { Icon(imageVector = icons[index], contentDescription = label) },
-                        label = { Text(label) },
+                    TAB_FLOATING -> MaterialFloatingScreen(
+                        outerPadding = outerPadding,
+                        floatingRunning = MiaoState.floatingRunning,
+                        onToggleFloating = toggleFloating,
+                        onNotify = notify,
+                    )
+
+                    TAB_SETTINGS -> MaterialSettingsScreen(
+                        outerPadding = outerPadding,
+                        themeMode = themeMode,
+                        onThemeModeChange = onThemeModeChange,
+                        dynamicColor = dynamicColor,
+                        onDynamicColorChange = onDynamicColorChange,
+                        onNotify = notify,
+                    )
+
+                    else -> MaterialAboutScreen(
+                        outerPadding = outerPadding,
+                        onOpenLicenses = { subPage = MaterialSubPage.Licenses },
+                        onNotify = notify,
                     )
                 }
             }
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-    ) { innerPadding ->
-        val layoutDirection = LocalLayoutDirection.current
-        val pagePadding = PaddingValues(
-            start = innerPadding.calculateStartPadding(layoutDirection) + 12.dp,
-            top = innerPadding.calculateTopPadding(),
-            end = innerPadding.calculateEndPadding(layoutDirection) + 12.dp,
-            bottom = innerPadding.calculateBottomPadding() + 12.dp,
-        )
+        }
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            userScrollEnabled = true,
-        ) { page ->
-            when (page) {
-                TAB_HOME -> MaterialHomeScreen(
-                    contentPadding = pagePadding,
-                    scrollBehavior = scrollBehavior,
-                    floatingRunning = MiaoState.floatingRunning,
-                    hasOverlayPermission = hasOverlayPermission,
-                    onToggleFloating = onToggleFloating,
-                    onRequestOverlay = onRequestOverlay,
-                    onNotify = onNotify,
-                )
-
-                1 -> MaterialFloatingScreen(
-                    contentPadding = pagePadding,
-                    scrollBehavior = scrollBehavior,
-                    floatingRunning = MiaoState.floatingRunning,
-                    onToggleFloating = onToggleFloating,
-                    onNotify = onNotify,
-                )
-
-                2 -> MaterialSettingsScreen(
-                    contentPadding = pagePadding,
-                    scrollBehavior = scrollBehavior,
-                    themeMode = themeMode,
-                    onThemeModeChange = onThemeModeChange,
-                    dynamicColor = dynamicColor,
-                    onDynamicColorChange = onDynamicColorChange,
-                    onNotify = onNotify,
-                )
-
-                else -> MaterialAboutScreen(
-                    contentPadding = pagePadding,
-                    scrollBehavior = scrollBehavior,
-                    onNotify = onNotify,
-                )
+        val openSubPage = subPage
+        if (openSubPage != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val dragged = subBack.value
+                        if (dragged > 0f) {
+                            aospPredictiveBack(
+                                progress = dragged,
+                                swipeEdge = backSwipeEdge,
+                                touchDeltaY = backTouchDeltaY,
+                            )
+                            alpha = 1f
+                        } else {
+                            translationX = (1f - subEnter.value) * size.width
+                            alpha = 0.5f + 0.5f * subEnter.value
+                        }
+                    },
+            ) {
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    topBar = {
+                        LargeFlexibleTopAppBar(
+                            title = { Text(openSubPage.title) },
+                            navigationIcon = {
+                                IconButton(onClick = closeSubPage) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                        contentDescription = "返回",
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                            ),
+                        )
+                    },
+                ) { paddingValues ->
+                    when (openSubPage) {
+                        MaterialSubPage.Licenses -> MaterialLicensesScreen(outerPadding = paddingValues)
+                    }
+                }
             }
         }
     }

@@ -7,17 +7,17 @@ package love.miao.yun.ui.miuix
 
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.BackEventCompat
 import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -43,16 +43,28 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import love.miao.yun.MiaoState
+import love.miao.yun.service.FloatingWindowService
+import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.UiEngine
+import love.miao.yun.ui.UiEnginePrefs
+import love.miao.yun.ui.aospPredictiveBack
+import love.miao.yun.ui.miuix.about.AboutScreen
+import love.miao.yun.ui.miuix.floating.FloatingScreen
+import love.miao.yun.ui.miuix.home.HomeScreen
+import love.miao.yun.ui.miuix.licenses.LicensesScreen
+import love.miao.yun.ui.miuix.liquid.FloatingBottomBar
+import love.miao.yun.ui.miuix.settings.SettingsScreen
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.NavigationItem
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SnackbarHost
@@ -63,31 +75,26 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import love.miao.yun.MiaoState
-import love.miao.yun.service.FloatingWindowService
-import love.miao.yun.ui.AppIcons
-import love.miao.yun.ui.UiEngine
-import love.miao.yun.ui.UiEnginePrefs
-import love.miao.yun.ui.aospPredictiveBack
-import love.miao.yun.ui.miuix.about.AboutScreen
-import love.miao.yun.ui.miuix.floating.FloatingScreen
-import love.miao.yun.ui.miuix.home.HomeScreen
-import love.miao.yun.ui.miuix.liquid.FloatingBottomBar
-import love.miao.yun.ui.miuix.settings.SettingsScreen
 import kotlin.coroutines.cancellation.CancellationException
 
-private const val TAB_HOME = 0
-private const val TAB_FLOATING = 1
-private const val TAB_SETTINGS = 2
-private const val TAB_ABOUT = 3
+const val TAB_HOME = 0
+const val TAB_FLOATING = 1
+const val TAB_SETTINGS = 2
+const val TAB_ABOUT = 3
 
 /**
- * The miuix engine: a large-title app bar per page, a pager of four tabs, the liquid-glass
- * floating bottom bar, and AOSP's predictive back.
+ * Second-level pages.
+ *
+ * Only these respond to a back gesture: a tab switch moves between siblings, so the platform
+ * transition (which previews the *parent* you are returning to) has no meaning there.
  */
+enum class MiuixSubPage(val title: String) {
+    Licenses("开源许可"),
+}
+
+/** The miuix engine: large-title app bar, a pager of tabs, and the liquid-glass bottom bar. */
 @Composable
 fun MiuixApp() {
-    // Monet by default: the app follows the wallpaper unless the user picks otherwise.
     var colorSchemeMode by remember { mutableStateOf(ColorSchemeMode.MonetSystem) }
     var useLiquidGlass by remember { mutableStateOf(true) }
     val context = LocalContext.current
@@ -118,6 +125,7 @@ fun MiaoShell(
 ) {
     val context = LocalContext.current
     var hasOverlayPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    var subPage by remember { mutableStateOf<MiuixSubPage?>(null) }
 
     val overlayPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -156,13 +164,12 @@ fun MiaoShell(
 
     val pagerState = rememberPagerState(pageCount = { navigationItems.size })
     val currentPage = pagerState.currentPage
+    val mainScrollBehavior = MiuixScrollBehavior()
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val notify: (String) -> Unit = { message ->
         coroutineScope.launch { snackbarHostState.showSnackbar(message) }
     }
-
-    val scrollBehavior = MiuixScrollBehavior()
 
     val surfaceColor = MiuixTheme.colorScheme.surface
     val backdrop = rememberLayerBackdrop {
@@ -174,31 +181,50 @@ fun MiaoShell(
         hasOverlayPermission = Settings.canDrawOverlays(context)
     }
 
-    // ---- predictive back, following AOSP's cross-activity transition ----
-    val backProgress = remember { Animatable(0f) }
+    // ---- second-level pages: slide in, and follow the back gesture the AOSP way ----
+    val subEnter = remember { Animatable(0f) }
+    val subBack = remember { Animatable(0f) }
     var backSwipeEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
     var backTouchDeltaY by remember { mutableFloatStateOf(0f) }
     var backStartTouchY by remember { mutableFloatStateOf(Float.NaN) }
     val settleScope = rememberCoroutineScope()
 
-    PredictiveBackHandler(enabled = currentPage != TAB_HOME) { progress ->
+    val closeSubPage: () -> Unit = {
+        settleScope.launch {
+            subBack.snapTo(0f)
+            subEnter.animateTo(0f, tween(durationMillis = 200, easing = FastOutSlowInEasing))
+            subPage = null
+        }
+    }
+
+    LaunchedEffect(subPage) {
+        if (subPage != null) {
+            subBack.snapTo(0f)
+            subEnter.snapTo(0f)
+            subEnter.animateTo(1f, tween(durationMillis = 280, easing = FastOutSlowInEasing))
+        }
+    }
+
+    // Enabled only while a second-level page is open.
+    PredictiveBackHandler(enabled = subPage != null) { progress ->
         try {
             progress.collect { event ->
                 backSwipeEdge = event.swipeEdge
                 if (backStartTouchY.isNaN()) backStartTouchY = event.touchY
                 backTouchDeltaY = event.touchY - backStartTouchY
-                backProgress.snapTo(event.progress)
+                subBack.snapTo(event.progress)
             }
             settleScope.launch {
-                backProgress.animateTo(1f, tween(durationMillis = 140))
-                pagerState.scrollToPage(TAB_HOME)
+                subBack.animateTo(1f, tween(durationMillis = 140))
+                subPage = null
+                subBack.snapTo(0f)
+                subEnter.snapTo(0f)
                 backStartTouchY = Float.NaN
                 backTouchDeltaY = 0f
-                backProgress.animateTo(0f, tween(durationMillis = 220))
             }
         } catch (cancelled: CancellationException) {
             settleScope.launch {
-                backProgress.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
+                subBack.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
                 backStartTouchY = Float.NaN
                 backTouchDeltaY = 0f
             }
@@ -206,117 +232,110 @@ fun MiaoShell(
         }
     }
 
-    val backAmount = backProgress.value
-    // AOSP reveals the screen underneath while the top one shrinks away.
-    val revealScrim = 0.45f * (1f - backAmount)
+    Box(modifier = Modifier.fillMaxSize()) {
+        MiaoTabs(
+            titles = titles,
+            navigationItems = navigationItems,
+            pagerState = pagerState,
+            currentPage = currentPage,
+            scrollBehavior = mainScrollBehavior,
+            backdrop = backdrop,
+            useLiquidGlass = useLiquidGlass,
+            snackbarHostState = snackbarHostState,
+            colorSchemeMode = colorSchemeMode,
+            onColorSchemeModeChange = onColorSchemeModeChange,
+            useLiquidGlassChange = onUseLiquidGlassChange,
+            engine = engine,
+            onEngineChange = onEngineChange,
+            hasOverlayPermission = hasOverlayPermission,
+            onToggleFloating = toggleFloating,
+            onRequestOverlay = requestOverlay,
+            onNotify = notify,
+            onOpenLicenses = { subPage = MiuixSubPage.Licenses },
+            onTabSelected = { index ->
+                coroutineScope.launch { pagerState.animateScrollToPage(index) }
+            },
+        )
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MiuixTheme.colorScheme.background),
-    ) {
-        if (backAmount > 0f && currentPage != TAB_HOME) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                MiaoPage(
-                    page = TAB_HOME,
-                    title = titles[TAB_HOME],
-                    navigationItems = navigationItems,
-                    pagerState = pagerState,
-                    currentPage = TAB_HOME,
-                    scrollBehavior = MiuixScrollBehavior(),
-                    backdrop = backdrop,
-                    useLiquidGlass = useLiquidGlass,
-                    engine = engine,
-                    onEngineChange = onEngineChange,
-                    snackbarHostState = snackbarHostState,
-                    colorSchemeMode = colorSchemeMode,
-                    onColorSchemeModeChange = onColorSchemeModeChange,
-                    useLiquidGlassChange = onUseLiquidGlassChange,
-                    hasOverlayPermission = hasOverlayPermission,
-                    onToggleFloating = toggleFloating,
-                    onRequestOverlay = requestOverlay,
-                    onNotify = notify,
-                    onSwipe = {},
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Black.copy(alpha = revealScrim)),
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    aospPredictiveBack(
-                        progress = backAmount,
-                        swipeEdge = backSwipeEdge,
-                        touchDeltaY = backTouchDeltaY,
+        val openSubPage = subPage
+        if (openSubPage != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val dragged = subBack.value
+                        if (dragged > 0f) {
+                            aospPredictiveBack(
+                                progress = dragged,
+                                swipeEdge = backSwipeEdge,
+                                touchDeltaY = backTouchDeltaY,
+                            )
+                            alpha = 1f
+                        } else {
+                            translationX = (1f - subEnter.value) * size.width
+                            alpha = 0.5f + 0.5f * subEnter.value
+                        }
+                    },
+            ) {
+                Scaffold(
+                    topBar = {
+                        TopAppBar(
+                            title = openSubPage.title,
+                            navigationIcon = {
+                                IconButton(onClick = closeSubPage) {
+                                    Icon(
+                                        imageVector = AppIcons.Back,
+                                        contentDescription = "返回",
+                                    )
+                                }
+                            },
+                        )
+                    },
+                ) { innerPadding ->
+                    val layoutDirection = LocalLayoutDirection.current
+                    val subPadding = PaddingValues(
+                        start = innerPadding.calculateStartPadding(layoutDirection) + 12.dp,
+                        top = innerPadding.calculateTopPadding() + 12.dp,
+                        end = innerPadding.calculateEndPadding(layoutDirection) + 12.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 24.dp,
                     )
-                },
-        ) {
-            MiaoPage(
-                page = currentPage,
-                title = titles[currentPage],
-                navigationItems = navigationItems,
-                pagerState = pagerState,
-                currentPage = currentPage,
-                scrollBehavior = scrollBehavior,
-                backdrop = backdrop,
-                useLiquidGlass = useLiquidGlass,
-                engine = engine,
-                onEngineChange = onEngineChange,
-                snackbarHostState = snackbarHostState,
-                colorSchemeMode = colorSchemeMode,
-                onColorSchemeModeChange = onColorSchemeModeChange,
-                useLiquidGlassChange = onUseLiquidGlassChange,
-                hasOverlayPermission = hasOverlayPermission,
-                onToggleFloating = toggleFloating,
-                onRequestOverlay = requestOverlay,
-                onNotify = notify,
-                onSwipe = { index -> coroutineScope.launch { pagerState.animateScrollToPage(index) } },
-            )
+                    when (openSubPage) {
+                        MiuixSubPage.Licenses -> LicensesScreen(contentPadding = subPadding)
+                    }
+                }
+            }
         }
     }
 }
 
-/**
- * One screen of the app: a large-title app bar, a pager of tabs, and the liquid-glass bottom bar.
- *
- * The home tab is also rendered behind the current tab during a back gesture, which is why this is
- * a standalone composable rather than being inlined into the shell.
- */
+/** Level one: the four tabs. Switching between them is a pager animation, nothing more. */
 @Composable
-fun MiaoPage(
-    page: Int,
-    title: String,
+private fun MiaoTabs(
+    titles: List<String>,
     navigationItems: List<NavigationItem>,
     pagerState: PagerState,
     currentPage: Int,
     scrollBehavior: ScrollBehavior,
     backdrop: LayerBackdrop,
     useLiquidGlass: Boolean,
-    engine: UiEngine,
-    onEngineChange: (UiEngine) -> Unit,
     snackbarHostState: SnackbarHostState,
     colorSchemeMode: ColorSchemeMode,
     onColorSchemeModeChange: (ColorSchemeMode) -> Unit,
     useLiquidGlassChange: (Boolean) -> Unit,
+    engine: UiEngine,
+    onEngineChange: (UiEngine) -> Unit,
     hasOverlayPermission: Boolean,
     onToggleFloating: () -> Unit,
     onRequestOverlay: () -> Unit,
     onNotify: (String) -> Unit,
-    onSwipe: (Int) -> Unit,
+    onOpenLicenses: () -> Unit,
+    onTabSelected: (Int) -> Unit,
 ) {
     Scaffold(
         topBar = {
-            // The large title gives the page room to breathe instead of cramming rows against the
-            // status bar, and collapses into the small title as the list scrolls.
             TopAppBar(
-                title = title,
-                largeTitle = title,
+                title = titles[currentPage],
+                largeTitle = titles[currentPage],
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -325,7 +344,7 @@ fun MiaoPage(
                 FloatingBottomBar(
                     items = navigationItems,
                     selectedIndex = currentPage,
-                    onItemClick = onSwipe,
+                    onItemClick = onTabSelected,
                     backdrop = backdrop,
                     isBlurActive = useLiquidGlass,
                     modifier = Modifier
@@ -359,8 +378,8 @@ fun MiaoPage(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
                 userScrollEnabled = true,
-            ) { target ->
-                when (target) {
+            ) { page ->
+                when (page) {
                     TAB_HOME -> HomeScreen(
                         contentPadding = pagePadding,
                         scrollBehavior = scrollBehavior,
@@ -394,6 +413,7 @@ fun MiaoPage(
                     else -> AboutScreen(
                         contentPadding = pagePadding,
                         scrollBehavior = scrollBehavior,
+                        onOpenLicenses = onOpenLicenses,
                         onNotify = onNotify,
                     )
                 }

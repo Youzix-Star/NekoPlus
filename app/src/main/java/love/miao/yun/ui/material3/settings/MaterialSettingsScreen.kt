@@ -1,14 +1,15 @@
 /*
  * Copyright 2026, Youzix-Star
  * SPDX-License-Identifier: AGPL-3.0
+ *
+ * Rows are built from the segmented-column widgets ported from InstallerX-Revived (GPL-3.0).
  */
 
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
 package love.miao.yun.ui.material3.settings
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,16 +17,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,16 +37,17 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import love.miao.yun.MiaoState
+import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
-import love.miao.yun.ui.material3.SectionLabel
-import love.miao.yun.ui.material3.SwitchRow
 import love.miao.yun.ui.material3.ThemeMode
+import love.miao.yun.ui.material3.widgets.NavigationItemWidget
+import love.miao.yun.ui.material3.widgets.SegmentedColumn
+import love.miao.yun.ui.material3.widgets.SwitchWidget
 
 @Composable
 fun MaterialSettingsScreen(
-    contentPadding: PaddingValues,
-    scrollBehavior: TopAppBarScrollBehavior,
+    outerPadding: PaddingValues,
     themeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
     dynamicColor: Boolean,
@@ -59,66 +60,82 @@ fun MaterialSettingsScreen(
     var autoStart by remember { mutableStateOf(false) }
     var keepAlive by remember { mutableStateOf(true) }
     val engine = MiaoState.engine
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item(key = "appearance") {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SectionLabel("外观")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    ListItem(
-                        headlineContent = { Text("主题模式") },
-                        supportingContent = { Text(themeMode.label) },
-                        modifier = Modifier.clickable { showThemeDialog = true },
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SwitchRow(
-                        title = "动态取色",
-                        summary = "Android 12+ 跟随壁纸取色",
-                        checked = dynamicColor,
-                        onCheckedChange = onDynamicColorChange,
-                    )
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        topBar = {
+            LargeFlexibleTopAppBar(
+                title = { Text("设置", modifier = Modifier.padding(start = 12.dp)) },
+                scrollBehavior = scrollBehavior,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                ),
+            )
+        },
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            contentPadding = paddingValues + outerPadding,
+        ) {
+            item {
+                SegmentedColumn(title = "外观") {
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Settings,
+                            title = "主题模式",
+                            description = themeMode.label,
+                            onClick = { showThemeDialog = true },
+                        )
+                    }
+                    item {
+                        SwitchWidget(
+                            icon = AppIcons.Tune,
+                            title = "动态取色",
+                            description = "Android 12+ 跟随壁纸取色",
+                            checked = dynamicColor,
+                            onCheckedChange = onDynamicColorChange,
+                        )
+                    }
                 }
             }
-        }
 
-        item(key = "engine") {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SectionLabel("界面引擎")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    ListItem(
-                        headlineContent = { Text("界面引擎") },
-                        supportingContent = {
-                            Text("${engine.label} · Miuix 与 Material Design 是两套完整的界面实现")
-                        },
-                        modifier = Modifier.clickable { showEngineDialog = true },
-                    )
+            item {
+                SegmentedColumn(title = "界面引擎") {
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Tune,
+                            title = "界面引擎",
+                            description = "${engine.label} · Miuix 与 Material Design 是两套完整的界面实现",
+                            onClick = { showEngineDialog = true },
+                        )
+                    }
                 }
             }
-        }
 
-        item(key = "service") {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                SectionLabel("服务")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    SwitchRow(
-                        title = "开机自启",
-                        summary = "开机后自动恢复悬浮窗",
-                        checked = autoStart,
-                        onCheckedChange = { autoStart = it },
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    SwitchRow(
-                        title = "保持运行",
-                        summary = "显示常驻通知，降低被系统清理的概率",
-                        checked = keepAlive,
-                        onCheckedChange = { keepAlive = it },
-                    )
+            item {
+                SegmentedColumn(title = "服务") {
+                    item {
+                        SwitchWidget(
+                            icon = AppIcons.Settings,
+                            title = "开机自启",
+                            description = "开机后自动恢复悬浮窗",
+                            checked = autoStart,
+                            onCheckedChange = { autoStart = it },
+                        )
+                    }
+                    item {
+                        SwitchWidget(
+                            icon = AppIcons.Settings,
+                            title = "保持运行",
+                            description = "显示常驻通知，降低被系统清理的概率",
+                            checked = keepAlive,
+                            onCheckedChange = { keepAlive = it },
+                        )
+                    }
                 }
             }
         }
