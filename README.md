@@ -208,14 +208,40 @@ SharedPreferences），**每个按钮各自独立**：
 
 ## 图标
 
-应用图标沿用 **MiaoAssistant 1.1.8 那一套**：`mipmap-*/ic_launcher.png` 与
-`mipmap-anydpi-v26/ic_launcher.xml`（白底 + `drawable/app_icon.png` 前景）都是原样搬过来的，
-清单里指向 `@mipmap/ic_launcher` / `@mipmap/ic_launcher_round`。
+应用图标是**文字标记** `ᯠ ͟͟    ̫  ͟͟ ᯄ ੭`，不是图片素材：
 
-原来的矢量猫脸留作**常驻通知的小图标**（`drawable/ic_notification.xml`）—— 通知小图标只用
-alpha 通道，彩色图形会被涂成一个剪影，正好合适。
+- 启动图由 `~/icons/render_icon.py` 离线渲染 —— 逐字符挑字体（`ᯠ`/`ᯄ` 只有
+  `NotoSansBatak` 有、`੭` 在 `MiSansGurmukhi`、组合符 `͟`/`̫` 在 Roboto），
+  **共用同一条基线**绘制，才能在画布里正确居中；输出五档 `mipmap-*/ic_launcher(.round).png`
+  与自适应图标前景 `drawable/app_icon.png`。
+- 关于页不加载那张位图，而是把同一个字符串（`AppIconText`）当**居中文字**画 —— 既跟随主题
+  墨色，也避开了一个坑：启动器图标是 **adaptive icon**，而 Compose 的 `painterResource`
+  只认位图与矢量图，拿它去画会直接抛异常。
+- 常驻通知仍是矢量猫脸剪影（`drawable/ic_notification.xml`）：通知小图标只用 alpha 通道，
+  一串文字在 24dp 上只会是一团糊。
+
+## 更新检测
+
+`util/UpdateChecker.kt`（移植自 NekoNeko）走 **GitHub Releases**：
+
+1. 先打 API `releases/latest`，取 `tag_name`、`body`（更新说明）与 APK 资源链接；
+2. API 报错（多半是被限流）就**回退到 releases 页面**，从 302 的 `Location` 里读 tag ——
+   这一步不需要 token 也没有配额，差别就是「检查更新」到底能不能用。
+
+版本比较在数字段之后还会比预发布后缀（`2.0.0` > `2.0.0-alpha.2` > `2.0.0-alpha.1`），
+否则 alpha 用户会永远收不到正式版。关于页的「检查更新」会给出更新说明与下载按钮。
+
+## 崩溃日志
+
+`util/CrashHandler.kt`（同样来自 1.1.8 的功能清单）在 `MiaoApp` 里安装，崩溃时把
+时间、版本、机型、线程、**最近经过的界面**与完整堆栈写到
+`Android/data/love.miao.yun/files/crash/latest.txt`；两个外壳在每个页签与二级页面上都留了
+面包屑。关于页的「崩溃日志」可以查看、复制、清空。
 
 ## 文案
+
+关于页版本号下方那句是 `Ciallo～(∠・ω c)⌒★`。开发者一栏有两位：**Xiao-youyu**
+（原作者，喵喵助手 1.1.8 的作者）与 **Youzix-Star**（本仓库的重构与维护）。
 
 界面文案写在各屏的 Composable 里，`res/values/strings.xml` 只留平台按名字取的几条：
 应用名、无障碍服务条目、常驻通知，以及悬浮窗用 Toast 报的结果。之前那份脚手架留下的
