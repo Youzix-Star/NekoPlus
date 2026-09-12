@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  *
  * Rows are built from the segmented-column widgets ported from InstallerX-Revived (GPL-3.0).
  */
@@ -103,7 +103,7 @@ fun MaterialSettingsScreen(
                         SwitchWidget(
                             icon = AppIcons.Tune,
                             title = "动态取色",
-                            description = "Android 12+ 跟随壁纸取色",
+                            description = "跟随壁纸取色",
                             checked = dynamicColor,
                             onCheckedChange = onDynamicColorChange,
                         )
@@ -128,7 +128,7 @@ fun MaterialSettingsScreen(
                         SwitchWidget(
                             icon = AppIcons.Tune,
                             title = "毛玻璃顶栏",
-                            description = "顶栏使用实时模糊；关闭后为不透明表面色",
+                            description = "顶栏实时模糊",
                             checked = MiaoState.useBlur,
                             onCheckedChange = {
                                 MiaoState.useBlur = it
@@ -145,7 +145,7 @@ fun MaterialSettingsScreen(
                         DropDownMenuWidget(
                             icon = AppIcons.Tune,
                             title = "界面引擎",
-                            description = "Miuix 与 Material Design 是两套完整的界面实现",
+                            description = "切换整套界面实现",
                             choice = UiEngine.entries.indexOf(engine).coerceAtLeast(0),
                             data = UiEngine.entries.map { it.label },
                             onChoiceChange = { index ->
@@ -167,7 +167,7 @@ fun MaterialSettingsScreen(
                         NavigationItemWidget(
                             icon = AppIcons.Tune,
                             title = "AI 配置",
-                            description = "接口地址、API Key、模型与提示词",
+                            description = "接口、密钥与提示词",
                             onClick = onOpenAiConfig,
                         )
                     }
@@ -180,7 +180,7 @@ fun MaterialSettingsScreen(
                         SwitchWidget(
                             icon = AppIcons.Settings,
                             title = "开机自启",
-                            description = "开机后自动恢复悬浮窗",
+                            description = "开机自动启动",
                             checked = autoStart,
                             onCheckedChange = { autoStart = it },
                         )
@@ -189,7 +189,7 @@ fun MaterialSettingsScreen(
                         SwitchWidget(
                             icon = AppIcons.Settings,
                             title = "保持运行",
-                            description = "显示常驻通知，降低被系统清理的概率",
+                            description = "常驻通知，降低被杀概率",
                             checked = keepAlive,
                             onCheckedChange = { keepAlive = it },
                         )

@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  *
  * Uses the same widget set that the rest of this engine took from InstallerX-Revived.
  */
@@ -165,7 +165,7 @@ fun MaterialAiConfigScreen(
                         NavigationItemWidget(
                             icon = AppIcons.Update,
                             title = if (fetching) "获取中…" else "获取模型列表",
-                            description = "用当前的接口地址与 API Key 请求 /models，同时验证连通性",
+                            description = "请求 /models 验证连通性",
                             onClick = {
                                 if (fetching) return@NavigationItemWidget
                                 fetching = true
@@ -214,7 +214,7 @@ fun MaterialAiConfigScreen(
                                     value = config.prompt.orEmpty(),
                                     minLines = 3,
                                     maxLines = 8,
-                                    supporting = "含 {text} 时替换为捕获文本，否则作为人设拼在正文前",
+                                    supporting = "含 {text} 替换为捕获文本",
                                     onValueChange = { text -> edit { it.prompt = text } },
                                 )
                             }
@@ -229,7 +229,7 @@ fun MaterialAiConfigScreen(
                         NavigationItemWidget(
                             icon = AppIcons.License,
                             title = "套用预设",
-                            description = "内置微软式翻译、微软式中文、Emoji",
+                            description = "内置三个预设",
                             onClick = { showPresetPicker = !showPresetPicker },
                         )
                     }
@@ -238,7 +238,7 @@ fun MaterialAiConfigScreen(
                             item(key = name) {
                                 NavigationItemWidget(
                                     title = name,
-                                    description = "点按套用这个预设",
+                                    description = "套用这个预设",
                                     onClick = {
                                         val preset = AiManager.loadPreset(context, name)
                                         // A builtin preset only carries a prompt: blank fields
@@ -266,7 +266,7 @@ fun MaterialAiConfigScreen(
                         NavigationItemWidget(
                             icon = AppIcons.Settings,
                             title = "恢复默认",
-                            description = "回到 DeepSeek 与默认提示词，API Key 会一并清空",
+                            description = "清空配置，回到默认",
                             onClick = {
                                 val fresh = AiManager.Config()
                                 config = fresh
@@ -300,7 +300,7 @@ fun MaterialAiConfigScreen(
 
             item {
                 Text(
-                    text = "当前版本 v${BuildConfig.VERSION_NAME} · AI 调用会消耗你的额度",
+                    text = "v${BuildConfig.VERSION_NAME} · AI 调用消耗你的额度",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier

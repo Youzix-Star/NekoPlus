@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 package love.miao.yun.ui.miuix.settings
@@ -82,7 +82,7 @@ fun SettingsScreen(
                     )
                     WindowSpinnerPreference(
                         title = "预见式返回动画",
-                        summary = "二级页面返回时的跟手动画：AOSP 形体变换、Miuix 自带效果，或不做动画",
+                        summary = "二级页面的返回跟手动画",
                         items = backStyleItems,
                         selectedIndex = PredictiveBackStyle.entries
                             .indexOf(MiaoState.predictiveBackStyle).coerceAtLeast(0),
@@ -95,7 +95,7 @@ fun SettingsScreen(
                     )
                     SwitchPreference(
                         title = "液态玻璃底栏",
-                        summary = "底部导航使用实时毛玻璃与高光；关闭后变为不透明悬浮样式",
+                        summary = "底栏实时模糊与高光",
                         checked = useLiquidGlass,
                         onCheckedChange = onUseLiquidGlassChange,
                     )
@@ -109,7 +109,7 @@ fun SettingsScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     WindowSpinnerPreference(
                         title = "界面引擎",
-                        summary = "Miuix 与 Material Design 是两套完整的界面实现，可随时切换",
+                        summary = "切换整套界面实现",
                         items = engineItems,
                         selectedIndex = UiEngine.entries.indexOf(engine).coerceAtLeast(0),
                         onSelectedIndexChange = { index ->
@@ -128,7 +128,7 @@ fun SettingsScreen(
                     // this page only configures the feature.
                     ArrowPreference(
                         title = "AI 配置",
-                        summary = "接口地址、API Key、模型与提示词；悬浮窗的「AI 修改」按钮用这套配置",
+                        summary = "接口、密钥与提示词",
                         onClick = onOpenAiConfig,
                     )
                 }
@@ -141,13 +141,13 @@ fun SettingsScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     SwitchPreference(
                         title = "开机自启",
-                        summary = "开机后自动恢复悬浮窗",
+                        summary = "开机自动启动",
                         checked = autoStart,
                         onCheckedChange = { autoStart = it },
                     )
                     SwitchPreference(
                         title = "保持运行",
-                        summary = "显示常驻通知，降低被系统清理的概率",
+                        summary = "常驻通知，降低被杀概率",
                         checked = keepAlive,
                         onCheckedChange = { keepAlive = it },
                     )

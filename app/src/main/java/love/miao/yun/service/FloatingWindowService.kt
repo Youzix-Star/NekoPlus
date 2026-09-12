@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 package love.miao.yun.service
@@ -16,14 +16,19 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
+import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import kotlin.math.abs
@@ -43,19 +48,20 @@ import love.miao.yun.ui.UiEnginePrefs
 /**
  * The floating window: a set of draggable buttons, one per entry in [FloatingWindowPrefs].
  *
- * Every button is independent — its own icon or label, its own action, its own size, its own place
- * on screen — which is what makes the overlay configurable at all: the original project offered the
- * choice between one big panel and one round ball, and this offers any number of either.
+ * Every button is independent — its own Material icon or typed label, its own tap and hold
+ * actions, its own size, corner radius and opacity, its own place on screen — which is what makes
+ * the overlay configurable at all. The original project offered a choice between one big panel and
+ * one round ball; this offers any number of either.
  *
- * The buttons are plain framework views on purpose. Material components inside a
- * `TYPE_APPLICATION_OVERLAY` window need a themed context and are a recurring source of inflation
- * crashes, and a rounded square with one glyph on it does not need them.
+ * The buttons are plain framework views on purpose. Compose or Material components inside a
+ * `TYPE_APPLICATION_OVERLAY` window need a themed context and a view-tree owner this service does
+ * not have, and are a recurring source of inflation crashes.
  */
 class FloatingWindowService : Service() {
 
     private lateinit var windowManager: WindowManager
 
-    /** Live buttons, keyed by [FloatingItem.id], in the order the preferences list them. */
+    /** Live buttons, keyed by [FloatingItem.id]. */
     private val buttons = LinkedHashMap<String, FloatingButton>()
 
     /** The palette currently painted onto every button. */
@@ -65,7 +71,8 @@ class FloatingWindowService : Service() {
 
     /**
      * The overlay outlives the activity, so it cannot read its settings once at startup: it
-     * watches both preferences and rebuilds or repaints itself while it is on screen.
+     * watches both preferences and rebuilds or repaints itself while it is on screen. The drag
+     * options are read on demand instead, because they only matter while a finger is down.
      */
     private val prefsListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -75,15 +82,17 @@ class FloatingWindowService : Service() {
             }
         }
 
-    /** One button on screen, plus the window plumbing needed to move and repaint it. */
+    /** One button on screen, plus the views and window plumbing needed to move and repaint it. */
     private class FloatingButton(
-        val view: TextView,
+        val view: FrameLayout,
+        val icon: ImageView,
+        val label: TextView,
         val params: WindowManager.LayoutParams,
         val background: GradientDrawable,
     ) {
         var item: FloatingItem? = null
 
-        /** True while this button's action is running, so its label can show progress instead. */
+        /** True while this button's action runs, so its face can show progress instead. */
         var busy: Boolean = false
     }
 
@@ -119,9 +128,7 @@ class FloatingWindowService : Service() {
         val items = FloatingWindowPrefs.load(this)
         val wanted = items.map { it.id }.toSet()
 
-        buttons.keys.filterNot { it in wanted }.forEach { id ->
-            removeButton(id)
-        }
+        buttons.keys.filterNot { it in wanted }.forEach { id -> removeButton(id) }
 
         items.forEach { item ->
             val existing = buttons[item.id]
@@ -138,11 +145,32 @@ class FloatingWindowService : Service() {
 
     private fun addButton(item: FloatingItem) {
         val buttonBackground = GradientDrawable()
+        val sizePx = sizePx(item)
 
-        val view = TextView(this).apply {
+        val iconView = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+        val labelView = TextView(this).apply {
             gravity = Gravity.CENTER
             maxLines = 1
-            setTextColor(0xFF000000.toInt())
+        }
+
+        val container = FrameLayout(this).apply {
+            addView(
+                iconView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
+            addView(
+                labelView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    Gravity.CENTER,
+                ),
+            )
             // Named apart from the view's own `background` property on purpose: inside `apply`
             // the two would otherwise resolve against each other.
             background = buttonBackground
@@ -150,10 +178,9 @@ class FloatingWindowService : Service() {
             setOnTouchListener(DragListener(item.id))
         }
 
-        // Painted before the window is added, so a button never flashes the default background.
         val params = WindowManager.LayoutParams(
-            buttonSizePx(item),
-            buttonSizePx(item),
+            sizePx,
+            sizePx,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
@@ -164,21 +191,27 @@ class FloatingWindowService : Service() {
             y = item.y
         }
 
-        val button = FloatingButton(view = view, params = params, background = buttonBackground)
+        val button = FloatingButton(
+            view = container,
+            icon = iconView,
+            label = labelView,
+            params = params,
+            background = buttonBackground,
+        )
         button.item = item
         paint(button, item)
         applyPalette(button)
 
-        runCatching { windowManager.addView(view, params) }
+        runCatching { windowManager.addView(container, params) }
             .onSuccess { buttons[item.id] = button }
             .onFailure { stopSelf() }
     }
 
     private fun updateButton(button: FloatingButton, item: FloatingItem) {
-        val sizePx = buttonSizePx(item)
-        val resized = button.params.width != sizePx || button.params.height != sizePx
-        button.params.width = sizePx
-        button.params.height = sizePx
+        val size = sizePx(item)
+        val resized = button.params.width != size || button.params.height != size
+        button.params.width = size
+        button.params.height = size
         paint(button, item)
         if (resized || button.params.x != item.x || button.params.y != item.y) {
             runCatching { windowManager.updateViewLayout(button.view, button.params) }
@@ -190,26 +223,47 @@ class FloatingWindowService : Service() {
         runCatching { windowManager.removeView(button.view) }
     }
 
-    private fun buttonSizePx(item: FloatingItem): Int = (item.sizeDp * density).roundToInt()
+    private fun sizePx(item: FloatingItem): Int = (item.sizeDp * density).roundToInt()
 
     /** Applies everything about a button that comes from its own settings. */
     private fun paint(button: FloatingButton, item: FloatingItem) {
-        val sizeDp = item.sizeDp
-        val label = if (button.busy) "…" else item.label
-        button.view.text = label
-        button.view.setTextSize(
-            TypedValue.COMPLEX_UNIT_SP,
-            when {
-                button.busy -> sizeDp * 0.40f
-                label.length <= 1 -> sizeDp * 0.44f
-                label.length == 2 -> sizeDp * 0.34f
-                else -> sizeDp * 0.25f
-            },
-        )
-        button.background.cornerRadius = if (item.round) {
-            sizeDp * density / 2f
-        } else {
-            sizeDp * density / 3.6f
+        val size = sizePx(item)
+        button.background.cornerRadius = item.effectiveCornerDp * density
+
+        // A busy button always falls back to the typed face, so progress is readable no matter
+        // which face the button normally wears.
+        when {
+            button.busy -> {
+                button.icon.visibility = View.GONE
+                button.label.visibility = View.VISIBLE
+                button.label.text = "…"
+                button.label.setTextSize(TypedValue.COMPLEX_UNIT_SP, item.sizeDp * 0.4f)
+            }
+
+            item.showsText -> {
+                button.icon.visibility = View.GONE
+                button.label.visibility = View.VISIBLE
+                val label = item.label
+                button.label.text = label
+                button.label.setTextSize(
+                    TypedValue.COMPLEX_UNIT_SP,
+                    when (label.length) {
+                        1 -> item.sizeDp * 0.44f
+                        2 -> item.sizeDp * 0.34f
+                        else -> item.sizeDp * 0.25f
+                    },
+                )
+            }
+
+            else -> {
+                button.label.visibility = View.GONE
+                button.icon.visibility = View.VISIBLE
+                button.icon.setImageResource(item.iconEntry.res)
+                // Inset rather than resized: the artwork keeps its own aspect and padding stays
+                // in step with the button, at any size.
+                val inset = (size * ICON_INSET_FRACTION).roundToInt()
+                button.icon.setPadding(inset, inset, inset, inset)
+            }
         }
     }
 
@@ -229,16 +283,19 @@ class FloatingWindowService : Service() {
     private fun applyPalette(button: FloatingButton) {
         val colors = palette ?: return
         button.background.setColor(colors.container)
-        button.view.setTextColor(colors.onContainer)
+        button.view.alpha = (button.item?.opacity ?: 100) / 100f
+        button.icon.setColorFilter(colors.onContainer, PorterDuff.Mode.SRC_IN)
+        button.label.setTextColor(colors.onContainer)
     }
 
     // ------------------------------------------------------------------ dragging
 
     /**
-     * Drag to move, tap to act.
+     * Drag to move, tap to act, hold to run the hold action.
      *
-     * The window is repositioned with the raw touch delta rather than a gesture detector, because
-     * the overlay never gets a gesture arena of its own — it is the only thing in its window.
+     * Long-press is detected here rather than with `setOnLongClickListener`, because a touch
+     * listener that consumes the gesture stops `View.onTouchEvent` from ever running, and with it
+     * the framework's own long-press detection.
      */
     private inner class DragListener(private val id: String) : View.OnTouchListener {
         private var downX = 0f
@@ -246,6 +303,9 @@ class FloatingWindowService : Service() {
         private var startX = 0
         private var startY = 0
         private var dragging = false
+        private var longPressed = false
+
+        private val slop = ViewConfiguration.get(this@FloatingWindowService).scaledTouchSlop.toFloat()
 
         override fun onTouch(view: View, event: MotionEvent): Boolean {
             val button = buttons[id] ?: return false
@@ -256,14 +316,22 @@ class FloatingWindowService : Service() {
                     startX = button.params.x
                     startY = button.params.y
                     dragging = false
+                    longPressed = false
+                    view.postDelayed(longPress, ViewConfiguration.getLongPressTimeout().toLong())
                     return true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
                     val dx = event.rawX - downX
                     val dy = event.rawY - downY
-                    if (!dragging && (abs(dx) > draggableSlop() || abs(dy) > draggableSlop())) {
+                    if (!dragging && (abs(dx) > slop || abs(dy) > slop)) {
                         dragging = true
+                        view.removeCallbacks(longPress)
+                        if (FloatingWindowPrefs.loadOptions(this@FloatingWindowService).dragHaptic) {
+                            runCatching {
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                            }
+                        }
                     }
                     if (dragging) {
                         button.params.x = startX + dx.roundToInt()
@@ -274,7 +342,11 @@ class FloatingWindowService : Service() {
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    view.removeCallbacks(longPress)
                     if (dragging) {
+                        if (FloatingWindowPrefs.loadOptions(this@FloatingWindowService).snapToEdge) {
+                            snapToEdge(button)
+                        }
                         // Only a finished drag is worth persisting, so a tap never rewrites state.
                         FloatingWindowPrefs.savePosition(
                             this@FloatingWindowService,
@@ -282,8 +354,8 @@ class FloatingWindowService : Service() {
                             button.params.x,
                             button.params.y,
                         )
-                    } else if (event.actionMasked == MotionEvent.ACTION_UP) {
-                        button.item?.let { perform(it, button) }
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP && !longPressed) {
+                        button.item?.let { perform(it.actionEntry, button) }
                     }
                     dragging = false
                     return true
@@ -292,13 +364,31 @@ class FloatingWindowService : Service() {
             return false
         }
 
-        private fun draggableSlop(): Float = 8f * density
+        private val longPress = Runnable {
+            if (dragging) return@Runnable
+            longPressed = true
+            buttons[id]?.let { button ->
+                button.item?.holdActionEntry?.let { action -> perform(action, button) }
+            }
+        }
+
+        /** Pulls the button to whichever side of the screen it is already closest to. */
+        private fun snapToEdge(button: FloatingButton) {
+            val screenWidth = resources.displayMetrics.widthPixels
+            val left = button.params.x
+            button.params.x = if (left + button.params.width / 2 < screenWidth / 2) {
+                0
+            } else {
+                screenWidth - button.params.width
+            }
+            runCatching { windowManager.updateViewLayout(button.view, button.params) }
+        }
     }
 
     // ------------------------------------------------------------------ actions
 
-    private fun perform(item: FloatingItem, button: FloatingButton) {
-        when (item.actionEntry) {
+    private fun perform(action: FloatingAction, button: FloatingButton) {
+        when (action) {
             FloatingAction.AiModify -> runAiModify(button)
             FloatingAction.Capture -> captureToClipboard()
             FloatingAction.OpenApp -> openApp()
@@ -446,5 +536,8 @@ class FloatingWindowService : Service() {
     private companion object {
         const val CHANNEL_ID = "miao_floating_window"
         const val NOTIFICATION_ID = 1001
+
+        /** Share of the button's edge the icon leaves as padding, so the art is ~55% of it. */
+        const val ICON_INSET_FRACTION = 0.225f
     }
 }

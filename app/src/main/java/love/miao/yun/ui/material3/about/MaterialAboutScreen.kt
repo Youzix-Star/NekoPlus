@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  *
  * Rows are built from the segmented-column widgets ported from InstallerX-Revived (GPL-3.0).
  */
@@ -90,7 +90,7 @@ fun MaterialAboutScreen(
                         NavigationItemWidget(
                             icon = AppIcons.SourceCode,
                             title = "获取源代码",
-                            description = "在 GitHub 上查看喵喵助手的源码",
+                            description = "GitHub 上的源码",
                             onClick = { uriHandler.openUri(REPOSITORY_URL) },
                         )
                     }
@@ -98,7 +98,7 @@ fun MaterialAboutScreen(
                         NavigationItemWidget(
                             icon = AppIcons.License,
                             title = "开源许可",
-                            description = "miuix、Compose、Material Icons 等依赖的许可证",
+                            description = "依赖的许可证",
                             onClick = onOpenLicenses,
                         )
                     }
@@ -106,7 +106,7 @@ fun MaterialAboutScreen(
                         NavigationItemWidget(
                             icon = AppIcons.Update,
                             title = "检查更新",
-                            description = "当前为界面骨架，暂未接入更新检查",
+                            description = "尚未接入",
                             onClick = { onNotify("暂未实现更新检查") },
                         )
                     }
@@ -128,7 +128,7 @@ fun MaterialAboutScreen(
 
             item {
                 Text(
-                    text = "仅用于演示 Material Design 组件用法，暂未实现实际功能。",
+                    text = "暂未实现。",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,

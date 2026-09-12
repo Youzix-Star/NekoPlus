@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 package love.miao.yun.ui.miuix.about
@@ -68,7 +68,7 @@ fun AboutScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     ArrowPreference(
                         title = "获取源代码",
-                        summary = "在 GitHub 上查看喵喵助手的源码",
+                        summary = "GitHub 上的源码",
                         startAction = {
                             Icon(
                                 imageVector = AppIcons.SourceCode,
@@ -80,7 +80,7 @@ fun AboutScreen(
                     )
                     ArrowPreference(
                         title = "开源许可",
-                        summary = "miuix、Compose、Material Icons 等依赖的许可证",
+                        summary = "依赖的许可证",
                         startAction = {
                             Icon(
                                 imageVector = AppIcons.License,
@@ -92,7 +92,7 @@ fun AboutScreen(
                     )
                     ArrowPreference(
                         title = "检查更新",
-                        summary = "当前为界面骨架，暂未接入更新检查",
+                        summary = "尚未接入",
                         startAction = {
                             Icon(
                                 imageVector = AppIcons.Update,
@@ -128,7 +128,7 @@ fun AboutScreen(
 
         item(key = "footer") {
             Text(
-                text = "仅用于演示 miuix 组件用法，暂未实现实际功能。",
+                text = "暂未实现。",
                 style = MiuixTheme.textStyles.footnote2,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 textAlign = TextAlign.Center,

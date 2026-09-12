@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 package love.miao.yun.ui.miuix.home
@@ -75,9 +75,9 @@ fun HomeScreen(
                     else -> "悬浮窗未运行"
                 },
                 description = when {
-                    !hasOverlayPermission -> "缺少叠加层权限，无法显示悬浮窗"
-                    floatingRunning -> "悬浮窗已经在屏幕上了"
-                    else -> "悬浮窗当前是关闭的"
+                    !hasOverlayPermission -> "缺少叠加层权限"
+                    floatingRunning -> "已在屏幕上"
+                    else -> "当前未运行"
                 },
                 hint = when {
                     !hasOverlayPermission -> "去授权"
@@ -102,9 +102,9 @@ fun HomeScreen(
                 icon = AppIcons.Grant,
                 title = if (enabled) "无障碍服务已开启" else "无障碍服务未开启",
                 summary = if (enabled) {
-                    "可以读取并写回当前输入框"
+                    "可读写当前输入框"
                 } else {
-                    "AI 修改需要它才能拿到输入框文本"
+                    "AI 修改依赖它"
                 },
                 hint = if (enabled) "已开启" else "去开启",
                 onClick = {
@@ -184,7 +184,7 @@ fun HomeScreen(
                     ArrowPreference(
                         title = if (floatingRunning) "收起悬浮窗" else "启动悬浮窗",
                         summary = if (hasOverlayPermission) {
-                            "在任意界面显示一个可拖动的小面板"
+                            "任意界面上的悬浮按钮"
                         } else {
                             "需要先授予悬浮窗权限"
                         },

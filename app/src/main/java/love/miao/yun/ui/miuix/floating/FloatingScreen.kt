@@ -1,36 +1,45 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 package love.miao.yun.ui.miuix.floating
 
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import love.miao.yun.MiaoState
 import love.miao.yun.floating.FloatingAction
 import love.miao.yun.floating.FloatingIcon
 import love.miao.yun.floating.FloatingItem
+import love.miao.yun.floating.FloatingOptions
 import love.miao.yun.floating.FloatingWindowPrefs
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
@@ -65,12 +74,18 @@ fun FloatingScreen(
     val density = LocalDensity.current.density
 
     var items by remember { mutableStateOf(FloatingWindowPrefs.load(context)) }
+    var options by remember { mutableStateOf(FloatingWindowPrefs.loadOptions(context)) }
     var editingId by remember { mutableStateOf<String?>(null) }
 
     /** One funnel for edits, so the on-screen buttons and this list never drift apart. */
     fun persist(next: List<FloatingItem>) {
         items = next
         FloatingWindowPrefs.save(context, next)
+    }
+
+    fun persistOptions(next: FloatingOptions) {
+        options = next
+        FloatingWindowPrefs.saveOptions(context, next)
     }
 
     val floatingColorItems = remember {
@@ -91,11 +106,7 @@ fun FloatingScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     ArrowPreference(
                         title = if (floatingRunning) "收起悬浮窗" else "启动悬浮窗",
-                        summary = if (floatingRunning) {
-                            "当前屏幕上有 ${items.size} 个按钮"
-                        } else {
-                            "还没有启动"
-                        },
+                        summary = if (floatingRunning) "${items.size} 个按钮" else "未启动",
                         startAction = {
                             Icon(
                                 imageVector = AppIcons.Floating,
@@ -112,30 +123,53 @@ fun FloatingScreen(
             }
         }
 
-        // Every button is its own thing: its own icon or label, its own action, its own size and
-        // its own place on screen. This list is the only place they are configured.
+        item(key = "drag") {
+            Column {
+                SmallTitle(text = "拖动")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    SwitchPreference(
+                        title = "贴边吸附",
+                        summary = "松手后吸到屏幕边缘",
+                        checked = options.snapToEdge,
+                        onCheckedChange = { persistOptions(options.copy(snapToEdge = it)) },
+                    )
+                    SwitchPreference(
+                        title = "拖动反馈",
+                        summary = "开始拖动时轻微震动",
+                        checked = options.dragHaptic,
+                        onCheckedChange = { persistOptions(options.copy(dragHaptic = it)) },
+                    )
+                }
+            }
+        }
+
+        // Every button is its own thing. This list is the only place they are configured.
         item(key = "buttons") {
             Column {
                 SmallTitle(text = "悬浮窗按钮")
                 Card(modifier = Modifier.fillMaxWidth()) {
                     items.forEach { item ->
                         ArrowPreference(
-                            title = item.label + "  ·  " + item.actionEntry.label,
-                            summary = "${item.sizeDp} dp" +
-                                (if (item.round) " · 圆形" else " · 方形") +
-                                " · 拖动可移动",
+                            title = item.displayName + "  ·  " + item.actionEntry.label,
+                            summary = itemSummary(item),
                             startAction = {
-                                Text(
-                                    text = item.label,
-                                    style = MiuixTheme.textStyles.title4,
-                                )
+                                if (item.showsText) {
+                                    Text(item.label, style = MiuixTheme.textStyles.title4)
+                                } else {
+                                    Image(
+                                        painter = painterResource(item.iconEntry.res),
+                                        contentDescription = item.iconEntry.label,
+                                        colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.primary),
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
                             },
                             onClick = { editingId = item.id },
                         )
                     }
                     ArrowPreference(
                         title = "添加悬浮窗",
-                        summary = "再放一个按钮到屏幕上，图标、动作、大小都各自独立",
+                        summary = "再放一个按钮",
                         onClick = {
                             val item = FloatingWindowPrefs.newItem(items, density)
                             persist(items + item)
@@ -152,7 +186,7 @@ fun FloatingScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     WindowSpinnerPreference(
                         title = "取色来源",
-                        summary = "悬浮窗是独立于界面的悬浮层，取色可以单独选择",
+                        summary = "动态取色 / Miuix / Material Design",
                         items = floatingColorItems,
                         selectedIndex = FloatingColorSource.entries
                             .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
@@ -173,9 +207,7 @@ fun FloatingScreen(
         FloatingItemDialog(
             item = editing,
             canDelete = items.size > 1,
-            onChange = { updated ->
-                persist(items.map { if (it.id == updated.id) updated else it })
-            },
+            onChange = { updated -> persist(items.map { if (it.id == updated.id) updated else it }) },
             onDelete = {
                 persist(items.filterNot { it.id == editing.id })
                 editingId = null
@@ -186,11 +218,17 @@ fun FloatingScreen(
     }
 }
 
+/** One line describing a button's shape, so the list stays readable. */
+private fun itemSummary(item: FloatingItem): String {
+    val shape = if (item.effectiveCornerDp >= item.sizeDp / 2) "圆形" else "${item.cornerDp} dp 圆角"
+    return "${item.sizeDp} dp · $shape · ${item.opacity}%"
+}
+
 /**
  * The editor for one button.
  *
  * Every change is written straight through, so the button on screen updates as the settings are
- * changed — which is the whole point of being able to configure it in the first place.
+ * changed — which is the point of being able to configure it at all.
  */
 @Composable
 private fun FloatingItemDialog(
@@ -206,21 +244,22 @@ private fun FloatingItemDialog(
         title = "编辑悬浮窗",
         onDismissRequest = onDismiss,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                // The editor is taller than a short screen: bound it and let it scroll rather
+                // than let the last row fall off the bottom.
+                .heightIn(max = 460.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             SmallTitle(text = "图标")
-            ChipRow(
-                labels = FloatingIcon.entries.map { icon ->
-                    if (icon == FloatingIcon.Text) "文" else icon.glyph
-                },
-                selectedIndex = FloatingIcon.entries.indexOf(item.iconEntry).coerceAtLeast(0),
-                onSelect = { index ->
-                    FloatingIcon.entries.getOrNull(index)?.let { icon ->
-                        onChange(item.copy(icon = icon.id))
-                    }
-                },
+            IconGrid(
+                selected = item.iconEntry,
+                onSelect = { icon -> onChange(item.copy(icon = icon.id)) },
             )
 
-            if (item.iconEntry == FloatingIcon.Text) {
+            if (item.showsText) {
                 TextField(
                     value = item.text,
                     onValueChange = { onChange(item.copy(text = it)) },
@@ -230,8 +269,8 @@ private fun FloatingItemDialog(
                 )
             }
 
-            SmallTitle(text = "点击动作")
-            ChipRow(
+            SmallTitle(text = "点击")
+            TextChips(
                 labels = FloatingAction.entries.map { it.label },
                 selectedIndex = FloatingAction.entries.indexOf(item.actionEntry).coerceAtLeast(0),
                 onSelect = { index ->
@@ -241,31 +280,62 @@ private fun FloatingItemDialog(
                 },
             )
 
+            SmallTitle(text = "长按")
+            TextChips(
+                labels = listOf("无") + FloatingAction.entries.map { it.label },
+                selectedIndex = item.holdActionEntry
+                    ?.let { FloatingAction.entries.indexOf(it) + 1 }
+                    ?: 0,
+                onSelect = { index ->
+                    val action = FloatingAction.entries.getOrNull(index - 1)
+                    onChange(item.copy(holdAction = action?.id.orEmpty()))
+                },
+            )
+
             Card(modifier = Modifier.fillMaxWidth()) {
                 SliderPreference(
                     value = item.sizeDp.toFloat(),
-                    onValueChange = { size -> onChange(item.copy(sizeDp = size.roundToInt())) },
-                    title = "按钮大小",
+                    onValueChange = { size ->
+                        val next = size.roundToInt()
+                        onChange(
+                            item.copy(
+                                sizeDp = next,
+                                cornerDp = item.cornerDp.coerceAtMost(next / 2),
+                            ),
+                        )
+                    },
+                    title = "大小",
                     valueText = "${item.sizeDp} dp",
                     valueRange = FloatingWindowPrefs.MIN_SIZE_DP.toFloat()..FloatingWindowPrefs.MAX_SIZE_DP.toFloat(),
                     steps = FloatingWindowPrefs.MAX_SIZE_DP - FloatingWindowPrefs.MIN_SIZE_DP - 1,
                 )
-                SwitchPreference(
-                    title = "圆形按钮",
-                    summary = "关掉就是一个圆角方形",
-                    checked = item.round,
-                    onCheckedChange = { round -> onChange(item.copy(round = round)) },
+                SliderPreference(
+                    value = item.effectiveCornerDp.toFloat(),
+                    onValueChange = { corner -> onChange(item.copy(cornerDp = corner.roundToInt())) },
+                    title = "圆角",
+                    valueText = if (item.effectiveCornerDp >= item.sizeDp / 2) {
+                        "圆形"
+                    } else {
+                        "${item.cornerDp} dp"
+                    },
+                    valueRange = 0f..(item.sizeDp / 2).toFloat(),
+                    steps = (item.sizeDp / 2 - 1).coerceAtLeast(0),
+                )
+                SliderPreference(
+                    value = item.opacity.toFloat(),
+                    onValueChange = { opacity -> onChange(item.copy(opacity = opacity.roundToInt())) },
+                    title = "不透明度",
+                    valueText = "${item.opacity}%",
+                    valueRange = FloatingWindowPrefs.MIN_OPACITY.toFloat()..
+                        FloatingWindowPrefs.MAX_OPACITY.toFloat(),
+                    steps = FloatingWindowPrefs.MAX_OPACITY - FloatingWindowPrefs.MIN_OPACITY - 1,
                 )
             }
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Button(
                     onClick = {
-                        if (canDelete) {
-                            onDelete()
-                        } else {
-                            onNotify("至少要留一个悬浮窗")
-                        }
+                        if (canDelete) onDelete() else onNotify("至少要留一个悬浮窗")
                     },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
@@ -280,46 +350,94 @@ private fun FloatingItemDialog(
     }
 }
 
-/**
- * A row of choices.
- *
- * Deliberately not a spinner: the values are short, few, and best compared side by side, and a row
- * of chips shows the whole set — including which one is active — without a second tap.
- */
+/** The icon set, wrapped into rows so all of it is visible at once. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ChipRow(
+private fun IconGrid(selected: FloatingIcon, onSelect: (FloatingIcon) -> Unit) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        FloatingIcon.entries.forEach { icon ->
+            ChoiceCell(selected = icon == selected, onClick = { onSelect(icon) }) {
+                if (icon.isText) {
+                    Text(text = "文", style = MiuixTheme.textStyles.body2)
+                } else {
+                    Image(
+                        painter = painterResource(icon.res),
+                        contentDescription = icon.label,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A row of worded choices; "无" is prepended by the caller where that makes sense. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TextChips(
     labels: List<String>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .padding(vertical = 2.dp),
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         labels.forEachIndexed { index, label ->
-            val selected = index == selectedIndex
-            Card(
-                insideMargin = PaddingValues(horizontal = 16.dp, vertical = 9.dp),
-                colors = CardDefaults.defaultColors(
-                    color = if (selected) {
-                        MiuixTheme.colorScheme.primary
-                    } else {
-                        MiuixTheme.colorScheme.secondaryContainer
-                    },
-                    contentColor = if (selected) {
-                        MiuixTheme.colorScheme.onPrimary
-                    } else {
-                        MiuixTheme.colorScheme.onSecondaryContainer
-                    },
-                ),
+            ChoiceCell(
+                selected = index == selectedIndex,
                 onClick = { onSelect(index) },
-                showIndication = true,
-                pressFeedbackType = PressFeedbackType.Tilt,
+                wide = true,
             ) {
                 Text(text = label, style = MiuixTheme.textStyles.footnote1)
+            }
+        }
+    }
+}
+
+/** One selectable cell: a card that reads as pressed when it is the active choice. */
+@Composable
+private fun ChoiceCell(
+    selected: Boolean,
+    onClick: () -> Unit,
+    wide: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    val containerColor = if (selected) {
+        MiuixTheme.colorScheme.primary
+    } else {
+        MiuixTheme.colorScheme.secondaryContainer
+    }
+    val contentColor = if (selected) {
+        MiuixTheme.colorScheme.onPrimary
+    } else {
+        MiuixTheme.colorScheme.onSecondaryContainer
+    }
+
+    Box(modifier = Modifier.padding(vertical = 1.dp)) {
+        Card(
+            insideMargin = PaddingValues(0.dp),
+            colors = CardDefaults.defaultColors(
+                color = containerColor,
+                contentColor = contentColor,
+            ),
+            onClick = onClick,
+            showIndication = true,
+            pressFeedbackType = PressFeedbackType.Tilt,
+        ) {
+            Row(
+                modifier = Modifier
+                    .then(if (wide) Modifier.padding(horizontal = 16.dp, vertical = 9.dp) else Modifier)
+                    .then(if (wide) Modifier else Modifier.size(44.dp)),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                content()
             }
         }
     }

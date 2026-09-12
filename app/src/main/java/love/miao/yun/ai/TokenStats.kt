@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: GPL-3.0-only
 // Copyright (C) 2026 NekoPlus contributors
 //
 // Ported from NekoNeko (top.youzix.nekoneko), TokenStats.java. The original is the
-// author's own work, AGPL-3.0-only, so it is carried over here under the same terms.
+// author's own work, GPL-3.0-only, so it is carried over here under the same terms.
 
 package love.miao.yun.ai
 

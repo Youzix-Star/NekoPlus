@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  *
  * The status card, the statistic cards and the page skeleton follow InstallerX-Revived's
  * Material 3 home page (GPL-3.0), which this project is licensed to build upon.
@@ -129,9 +129,9 @@ fun MaterialHomeScreen(
                         else -> "悬浮窗未运行"
                     },
                     description = when {
-                        !hasOverlayPermission -> "缺少叠加层权限，无法显示悬浮窗"
-                        floatingRunning -> "悬浮窗已经在屏幕上了，点击可以收起"
-                        else -> "点击启动悬浮窗"
+                        !hasOverlayPermission -> "缺少叠加层权限"
+                        floatingRunning -> "已在屏幕上，点击收起"
+                        else -> "点击启动"
                     },
                     onClick = {
                         if (hasOverlayPermission) {
@@ -159,9 +159,9 @@ fun MaterialHomeScreen(
                         "无障碍服务未开启"
                     },
                     description = if (accessibilityEnabled) {
-                        "可以读取并写回当前输入框"
+                        "可读写当前输入框"
                     } else {
-                        "AI 修改需要它才能拿到输入框文本，点击去开启"
+                        "点击去开启"
                     },
                     onClick = {
                         context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -249,7 +249,7 @@ fun MaterialHomeScreen(
                         BaseWidget(
                             iconPlaceholder = false,
                             title = "项目主页",
-                            description = "在 GitHub 上查看喵喵助手的源码与发布",
+                            description = "GitHub 源码与发布",
                             onClick = { uriHandler.openUri(REPOSITORY_URL) },
                         )
                     }

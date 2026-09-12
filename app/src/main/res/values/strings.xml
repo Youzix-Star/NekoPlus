@@ -1,133 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Only the strings the platform needs by name live here: the app label, the two accessibility
+  service entries the system reads, the notification, and the results the floating window reports
+  through toasts. Screen copy is written where the screens are.
+-->
 <resources>
     <string name="app_name">喵喵助手</string>
-    <string name="app_subtitle">悬浮窗文本助手</string>
 
-    <!-- 首页 -->
-    <string name="tab_home">首页</string>
-    <string name="tab_floating">悬浮窗</string>
-    <string name="tab_settings">设置</string>
-    <string name="tab_about">关于</string>
-
-    <string name="status_working">正在作为悬浮窗</string>
-    <string name="status_working_desc">悬浮窗已在屏幕上，点击可以收起</string>
-    <string name="status_idle">悬浮窗未运行</string>
-    <string name="status_idle_desc">点击启动悬浮窗</string>
-    <string name="status_permission_missing">需要悬浮窗权限</string>
-    <string name="status_permission_missing_desc">点击前往系统设置授权</string>
-
-    <string name="stat_today">今日处理</string>
-    <string name="stat_rules">启用规则</string>
-    <string name="stat_uptime">运行时长</string>
-
-    <string name="section_overview">概览</string>
-    <string name="section_quick">快捷操作</string>
-    <string name="row_version">应用版本</string>
-    <string name="row_system">系统版本</string>
-    <string name="row_permission">悬浮窗权限</string>
-    <string name="granted">已授予</string>
-    <string name="not_granted">未授予</string>
-    <string name="row_notification">通知权限</string>
-    <string name="row_battery">电池优化</string>
-    <string name="action_grant">去授权</string>
-
-    <!-- 悬浮窗设置 -->
-    <string name="floating_title">悬浮窗</string>
-    <string name="floating_subtitle">调整悬浮窗的外观与行为</string>
-    <string name="floating_section_window">悬浮窗</string>
-    <string name="floating_section_ball">悬浮球</string>
-    <string name="floating_show">显示悬浮窗</string>
-    <string name="floating_show_sub">在任意界面显示一个可拖动的小面板</string>
-    <string name="floating_size">悬浮窗大小</string>
-    <string name="floating_corner">圆角半径</string>
-    <string name="floating_opacity">不透明度</string>
-    <string name="floating_edge">贴边吸附</string>
-    <string name="floating_edge_sub">松手后自动吸到屏幕边缘</string>
-    <string name="floating_haptic">拖动反馈</string>
-    <string name="floating_haptic_sub">拖动时轻微震动</string>
-
-    <!-- 设置 -->
-    <string name="settings_title">设置</string>
-    <string name="settings_subtitle">外观与服务</string>
-    <string name="settings_section_appearance">外观</string>
-    <string name="settings_theme_mode">主题模式</string>
-    <string name="settings_section_service">服务</string>
-    <string name="settings_autostart">开机自启</string>
-    <string name="settings_autostart_sub">开机后自动恢复悬浮窗</string>
-    <string name="settings_keep_alive">保持运行</string>
-    <string name="settings_keep_alive_sub">显示常驻通知，降低被系统清理的概率</string>
-
-    <!-- 关于 -->
-    <string name="about_title">关于</string>
-    <string name="about_section_about">关于</string>
-    <string name="about_source">获取源代码</string>
-    <string name="about_source_sub">在 GitHub 上查看 %1$s 的源码</string>
-    <string name="about_license">开源许可</string>
-    <string name="about_license_sub">本项目的依赖与许可证</string>
-    <string name="about_section_developer">开发者</string>
-    <string name="about_developer">Youzix-Star</string>
-    <string name="about_developer_sub">github.com/Youzix-Star</string>
-    <string name="about_tagline">用 miuix 拼起来的悬浮窗助手</string>
-    <string name="about_footer">仅用于演示 miuix 组件用法，暂未实现实际功能。</string>
-
-    <!-- 无障碍服务 -->
+    <!-- 无障碍服务（系统设置里显示） -->
     <string name="accessibility_service_label">喵喵助手文本捕获</string>
-    <string name="accessibility_service_description">喵喵助手需要无障碍权限，才能在你点击「AI 修改」时读取当前输入框的文字，并把改写结果写回去。开启后不会自动读取任何内容。</string>
-    <string name="accessibility_disabled">未开启无障碍服务</string>
-    <string name="accessibility_enabled">无障碍服务已开启</string>
-    <string name="action_open_accessibility">去开启无障碍</string>
+    <string name="accessibility_service_description">点击「AI 修改」时读取当前输入框的文字并写回结果，平时不读取任何内容。</string>
 
-    <!-- AI 修改文本 -->
-    <string name="ai_title">AI 修改</string>
-    <string name="ai_action">AI 修改</string>
-    <string name="ai_modifying">AI 修改中…</string>
-    <string name="ai_idle_hint">点 AI 按钮改写当前输入框</string>
-    <string name="ai_no_input">没有找到正在输入的输入框</string>
-    <string name="ai_need_accessibility">请先开启无障碍服务</string>
-    <string name="ai_need_api_key">请先在 AI 配置中填写 API Key</string>
-    <string name="ai_replaced">已改写并写回</string>
-    <string name="ai_replace_failed">已改写，但写回输入框失败</string>
-    <string name="ai_failed">AI 调用失败</string>
-
-    <!-- AI 配置 -->
-    <string name="ai_config_title">AI 配置</string>
-    <string name="ai_config_section_endpoint">接口</string>
-    <string name="ai_config_section_prompt">提示词</string>
-    <string name="ai_config_section_preset">预设</string>
-    <string name="ai_config_base_url">接口地址</string>
-    <string name="ai_config_base_url_sub">OpenAI 兼容的 chat/completions 服务</string>
-    <string name="ai_config_api_key">API Key</string>
-    <string name="ai_config_model">模型</string>
-    <string name="ai_config_system_prompt">系统提示词</string>
-    <string name="ai_config_prompt">用户提示词</string>
-    <string name="ai_config_prompt_hint">含 {text} 时替换为捕获文本，否则作为人设拼在正文前</string>
-    <string name="ai_config_fetch_models">获取模型列表</string>
-    <string name="ai_config_save_preset">保存为预设</string>
-    <string name="ai_config_apply_preset">套用预设</string>
-    <string name="ai_config_saved">已保存</string>
-    <string name="ai_config_section_stats">用量统计</string>
-    <string name="ai_config_reset">恢复默认</string>
-
-    <!-- 通知 -->
+    <!-- 常驻通知 -->
     <string name="notif_channel_name">悬浮窗服务</string>
     <string name="notif_channel_desc">保持悬浮窗在后台运行</string>
     <string name="notif_title">喵喵助手正在运行</string>
     <string name="notif_text">点击返回应用</string>
-    <!-- 悬浮窗：可自定义的多个按钮 -->
-    <string name="floating_items_title">悬浮窗按钮</string>
-    <string name="floating_add">添加悬浮窗</string>
-    <string name="floating_add_sub">再放一个按钮到屏幕上，图标、动作、大小都各自独立</string>
-    <string name="floating_edit_title">编辑悬浮窗</string>
-    <string name="floating_pick_icon">图标</string>
-    <string name="floating_custom_text">自定义文字</string>
-    <string name="floating_custom_text_hint">按钮上显示的文字，建议 1 到 3 个字</string>
-    <string name="floating_action">点击动作</string>
-    <string name="floating_round">圆形按钮</string>
-    <string name="floating_round_sub">关掉就是一个圆角方形</string>
-    <string name="floating_delete">删除这个悬浮窗</string>
-    <string name="floating_delete_sub">把它从屏幕上拿掉</string>
-    <string name="floating_keep_one">至少要留一个悬浮窗</string>
-    <string name="floating_done">完成</string>
-    <string name="floating_drag_hint">长按拖动即可移动，位置会自动记住</string>
-    <string name="floating_copied">已复制 %1$d 个字符到剪贴板</string>
+
+    <!-- 悬浮窗按钮的提示 -->
+    <string name="ai_no_input">没有找到正在输入的输入框</string>
+    <string name="ai_need_accessibility">请先开启无障碍服务</string>
+    <string name="ai_need_api_key">请先填写 API Key</string>
+    <string name="ai_replaced">已改写并写回</string>
+    <string name="ai_replace_failed">已改写，但写回失败</string>
+    <string name="ai_failed">AI 调用失败</string>
+    <string name="floating_copied">已复制 %1$d 个字符</string>
 </resources>

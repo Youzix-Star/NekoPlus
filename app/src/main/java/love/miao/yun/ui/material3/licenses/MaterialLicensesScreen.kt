@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  *
  * Rows are built from the segmented-column widgets ported from InstallerX-Revived (GPL-3.0).
  */
@@ -53,7 +53,11 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
                 "Apache License 2.0",
                 "https://cs.android.com/androidx/platform/frameworks/support",
             ),
-            LicenseEntry("Material Icons Extended", "Apache License 2.0", "https://fonts.google.com/icons"),
+            LicenseEntry(
+                "Material Icons / Material Symbols",
+                "Apache License 2.0",
+                "https://fonts.google.com/icons",
+            ),
             LicenseEntry(
                 "AndroidLiquidGlass (Kyant0)",
                 "Apache License 2.0",
@@ -105,7 +109,7 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
         contentPadding = PaddingValues(16.dp) + paddingValues,
     ) {
         item {
-            SegmentedColumn(title = "本项目基于 AGPL-3.0 开源") {
+            SegmentedColumn(title = "本项目基于 GPL-3.0 开源") {
                 entries.forEach { entry ->
                     item(key = entry.name) {
                         NavigationItemWidget(
@@ -120,7 +124,7 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
 
         item {
             Text(
-                text = "点击任意一项可在浏览器中查看其许可证原文。",
+                text = "点按可在浏览器中查看原文。",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),

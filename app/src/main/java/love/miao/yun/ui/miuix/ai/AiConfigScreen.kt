@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 package love.miao.yun.ui.miuix.ai
@@ -179,12 +179,12 @@ fun AiConfigScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     ArrowPreference(
                         title = "套用预设",
-                        summary = "内置微软式翻译、微软式中文、Emoji",
+                        summary = "内置三个预设",
                         onClick = { showPresetPicker = true },
                     )
                     ArrowPreference(
                         title = "保存为预设",
-                        summary = "把当前的接口与提示词存成一个预设",
+                        summary = "存下当前的配置",
                         onClick = {
                             presetName = ""
                             showSaveDialog = true
@@ -192,7 +192,7 @@ fun AiConfigScreen(
                     )
                     ArrowPreference(
                         title = "恢复默认",
-                        summary = "回到 DeepSeek 与默认提示词，API Key 会一并清空",
+                        summary = "清空配置，回到默认",
                         onClick = {
                             val fresh = AiManager.Config()
                             config = fresh

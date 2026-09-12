@@ -124,19 +124,33 @@ bug 就出在这一层：手势取消时，`androidx` 会立刻取消回调所�
 `floating/FloatingWindowPrefs.kt` 把按钮列表存成 JSON（`floating_window` 这个
 SharedPreferences），**每个按钮各自独立**：
 
-| 项 | 说明 |
-| --- | --- |
-| 图标 / 文字 | 九个内置图标（沿用原 NekoNeko 那套动作），或者自己写 1–3 个字 |
-| 点击动作 | AI 修改 / 复制文本 / 打开应用 / 收起悬浮窗 |
-| 大小 | 36–88 dp |
-| 形状 | 圆形，或者圆角方形 |
-| 位置 | 拖动即移动，松手后写入偏好 |
+| 项 | 说明 | 范围 |
+| --- | --- | --- |
+| 图标 | Material Symbols Rounded，15 个内置图标 | 向量 drawable |
+| 文字 | 或者不用图标，自己写 1–3 个字 | 1–3 字 |
+| 点击 | AI 修改 / 复制文本 / 打开应用 / 收起悬浮窗 | 4 选 1 |
+| 长按 | 同上，可另配一个，或留空 | 5 选 1 |
+| 大小 | 按钮边长 | 36–88 dp |
+| 圆角 | 半径，给到一半就是正圆 | 0–边长/2 dp |
+| 不透明度 | 整个按钮的透明度 | 30–100% |
+| 位置 | 拖动即移动，松手后写入偏好 | 像素 |
+
+图标做成**向量 drawable**（`res/drawable/ic_ball_*.xml`，取自
+[google/material-design-icons](https://github.com/google/material-design-icons)，Apache-2.0）
+而不是字形或 emoji：drawable 是 Compose（`painterResource`）和普通 View 悬浮层
+（`setImageResource`）都能画的那一种形式，所以设置里选到的图和屏幕上出现的图是同一份资源，
+不用为两套渲染各画一遍。选图用 `FlowRow` 平铺，一眼看全。
+
+"拖动"分组里还有两个作用于整个悬浮层的开关：**贴边吸附**（松手后吸到最近的一侧）
+与**拖动反馈**（开始拖动时轻微震动）。
 
 服务对这个偏好注册了 `OnSharedPreferenceChangeListener`：在任何一处改了按钮，屏幕上的
-按钮**当场**增删或改样子，不用重启。拖动位置只在拖动结束时落盘，所以单击永远不会写状态。
+按钮**当场**增删或改样子，不用重启。拖动位置只在拖动结束时落盘，所以单击永远不会写状态；
+长按是自己用 `postDelayed` 检测的，因为消费掉手势的 touch listener 会让
+`View.onTouchEvent` 不再执行，框架自带的长按检测也就不会触发了。
 
-执行结果用 Toast 反馈——一排按钮没有可以写状态行的面板。AI 修改运行期间按钮上的字会变成
-「…」，结束后恢复。
+执行结果用 Toast 反馈——几个按钮没有可以写状态行的面板。AI 修改运行期间按钮会变成「…」，
+结束后恢复。
 
 ### 取色
 
@@ -148,6 +162,12 @@ SharedPreferences），**每个按钮各自独立**：
 所以一个没有任何组合的 `Service` 也能直接拿到调色板。明暗按系统夜间模式决定。
 
 服务注册了 `OnSharedPreferenceChangeListener`：改设置时悬浮窗当场换色，不用重启。
+
+## 文案
+
+界面文案写在各屏的 Composable 里，`res/values/strings.xml` 只留平台按名字取的几条：
+应用名、无障碍服务条目、常驻通知，以及悬浮窗用 Toast 报的结果。之前那份脚手架留下的
+上百条 `R.string` 常量没有任何引用，已经删掉。
 
 ## 构建
 
@@ -174,8 +194,8 @@ Gradle 9.7.1、Compose BOM 2026.08.00、compileSdk 37 / minSdk 33 / targetSdk 35
 app/src/main/java/love/miao/yun/
 ├── MainActivity.kt              35 行分发器：读引擎选择 → 挂对应引擎的根 Composable
 ├── MiaoState.kt                 跨引擎共享的少量状态（悬浮窗运行中、今日计数、规则数）
-├── floating/                    悬浮窗按钮的模型与持久化（图标 / 文字 / 动作 / 大小 / 位置）
-│   └── FloatingWindowPrefs.kt
+├── floating/                    悬浮窗按钮的模型与持久化
+│   └── FloatingWindowPrefs.kt   图标 / 文字 / 点击与长按动作 / 大小 / 圆角 / 透明度 / 位置
 ├── ai/                          AI 层（移植自原 NekoNeko）
 │   ├── AiManager.kt             OpenAI 兼容接口、配置、预设
 │   └── TokenStats.kt            用量统计
@@ -206,7 +226,7 @@ app/src/main/java/love/miao/yun/
 
 ## 许可
 
-本项目以 **AGPL-3.0** 发布。
+本项目以 **GPL-3.0** 发布。
 
 其中 `ui/material3/widgets/` 移植自 [InstallerX-Revived](https://github.com/wxxsfxyzm/InstallerX-Revived)
 （GPL-3.0），`ui/miuix/liquid/` 来自 NekoEdit（Apache-2.0），

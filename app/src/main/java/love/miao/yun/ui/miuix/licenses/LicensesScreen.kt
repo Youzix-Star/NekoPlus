@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: AGPL-3.0
+ * SPDX-License-Identifier: GPL-3.0-only
  */
 
 package love.miao.yun.ui.miuix.licenses
@@ -38,7 +38,11 @@ fun LicensesScreen(contentPadding: PaddingValues) {
                 "Apache License 2.0",
                 "https://cs.android.com/androidx/platform/frameworks/support",
             ),
-            LicenseEntry("Material Icons Extended", "Apache License 2.0", "https://fonts.google.com/icons"),
+            LicenseEntry(
+                "Material Icons / Material Symbols",
+                "Apache License 2.0",
+                "https://fonts.google.com/icons",
+            ),
             LicenseEntry(
                 "AndroidLiquidGlass (Kyant0)",
                 "Apache License 2.0",
@@ -66,7 +70,7 @@ fun LicensesScreen(contentPadding: PaddingValues) {
     ) {
         item(key = "licenses") {
             Column {
-                SmallTitle(text = "本项目基于 AGPL-3.0 开源")
+                SmallTitle(text = "本项目基于 GPL-3.0 开源")
                 Card(modifier = Modifier.fillMaxWidth()) {
                     entries.forEachIndexed { index, entry ->
                         if (index > 0) {
@@ -83,7 +87,7 @@ fun LicensesScreen(contentPadding: PaddingValues) {
 
         item(key = "footer") {
             Text(
-                text = "点击任意一项可在浏览器中查看其许可证原文。",
+                text = "点按可在浏览器中查看原文。",
                 style = MiuixTheme.textStyles.footnote2,
                 color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
                 modifier = Modifier
