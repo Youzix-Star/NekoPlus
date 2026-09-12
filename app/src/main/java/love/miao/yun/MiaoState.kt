@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.UiEngine
+import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 
 /**
  * Process-wide UI state for the shell.
@@ -41,6 +42,9 @@ object MiaoState {
 
     /** Which palette the floating window uses; persisted alongside the engine. */
     var floatingColorSource by mutableStateOf(FloatingColorSource.Dynamic)
+
+    /** Which predictive-back animation plays on second-level pages. */
+    var predictiveBackStyle by mutableStateOf(PredictiveBackStyle.Aosp)
 
     /** Placeholder counters so the home page has something to draw. */
     var todayCount by mutableStateOf(0)

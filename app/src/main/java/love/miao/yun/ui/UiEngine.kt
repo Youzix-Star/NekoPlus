@@ -6,6 +6,7 @@
 package love.miao.yun.ui
 
 import android.content.Context
+import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 
 /**
  * Which UI engine draws the app.
@@ -29,6 +30,7 @@ object UiEnginePrefs {
     private const val KEY_ENGINE = "ui_engine"
     private const val KEY_USE_BLUR = "use_blur"
     private const val KEY_FLOATING_COLOR = "floating_color"
+    private const val KEY_PREDICTIVE_BACK = "predictive_back"
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -76,6 +78,14 @@ object UiEnginePrefs {
         listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener,
     ) {
         prefs(context).unregisterOnSharedPreferenceChangeListener(listener)
+    }
+
+    /** Which predictive-back animation second-level pages use. */
+    fun loadPredictiveBackStyle(context: Context): PredictiveBackStyle =
+        PredictiveBackStyle.from(prefs(context).getString(KEY_PREDICTIVE_BACK, null))
+
+    fun savePredictiveBackStyle(context: Context, style: PredictiveBackStyle) {
+        prefs(context).edit().putString(KEY_PREDICTIVE_BACK, style.id).apply()
     }
 
     /** True when [key] is the floating window's palette, i.e. the overlay must restyle. */

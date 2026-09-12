@@ -51,6 +51,7 @@ fun SettingsScreen(
     // One row that opens a chooser, mirroring how the reference app picks its UI engine.
     val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
     val engineItems = remember { UiEngine.entries.map { DropdownItem(text = it.label) } }
+    val backStyleItems = remember { PredictiveBackStyle.entries.map { DropdownItem(text = it.label) } }
     val context = LocalContext.current
     val selectedThemeIndex = ThemeModeOptions
         .indexOfFirst { it.first == colorSchemeMode }
@@ -74,6 +75,19 @@ fun SettingsScreen(
                         selectedIndex = selectedThemeIndex,
                         onSelectedIndexChange = { index ->
                             ThemeModeOptions.getOrNull(index)?.let { onColorSchemeModeChange(it.first) }
+                        },
+                    )
+                    WindowSpinnerPreference(
+                        title = "预见式返回动画",
+                        summary = "二级页面返回时的跟手动画：AOSP 形体变换、Miuix 自带效果，或不做动画",
+                        items = backStyleItems,
+                        selectedIndex = PredictiveBackStyle.entries
+                            .indexOf(MiaoState.predictiveBackStyle).coerceAtLeast(0),
+                        onSelectedIndexChange = { index ->
+                            PredictiveBackStyle.entries.getOrNull(index)?.let {
+                                MiaoState.predictiveBackStyle = it
+                                UiEnginePrefs.savePredictiveBackStyle(context, it)
+                            }
                         },
                     )
                     SwitchPreference(

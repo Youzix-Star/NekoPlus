@@ -20,8 +20,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -44,8 +42,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.collect
@@ -60,7 +57,6 @@ import kotlinx.coroutines.launch
 import love.miao.yun.MiaoState
 import love.miao.yun.service.FloatingWindowService
 import love.miao.yun.ui.AppIcons
-import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.material3.about.MaterialAboutScreen
 import love.miao.yun.ui.material3.ai.MaterialAiConfigScreen
 import love.miao.yun.ui.material3.floating.MaterialFloatingScreen
@@ -68,7 +64,13 @@ import love.miao.yun.ui.material3.home.MaterialHomeScreen
 import love.miao.yun.ui.material3.licenses.MaterialLicensesScreen
 import love.miao.yun.ui.material3.settings.MaterialSettingsScreen
 import love.miao.yun.ui.material3.widgets.SwipeableSnackbarHost
+import love.miao.yun.ui.predictiveback.cancelSpec
+import love.miao.yun.ui.predictiveback.commitSpec
+import love.miao.yun.ui.predictiveback.navTransition
+import love.miao.yun.ui.predictiveback.rememberPredictiveBackScope
+import love.miao.yun.ui.predictiveback.rememberPredictiveBackState
 import love.miao.yun.ui.rememberMainPagerState
+import top.yukonga.miuix.kmp.nav.transition.NavSwipeEdge
 
 private const val TAB_HOME = 0
 private const val TAB_FLOATING = 1
@@ -173,17 +175,18 @@ private fun MaterialShell(
         mainPagerState.animateToPage(0)
     }
 
-    // ---- second-level pages: slide in, and follow the back gesture the AOSP way ----
+    // ---- second-level pages ----
+    // Entering and leaving play the same slide as before; the back gesture and its release are
+    // handed to whichever predictive-back style the user picked, so both layers are animated by
+    // the reference project's transition code.
     val subEnter = remember { Animatable(0f) }
-    val subBack = remember { Animatable(0f) }
-    var backSwipeEdge by remember { mutableIntStateOf(BackEventCompat.EDGE_LEFT) }
-    var backTouchDeltaY by remember { mutableFloatStateOf(0f) }
-    var backStartTouchY by remember { mutableFloatStateOf(Float.NaN) }
+    val back = rememberPredictiveBackState()
     val settleScope = rememberCoroutineScope()
+    val backTransition = MiaoState.predictiveBackStyle.transition
 
     val closeSubPage: () -> Unit = {
         settleScope.launch {
-            subBack.snapTo(0f)
+            back.forceReset()
             subEnter.animateTo(0f, tween(durationMillis = 200, easing = FastOutSlowInEasing))
             subPage = null
         }
@@ -191,39 +194,72 @@ private fun MaterialShell(
 
     LaunchedEffect(subPage) {
         if (subPage != null) {
-            subBack.snapTo(0f)
+            back.forceReset()
             subEnter.snapTo(0f)
             subEnter.animateTo(1f, tween(durationMillis = 280, easing = FastOutSlowInEasing))
         }
     }
 
     PredictiveBackHandler(enabled = subPage != null) { progress ->
+        back.onGestureStart()
+        back.onDismissed = {
+            subPage = null
+            subEnter.snapTo(0f)
+            back.forceReset()
+        }
         try {
             progress.collect { event ->
-                backSwipeEdge = event.swipeEdge
-                if (backStartTouchY.isNaN()) backStartTouchY = event.touchY
-                backTouchDeltaY = event.touchY - backStartTouchY
-                subBack.snapTo(event.progress)
+                back.onGestureProgress(
+                    edge = if (event.swipeEdge == BackEventCompat.EDGE_RIGHT) {
+                        NavSwipeEdge.Right
+                    } else {
+                        NavSwipeEdge.Left
+                    },
+                    touchY = event.touchY,
+                    fraction = event.progress,
+                )
             }
-            settleScope.launch {
-                subBack.animateTo(1f, tween(durationMillis = 140))
-                subPage = null
-                subBack.snapTo(0f)
-                subEnter.snapTo(0f)
-                backStartTouchY = Float.NaN
-                backTouchDeltaY = 0f
-            }
+            back.settleTo(commit = true, spec = backTransition.commitSpec())
         } catch (cancelled: CancellationException) {
-            settleScope.launch {
-                subBack.animateTo(0f, spring(stiffness = Spring.StiffnessMediumLow))
-                backStartTouchY = Float.NaN
-                backTouchDeltaY = 0f
-            }
+            back.settleTo(commit = false, spec = backTransition.cancelSpec())
             throw cancelled
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // Both layers feed the same transition: the level-one content plays the "covered" role while
+    // the gesture is live, exactly as the reference project's stack does.
+    val gestureActive = back.value > 0f || back.settle != null
+    val coveredScope = rememberPredictiveBackScope(
+        dismissProgress = { back.value },
+        covered = true,
+        layerSize = { back.layerSize },
+        gesture = { back.gesture },
+        settle = { back.settle },
+    )
+    val outgoingScope = rememberPredictiveBackScope(
+        dismissProgress = { back.value },
+        covered = false,
+        layerSize = { back.layerSize },
+        gesture = { back.gesture },
+        settle = { back.settle },
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onSizeChanged { back.layerSize = it },
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(
+                    if (gestureActive) {
+                        Modifier.navTransition(backTransition, coveredScope)
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
@@ -293,20 +329,16 @@ private fun MaterialShell(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        val dragged = subBack.value
-                        if (dragged > 0f) {
-                            aospPredictiveBack(
-                                progress = dragged,
-                                swipeEdge = backSwipeEdge,
-                                touchDeltaY = backTouchDeltaY,
-                            )
-                            alpha = 1f
+                    .then(
+                        if (gestureActive) {
+                            Modifier.navTransition(backTransition, outgoingScope)
                         } else {
-                            translationX = (1f - subEnter.value) * size.width
-                            alpha = 0.5f + 0.5f * subEnter.value
-                        }
-                    },
+                            Modifier.graphicsLayer {
+                                translationX = (1f - subEnter.value) * size.width
+                                alpha = 0.5f + 0.5f * subEnter.value
+                            }
+                        },
+                    ),
             ) {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -339,6 +371,7 @@ private fun MaterialShell(
                     }
                 }
             }
+        }
         }
     }
 }

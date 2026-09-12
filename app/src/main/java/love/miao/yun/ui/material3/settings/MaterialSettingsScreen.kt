@@ -41,6 +41,7 @@ import love.miao.yun.ui.material3.widgets.DropDownMenuWidget
 import love.miao.yun.ui.material3.widgets.NavigationItemWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
 import love.miao.yun.ui.material3.widgets.SwitchWidget
+import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 @Composable
@@ -105,6 +106,22 @@ fun MaterialSettingsScreen(
                             description = "Android 12+ 跟随壁纸取色",
                             checked = dynamicColor,
                             onCheckedChange = onDynamicColorChange,
+                        )
+                    }
+                    item {
+                        DropDownMenuWidget(
+                            icon = AppIcons.Back,
+                            title = "预见式返回动画",
+                            description = "二级页面返回时的跟手动画",
+                            choice = PredictiveBackStyle.entries
+                                .indexOf(MiaoState.predictiveBackStyle).coerceAtLeast(0),
+                            data = PredictiveBackStyle.entries.map { it.label },
+                            onChoiceChange = { index ->
+                                PredictiveBackStyle.entries.getOrNull(index)?.let {
+                                    MiaoState.predictiveBackStyle = it
+                                    UiEnginePrefs.savePredictiveBackStyle(context, it)
+                                }
+                            },
                         )
                     }
                     item {

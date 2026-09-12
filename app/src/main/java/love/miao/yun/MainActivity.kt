@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
         MiaoState.engine = UiEnginePrefs.load(this)
         MiaoState.useBlur = UiEnginePrefs.loadUseBlur(this)
         MiaoState.floatingColorSource = UiEnginePrefs.loadFloatingColor(this)
+        MiaoState.predictiveBackStyle = UiEnginePrefs.loadPredictiveBackStyle(this)
         setContent {
             when (MiaoState.engine) {
                 UiEngine.Miuix -> MiuixApp()
