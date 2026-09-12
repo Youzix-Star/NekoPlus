@@ -28,9 +28,11 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 import love.miao.yun.MainActivity
 import love.miao.yun.MiaoState
+import love.miao.yun.R
+import love.miao.yun.ai.AiManager
+import love.miao.yun.ai.TokenStats
 import love.miao.yun.ui.FloatingPalettes
 import love.miao.yun.ui.UiEnginePrefs
-import love.miao.yun.R
 
 /**
  * A deliberately minimal floating window: it drags, it can be closed, and it announces itself
@@ -52,6 +54,7 @@ class FloatingWindowService : Service() {
     private var titleView: TextView? = null
     private var subtitleView: TextView? = null
     private var closeView: TextView? = null
+    private var aiView: TextView? = null
 
     /**
      * The overlay outlives the activity, so it cannot read the palette once at startup: it
@@ -98,6 +101,7 @@ class FloatingWindowService : Service() {
         titleView?.setTextColor(palette.onContainer)
         subtitleView?.setTextColor(palette.onContainerMuted)
         closeView?.setTextColor(palette.onContainer)
+        aiView?.setTextColor(palette.onContainer)
     }
 
     // ------------------------------------------------------------------ overlay
@@ -131,11 +135,19 @@ class FloatingWindowService : Service() {
         )
         labels.addView(
             TextView(context).apply {
-                text = getString(R.string.app_subtitle)
+                text = getString(R.string.ai_idle_hint)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
             }.also { subtitleView = it },
         )
         panel.addView(labels)
+
+        val ai = TextView(context).apply {
+            text = getString(R.string.ai_action)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            setPadding((12 * density).roundToInt(), (6 * density).roundToInt(), (12 * density).roundToInt(), (6 * density).roundToInt())
+            setOnClickListener { runAiModify() }
+        }.also { aiView = it }
+        panel.addView(ai)
 
         val close = TextView(context).apply {
             text = "✕"
@@ -199,6 +211,69 @@ class FloatingWindowService : Service() {
                 layoutParams = params
             }
             .onFailure { stopSelf() }
+    }
+
+    // ------------------------------------------------------------------ AI 修改
+
+    /**
+     * The whole feature in one press: capture the focused field, rewrite it through the
+     * configured model, and write the result back.
+     *
+     * Every failure is reported in the panel's second line rather than in a dialog, because the
+     * overlay has no window of its own to show one in.
+     */
+    private fun runAiModify() {
+        val service = MiaoAccessibilityService.instance()
+        if (service == null) {
+            setStatus(getString(R.string.ai_need_accessibility))
+            return
+        }
+
+        val original = service.getCurrentWindowText()
+        if (original.isEmpty()) {
+            setStatus(getString(R.string.ai_no_input))
+            return
+        }
+
+        val config = AiManager.load(this)
+        if (config.apiKey.isNullOrBlank()) {
+            setStatus(getString(R.string.ai_need_api_key))
+            return
+        }
+
+        setStatus(getString(R.string.ai_modifying))
+        AiManager.modifyText(
+            config,
+            original,
+            object : AiManager.Callback {
+                override fun onSuccess(modifiedText: String) {
+                    AiManager.consumeLastUsage()?.let { usage ->
+                        TokenStats.record(
+                            this@FloatingWindowService,
+                            usage.model ?: config.model,
+                            usage.promptTokens,
+                            usage.completionTokens,
+                            usage.totalTokens,
+                            usage.cachedTokens,
+                        )
+                    }
+                    val written = service.replaceInputText(modifiedText)
+                    setStatus(
+                        getString(
+                            if (written) R.string.ai_replaced else R.string.ai_replace_failed,
+                        ),
+                    )
+                }
+
+                override fun onError(message: String) {
+                    setStatus(getString(R.string.ai_failed) + "：" + message)
+                }
+            },
+        )
+    }
+
+    private fun setStatus(text: String) {
+        subtitleView?.text = text
     }
 
     // ------------------------------------------------------------------ notification

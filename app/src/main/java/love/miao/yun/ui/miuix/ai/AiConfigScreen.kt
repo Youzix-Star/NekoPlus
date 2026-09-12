@@ -1,0 +1,298 @@
+/*
+ * Copyright 2026, Youzix-Star
+ * SPDX-License-Identifier: AGPL-3.0
+ */
+
+package love.miao.yun.ui.miuix.ai
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import love.miao.yun.ai.AiManager
+import love.miao.yun.ai.TokenStats
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+
+/**
+ * The AI configuration page for the miuix engine.
+ *
+ * Every edit is mirrored into [AiManager.save] immediately, so there is no save button to
+ * forget and leaving the page never drops a prompt that was just typed.
+ */
+@Composable
+fun AiConfigScreen(
+    contentPadding: PaddingValues,
+    scrollBehavior: ScrollBehavior,
+    onNotify: (String) -> Unit,
+) {
+    val context = LocalContext.current
+
+    var config by remember { mutableStateOf(AiManager.load(context)) }
+    var stats by remember { mutableStateOf(TokenStats.query(context, 0L, null)) }
+    var showPresetPicker by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var presetName by remember { mutableStateOf("") }
+    var fetching by remember { mutableStateOf(false) }
+
+    val presetNames = remember { AiManager.getAllPresetNames(context) }
+    /** A single funnel for edits, so the local copy and SharedPreferences never drift apart. */
+    fun edit(block: (AiManager.Config) -> Unit) {
+        val next = AiManager.Config().also {
+            it.baseUrl = config.baseUrl
+            it.apiKey = config.apiKey
+            it.model = config.model
+            it.systemPrompt = config.systemPrompt
+            it.prompt = config.prompt
+        }
+        block(next)
+        config = next
+        AiManager.save(context, next)
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentPadding = contentPadding,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item(key = "endpoint") {
+            Column {
+                SmallTitle(text = "接口")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    TextField(
+                        value = config.baseUrl.orEmpty(),
+                        onValueChange = { text -> edit { it.baseUrl = text } },
+                        label = "接口地址",
+                        singleLine = true,
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    TextField(
+                        value = config.apiKey.orEmpty(),
+                        onValueChange = { text -> edit { it.apiKey = text } },
+                        label = "API Key",
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    TextField(
+                        value = config.model.orEmpty(),
+                        onValueChange = { text -> edit { it.model = text } },
+                        label = "模型",
+                        singleLine = true,
+                    )
+                }
+            }
+        }
+
+        item(key = "fetch") {
+            Column {
+                SmallTitle(text = "连接")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = {
+                            if (fetching) return@Button
+                            fetching = true
+                            AiManager.listModels(
+                                config,
+                                object : AiManager.ListCallback {
+                                    override fun onSuccess(models: List<String>) {
+                                        fetching = false
+                                        onNotify(
+                                            "连通，共 ${models.size} 个模型，例如 " +
+                                                models.take(2).joinToString("、"),
+                                        )
+                                        // Only adopt a model when the field is empty, so a
+                                        // deliberate choice is never overwritten.
+                                        if (config.model.isNullOrBlank() && models.isNotEmpty()) {
+                                            edit { it.model = models.first() }
+                                        }
+                                    }
+
+                                    override fun onError(message: String) {
+                                        fetching = false
+                                        onNotify("连接失败：" + message)
+                                    }
+                                },
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(if (fetching) "获取中…" else "获取模型列表")
+                    }
+                }
+            }
+        }
+
+        item(key = "prompt") {
+            Column {
+                SmallTitle(text = "提示词")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    TextField(
+                        value = config.systemPrompt.orEmpty(),
+                        onValueChange = { text -> edit { it.systemPrompt = text } },
+                        label = "系统提示词",
+                        maxLines = 4,
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    TextField(
+                        value = config.prompt.orEmpty(),
+                        onValueChange = { text -> edit { it.prompt = text } },
+                        label = "用户提示词",
+                        maxLines = 6,
+                    )
+                }
+            }
+        }
+
+        item(key = "preset") {
+            Column {
+                SmallTitle(text = "预设")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    ArrowPreference(
+                        title = "套用预设",
+                        summary = "内置微软式翻译、微软式中文、Emoji",
+                        onClick = { showPresetPicker = true },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    ArrowPreference(
+                        title = "保存为预设",
+                        summary = "把当前的接口与提示词存成一个预设",
+                        onClick = {
+                            presetName = ""
+                            showSaveDialog = true
+                        },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    ArrowPreference(
+                        title = "恢复默认",
+                        summary = "回到 DeepSeek 与默认提示词，API Key 会一并清空",
+                        onClick = {
+                            val fresh = AiManager.Config()
+                            config = fresh
+                            AiManager.save(context, fresh)
+                            onNotify("已恢复默认")
+                        },
+                    )
+                }
+            }
+        }
+
+        item(key = "stats") {
+            Column {
+                SmallTitle(text = "用量统计")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "累计 ${stats.totalCalls} 次调用",
+                            style = MiuixTheme.textStyles.title4,
+                        )
+                        Text(
+                            text = "输入 ${stats.totalPromptTokens} · 输出 " +
+                                "${stats.totalCompletionTokens} · 合计 ${stats.totalTokens}",
+                            style = MiuixTheme.textStyles.body2,
+                        )
+                        Text(
+                            text = "缓存命中 ${stats.cachedTokens} tokens" +
+                                "（${stats.cacheHitPercent()}% 的调用命中）",
+                            style = MiuixTheme.textStyles.body2,
+                        )
+                    }
+                }
+            }
+        }
+
+        item(key = "refresh") {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = { stats = TokenStats.query(context, 0L, null) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("刷新统计")
+                }
+            }
+        }
+    }
+
+    OverlayDialog(
+        show = showPresetPicker,
+        title = "套用预设",
+        onDismissRequest = { showPresetPicker = false },
+    ) {
+        Column {
+            presetNames.forEach { name ->
+                ArrowPreference(
+                    title = name,
+                    onClick = {
+                        val preset = AiManager.loadPreset(context, name)
+                        // A builtin preset only carries a prompt: blank fields mean "keep what
+                        // is already here", not "clear it".
+                        val merged = AiManager.Config().also {
+                            it.baseUrl = preset.baseUrl?.takeIf { v -> v.isNotBlank() }
+                                ?: config.baseUrl
+                            it.apiKey = preset.apiKey?.takeIf { v -> v.isNotBlank() }
+                                ?: config.apiKey
+                            it.model = preset.model?.takeIf { v -> v.isNotBlank() }
+                                ?: config.model
+                            it.systemPrompt = preset.systemPrompt
+                            it.prompt = preset.prompt
+                        }
+                        config = merged
+                        AiManager.save(context, merged)
+                        onNotify("已套用预设「$name」")
+                        showPresetPicker = false
+                    },
+                )
+            }
+        }
+    }
+
+    OverlayDialog(
+        show = showSaveDialog,
+        title = "保存为预设",
+        onDismissRequest = { showSaveDialog = false },
+    ) {
+        Column {
+            TextField(
+                value = presetName,
+                onValueChange = { presetName = it },
+                label = "预设名",
+                singleLine = true,
+            )
+            Button(
+                onClick = {
+                    val name = presetName.trim()
+                    if (name.isNotEmpty()) {
+                        AiManager.savePreset(context, name, config)
+                        onNotify("已保存预设「$name」")
+                    }
+                    showSaveDialog = false
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("保存")
+            }
+        }
+    }
+}

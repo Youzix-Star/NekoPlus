@@ -57,6 +57,7 @@ import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.miuix.about.AboutScreen
+import love.miao.yun.ui.miuix.ai.AiConfigScreen
 import love.miao.yun.ui.miuix.floating.FloatingScreen
 import love.miao.yun.ui.miuix.home.HomeScreen
 import love.miao.yun.ui.miuix.licenses.LicensesScreen
@@ -90,6 +91,7 @@ const val TAB_ABOUT = 3
  * transition (which previews the *parent* you are returning to) has no meaning there.
  */
 enum class MiuixSubPage(val title: String) {
+    AiConfig("AI 配置"),
     Licenses("开源许可"),
 }
 
@@ -271,6 +273,7 @@ fun MiaoShell(
             onToggleFloating = toggleFloating,
             onRequestOverlay = requestOverlay,
             onNotify = notify,
+            onOpenAiConfig = { subPage = MiuixSubPage.AiConfig },
             onOpenLicenses = { subPage = MiuixSubPage.Licenses },
             onTabSelected = { index -> mainPagerState.animateToPage(index) },
         )
@@ -318,6 +321,12 @@ fun MiaoShell(
                         bottom = innerPadding.calculateBottomPadding() + 24.dp,
                     )
                     when (openSubPage) {
+                        MiuixSubPage.AiConfig -> AiConfigScreen(
+                            contentPadding = subPadding,
+                            scrollBehavior = MiuixScrollBehavior(),
+                            onNotify = onNotify,
+                        )
+
                         MiuixSubPage.Licenses -> LicensesScreen(contentPadding = subPadding)
                     }
                 }
@@ -346,6 +355,7 @@ private fun MiaoTabs(
     onToggleFloating: () -> Unit,
     onRequestOverlay: () -> Unit,
     onNotify: (String) -> Unit,
+    onOpenAiConfig: () -> Unit,
     onOpenLicenses: () -> Unit,
     onTabSelected: (Int) -> Unit,
 ) {
@@ -427,6 +437,7 @@ private fun MiaoTabs(
                         onUseLiquidGlassChange = useLiquidGlassChange,
                         engine = engine,
                         onEngineChange = onEngineChange,
+                        onOpenAiConfig = onOpenAiConfig,
                         onNotify = onNotify,
                     )
 

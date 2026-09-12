@@ -9,6 +9,8 @@
 
 package love.miao.yun.ui.material3.settings
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -30,6 +32,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import love.miao.yun.MiaoState
+import love.miao.yun.service.MiaoAccessibilityService
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.UiEngine
@@ -52,8 +55,10 @@ fun MaterialSettingsScreen(
     dynamicColor: Boolean,
     onDynamicColorChange: (Boolean) -> Unit,
     onNotify: (String) -> Unit,
+    onOpenAiConfig: () -> Unit,
 ) {
     val context = LocalContext.current
+    val accessibilityEnabled = MiaoAccessibilityService.isEnabled(context)
     var autoStart by remember { mutableStateOf(false) }
     var keepAlive by remember { mutableStateOf(true) }
     val engine = MiaoState.engine
@@ -150,6 +155,37 @@ fun MaterialSettingsScreen(
                                 UiEngine.entries.getOrNull(index)?.let {
                                     MiaoState.engine = it
                                     UiEnginePrefs.save(context, it)
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+
+            item {
+                SegmentedColumn(title = "AI 修改文本") {
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Tune,
+                            title = "AI 配置",
+                            description = "接口地址、API Key、模型与提示词",
+                            onClick = onOpenAiConfig,
+                        )
+                    }
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Grant,
+                            title = "无障碍服务",
+                            description = if (accessibilityEnabled) {
+                                "已开启，可以读取并写回当前输入框"
+                            } else {
+                                "未开启，AI 修改需要它才能拿到输入框文本"
+                            },
+                            onClick = {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
+                                    )
                                 }
                             },
                         )

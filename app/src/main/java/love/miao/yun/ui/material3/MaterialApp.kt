@@ -62,6 +62,7 @@ import love.miao.yun.service.FloatingWindowService
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.material3.about.MaterialAboutScreen
+import love.miao.yun.ui.material3.ai.MaterialAiConfigScreen
 import love.miao.yun.ui.material3.floating.MaterialFloatingScreen
 import love.miao.yun.ui.material3.home.MaterialHomeScreen
 import love.miao.yun.ui.material3.licenses.MaterialLicensesScreen
@@ -79,6 +80,7 @@ private const val TAB_ABOUT = 3
  * navigation tabs moves between siblings, so there is no parent screen to preview.
  */
 private enum class MaterialSubPage(val title: String) {
+    AiConfig("AI 配置"),
     Licenses("开源许可"),
 }
 
@@ -272,6 +274,7 @@ private fun MaterialShell(
                         onThemeModeChange = onThemeModeChange,
                         dynamicColor = dynamicColor,
                         onDynamicColorChange = onDynamicColorChange,
+                        onOpenAiConfig = { subPage = MaterialSubPage.AiConfig },
                         onNotify = notify,
                     )
 
@@ -326,6 +329,12 @@ private fun MaterialShell(
                     },
                 ) { paddingValues ->
                     when (openSubPage) {
+                        MaterialSubPage.AiConfig -> MaterialAiConfigScreen(
+                            outerPadding = paddingValues,
+                            useBlur = MiaoState.useBlur,
+                            onNotify = notify,
+                        )
+
                         MaterialSubPage.Licenses -> MaterialLicensesScreen(outerPadding = paddingValues)
                     }
                 }
