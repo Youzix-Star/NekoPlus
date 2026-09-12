@@ -9,30 +9,22 @@
 
 package love.miao.yun.ui.material3.settings
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -42,13 +34,18 @@ import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.ThemeMode
-import love.miao.yun.ui.material3.widgets.NavigationItemWidget
+import love.miao.yun.ui.material3.material3AppBarColor
+import love.miao.yun.ui.material3.material3BlurEffect
+import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
+import love.miao.yun.ui.material3.widgets.DropDownMenuWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
 import love.miao.yun.ui.material3.widgets.SwitchWidget
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 @Composable
 fun MaterialSettingsScreen(
     outerPadding: PaddingValues,
+    useBlur: Boolean,
     themeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
     dynamicColor: Boolean,
@@ -56,22 +53,26 @@ fun MaterialSettingsScreen(
     onNotify: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    var showThemeDialog by remember { mutableStateOf(false) }
-    var showEngineDialog by remember { mutableStateOf(false) }
     var autoStart by remember { mutableStateOf(false) }
     var keepAlive by remember { mutableStateOf(true) }
     val engine = MiaoState.engine
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberMaterial3BlurBackdrop(useBlur)
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.material3BlurEffect(backdrop),
                 title = { Text("设置", modifier = Modifier.padding(start = 12.dp)) },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = backdrop.material3AppBarColor(),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    scrolledContainerColor = backdrop.material3AppBarColor(),
                 ),
             )
         },
@@ -79,17 +80,20 @@ fun MaterialSettingsScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
             contentPadding = paddingValues + outerPadding,
         ) {
             item {
                 SegmentedColumn(title = "外观") {
                     item {
-                        NavigationItemWidget(
+                        DropDownMenuWidget(
                             icon = AppIcons.Settings,
                             title = "主题模式",
-                            description = themeMode.label,
-                            onClick = { showThemeDialog = true },
+                            choice = ThemeMode.entries.indexOf(themeMode).coerceAtLeast(0),
+                            data = ThemeMode.entries.map { it.label },
+                            onChoiceChange = { index ->
+                                ThemeMode.entries.getOrNull(index)?.let(onThemeModeChange)
+                            },
                         )
                     }
                     item {
@@ -101,17 +105,36 @@ fun MaterialSettingsScreen(
                             onCheckedChange = onDynamicColorChange,
                         )
                     }
+                    item {
+                        SwitchWidget(
+                            icon = AppIcons.Tune,
+                            title = "毛玻璃顶栏",
+                            description = "顶栏使用实时模糊；关闭后为不透明表面色",
+                            checked = MiaoState.useBlur,
+                            onCheckedChange = {
+                                MiaoState.useBlur = it
+                                UiEnginePrefs.saveUseBlur(context, it)
+                            },
+                        )
+                    }
                 }
             }
 
             item {
                 SegmentedColumn(title = "界面引擎") {
                     item {
-                        NavigationItemWidget(
+                        DropDownMenuWidget(
                             icon = AppIcons.Tune,
                             title = "界面引擎",
-                            description = "${engine.label} · Miuix 与 Material Design 是两套完整的界面实现",
-                            onClick = { showEngineDialog = true },
+                            description = "Miuix 与 Material Design 是两套完整的界面实现",
+                            choice = UiEngine.entries.indexOf(engine).coerceAtLeast(0),
+                            data = UiEngine.entries.map { it.label },
+                            onChoiceChange = { index ->
+                                UiEngine.entries.getOrNull(index)?.let {
+                                    MiaoState.engine = it
+                                    UiEnginePrefs.save(context, it)
+                                }
+                            },
                         )
                     }
                 }
@@ -141,73 +164,4 @@ fun MaterialSettingsScreen(
             }
         }
     }
-
-    if (showThemeDialog) {
-        ChoiceDialog(
-            title = "主题模式",
-            options = ThemeMode.entries.map { it.label },
-            selectedIndex = ThemeMode.entries.indexOf(themeMode).coerceAtLeast(0),
-            onSelect = { index ->
-                ThemeMode.entries.getOrNull(index)?.let(onThemeModeChange)
-                showThemeDialog = false
-            },
-            onDismiss = { showThemeDialog = false },
-        )
-    }
-
-    if (showEngineDialog) {
-        ChoiceDialog(
-            title = "界面引擎",
-            options = UiEngine.entries.map { it.label },
-            selectedIndex = UiEngine.entries.indexOf(engine).coerceAtLeast(0),
-            onSelect = { index ->
-                UiEngine.entries.getOrNull(index)?.let {
-                    MiaoState.engine = it
-                    UiEnginePrefs.save(context, it)
-                }
-                showEngineDialog = false
-            },
-            onDismiss = { showEngineDialog = false },
-        )
-    }
-}
-
-@Composable
-private fun ChoiceDialog(
-    title: String,
-    options: List<String>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                options.forEachIndexed { index, option ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onSelect(index) }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(
-                            selected = index == selectedIndex,
-                            onClick = { onSelect(index) },
-                        )
-                        Text(
-                            text = option,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 8.dp),
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("取消") }
-        },
-    )
 }

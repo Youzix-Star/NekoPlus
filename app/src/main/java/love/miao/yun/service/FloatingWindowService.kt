@@ -24,11 +24,11 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import love.miao.yun.MainActivity
 import love.miao.yun.MiaoState
 import love.miao.yun.R
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 /**
  * A deliberately minimal floating window: it drags, it can be closed, and it announces itself

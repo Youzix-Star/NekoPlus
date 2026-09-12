@@ -23,6 +23,13 @@ object MiaoState {
     /** Which engine draws the app; persisted on change via [love.miao.yun.ui.UiEnginePrefs]. */
     var engine by mutableStateOf(UiEngine.Miuix)
 
+    /**
+     * Translucent surfaces: the miuix bottom bar's liquid glass, and the Material 3 top bar's
+     * blur. Persisted alongside the engine. Switching it off also avoids the RenderEffect cost
+     * on devices that can technically render it.
+     */
+    var useBlur by mutableStateOf(true)
+
     /** Placeholder counters so the home page has something to draw. */
     var todayCount by mutableStateOf(0)
     var ruleCount by mutableStateOf(0)

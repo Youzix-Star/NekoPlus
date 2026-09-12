@@ -7,7 +7,6 @@ package love.miao.yun.ui.miuix
 
 import android.content.Intent
 import android.net.Uri
-import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.BackEventCompat
 import androidx.activity.compose.BackHandler
@@ -48,6 +47,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import love.miao.yun.MiaoState
@@ -55,7 +55,6 @@ import love.miao.yun.service.FloatingWindowService
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
-import love.miao.yun.ui.rememberMainPagerState
 import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.miuix.about.AboutScreen
 import love.miao.yun.ui.miuix.floating.FloatingScreen
@@ -63,10 +62,11 @@ import love.miao.yun.ui.miuix.home.HomeScreen
 import love.miao.yun.ui.miuix.licenses.LicensesScreen
 import love.miao.yun.ui.miuix.liquid.FloatingBottomBar
 import love.miao.yun.ui.miuix.settings.SettingsScreen
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.NavigationItem
+import love.miao.yun.ui.rememberMainPagerState
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.NavigationItem
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SnackbarHost
@@ -77,7 +77,6 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import kotlin.coroutines.cancellation.CancellationException
 
 const val TAB_HOME = 0
 const val TAB_FLOATING = 1
@@ -98,15 +97,21 @@ enum class MiuixSubPage(val title: String) {
 @Composable
 fun MiuixApp() {
     var colorSchemeMode by remember { mutableStateOf(ColorSchemeMode.MonetSystem) }
-    var useLiquidGlass by remember { mutableStateOf(true) }
     val context = LocalContext.current
+
+    // One persisted switch drives translucency in both engines: this engine's liquid-glass
+    // bottom bar, and the Material 3 engine's blurred top bar.
+    val useLiquidGlass = MiaoState.useBlur
 
     MiuixAppTheme(colorSchemeMode = colorSchemeMode) {
         MiaoShell(
             colorSchemeMode = colorSchemeMode,
             onColorSchemeModeChange = { colorSchemeMode = it },
             useLiquidGlass = useLiquidGlass,
-            onUseLiquidGlassChange = { useLiquidGlass = it },
+            onUseLiquidGlassChange = {
+                MiaoState.useBlur = it
+                UiEnginePrefs.saveUseBlur(context, it)
+            },
             engine = MiaoState.engine,
             onEngineChange = {
                 MiaoState.engine = it

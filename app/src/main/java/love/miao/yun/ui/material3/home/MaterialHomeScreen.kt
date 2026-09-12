@@ -39,17 +39,28 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import love.miao.yun.BuildConfig
 import love.miao.yun.MiaoState
+import love.miao.yun.ui.material3.material3AppBarColor
+import love.miao.yun.ui.material3.material3BlurEffect
+import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
+import love.miao.yun.ui.material3.widgets.BaseWidget
+import love.miao.yun.ui.material3.widgets.SegmentedColumn
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+
+private const val REPOSITORY_URL = "https://github.com/Youzix-Star/NekoPlus"
 
 @Composable
 fun MaterialHomeScreen(
     outerPadding: PaddingValues,
+    useBlur: Boolean,
     floatingRunning: Boolean,
     hasOverlayPermission: Boolean,
     onToggleFloating: () -> Unit,
@@ -57,12 +68,22 @@ fun MaterialHomeScreen(
     onNotify: (String) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberMaterial3BlurBackdrop(useBlur)
+    val uriHandler = LocalUriHandler.current
+    val deviceName = remember {
+        listOfNotNull(Build.MANUFACTURER, Build.MODEL)
+            .joinToString(" ")
+            .replaceFirstChar { it.uppercase() }
+    }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.material3BlurEffect(backdrop),
                 title = {
                     Text(
                         text = "喵喵助手",
@@ -71,7 +92,9 @@ fun MaterialHomeScreen(
                 },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = backdrop.material3AppBarColor(),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    scrolledContainerColor = backdrop.material3AppBarColor(),
                 ),
             )
         },
@@ -79,7 +102,7 @@ fun MaterialHomeScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
             contentPadding = PaddingValues(16.dp) + paddingValues + outerPadding,
         ) {
             item {
@@ -125,70 +148,63 @@ fun MaterialHomeScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.size(12.dp)) }
-
             item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                SegmentedColumn(
+                    title = "设备信息",
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 8.dp),
                 ) {
-                    StatCard(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        title = "运行状态",
-                        value = if (floatingRunning) "运行中" else "已停止",
-                        containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    )
-                    StatCard(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        title = "版本",
-                        value = BuildConfig.VERSION_NAME,
-                        containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    )
-                }
-            }
-
-            item { Spacer(modifier = Modifier.size(12.dp)) }
-
-            item {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    ),
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = if (hasOverlayPermission) Icons.TwoTone.TaskAlt else Icons.TwoTone.Warning,
-                            contentDescription = null,
-                            tint = if (hasOverlayPermission) {
+                    item {
+                        BaseWidget(
+                            title = "设备型号",
+                            description = deviceName,
+                            iconPlaceholder = false,
+                        )
+                    }
+                    item {
+                        BaseWidget(
+                            title = "系统版本",
+                            description = "Android ${Build.VERSION.RELEASE}（API ${Build.VERSION.SDK_INT}）",
+                            iconPlaceholder = false,
+                        )
+                    }
+                    item {
+                        BaseWidget(
+                            title = "应用版本",
+                            description = BuildConfig.VERSION_NAME,
+                            iconPlaceholder = false,
+                        )
+                    }
+                    item {
+                        BaseWidget(
+                            title = "悬浮窗",
+                            description = when {
+                                floatingRunning -> "正在运行"
+                                hasOverlayPermission -> "已授权，未运行"
+                                else -> "未授权"
+                            },
+                            descriptionColor = if (hasOverlayPermission) {
                                 MaterialTheme.colorScheme.primary
                             } else {
                                 MaterialTheme.colorScheme.error
                             },
-                            modifier = Modifier.size(28.dp),
+                            iconPlaceholder = false,
                         )
-                        Column(modifier = Modifier.padding(start = 20.dp)) {
-                            Text(
-                                text = "系统版本",
-                                style = MaterialTheme.typography.titleMediumEmphasized,
-                            )
-                            Text(
-                                text = "Android ${Build.VERSION.RELEASE}",
-                                style = MaterialTheme.typography.bodySmallEmphasized,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                    }
+                }
+            }
+
+            item {
+                SegmentedColumn(
+                    title = "了解更多",
+                    contentPadding = PaddingValues(top = 16.dp),
+                ) {
+                    item {
+                        BaseWidget(
+                            iconPlaceholder = false,
+                            title = "项目主页",
+                            description = "在 GitHub 上查看喵喵助手的源码与发布",
+                            onClick = { uriHandler.openUri(REPOSITORY_URL) },
+                        )
                     }
                 }
             }

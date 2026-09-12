@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         MiaoState.engine = UiEnginePrefs.load(this)
+        MiaoState.useBlur = UiEnginePrefs.loadUseBlur(this)
         setContent {
             when (MiaoState.engine) {
                 UiEngine.Miuix -> MiuixApp()

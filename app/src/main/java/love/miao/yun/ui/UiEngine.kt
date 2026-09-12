@@ -23,20 +23,30 @@ enum class UiEngine(val id: String, val label: String) {
     }
 }
 
-/** Persists the selected engine. */
+/** Persists the selected engine and the glass-effect switch. */
 object UiEnginePrefs {
     private const val PREFS = "ui_prefs"
     private const val KEY_ENGINE = "ui_engine"
+    private const val KEY_USE_BLUR = "use_blur"
 
-    fun load(context: Context): UiEngine {
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return UiEngine.from(prefs.getString(KEY_ENGINE, null))
-    }
+    private fun prefs(context: Context) =
+        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    fun load(context: Context): UiEngine =
+        UiEngine.from(prefs(context).getString(KEY_ENGINE, null))
 
     fun save(context: Context, engine: UiEngine) {
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putString(KEY_ENGINE, engine.id)
-            .apply()
+        prefs(context).edit().putString(KEY_ENGINE, engine.id).apply()
+    }
+
+    /**
+     * Whether translucency is on: the miuix bottom bar's liquid glass and the Material 3 top
+     * bar's blur. Defaults to `true`, matching the reference project.
+     */
+    fun loadUseBlur(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_USE_BLUR, true)
+
+    fun saveUseBlur(context: Context, useBlur: Boolean) {
+        prefs(context).edit().putBoolean(KEY_USE_BLUR, useBlur).apply()
     }
 }

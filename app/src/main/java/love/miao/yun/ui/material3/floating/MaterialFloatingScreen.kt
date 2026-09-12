@@ -9,25 +9,20 @@
 
 package love.miao.yun.ui.material3.floating
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -35,34 +30,46 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.material3.material3AppBarColor
+import love.miao.yun.ui.material3.material3BlurEffect
+import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
+import love.miao.yun.ui.material3.widgets.IntNumberPickerWidget
 import love.miao.yun.ui.material3.widgets.NavigationItemWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
 import love.miao.yun.ui.material3.widgets.SwitchWidget
-import kotlin.math.roundToInt
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 @Composable
 fun MaterialFloatingScreen(
     outerPadding: PaddingValues,
+    useBlur: Boolean,
     floatingRunning: Boolean,
     onToggleFloating: () -> Unit,
     onNotify: (String) -> Unit,
 ) {
-    var size by remember { mutableFloatStateOf(48f) }
-    var corner by remember { mutableFloatStateOf(24f) }
-    var opacity by remember { mutableFloatStateOf(0.9f) }
+    // Kept as Ints because the ported reference widget is integer-based.
+    var size by remember { mutableIntStateOf(48) }
+    var corner by remember { mutableIntStateOf(24) }
+    var opacityPercent by remember { mutableIntStateOf(90) }
     var snapToEdge by remember { mutableStateOf(true) }
     var haptic by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberMaterial3BlurBackdrop(useBlur)
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.material3BlurEffect(backdrop),
                 title = { Text("悬浮窗", modifier = Modifier.padding(start = 12.dp)) },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = backdrop.material3AppBarColor(),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    scrolledContainerColor = backdrop.material3AppBarColor(),
                 ),
             )
         },
@@ -70,7 +77,7 @@ fun MaterialFloatingScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
             contentPadding = paddingValues + outerPadding,
         ) {
             item {
@@ -113,66 +120,39 @@ fun MaterialFloatingScreen(
             }
 
             item {
-                ElevatedCard(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceBright,
-                    ),
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(text = "外观", style = MaterialTheme.typography.titleMediumEmphasized)
-                        SliderRow(
-                            label = "悬浮窗大小",
-                            valueText = "${size.roundToInt()} dp",
+                SegmentedColumn(title = "外观") {
+                    item {
+                        IntNumberPickerWidget(
+                            title = "悬浮窗大小",
                             value = size,
-                            range = 32f..80f,
-                            steps = 47,
+                            startInt = 32,
+                            endInt = 80,
+                            valueSuffix = " dp",
                             onValueChange = { size = it },
                         )
-                        SliderRow(
-                            label = "圆角半径",
-                            valueText = "${corner.roundToInt()} dp",
+                    }
+                    item {
+                        IntNumberPickerWidget(
+                            title = "圆角半径",
                             value = corner,
-                            range = 0f..40f,
-                            steps = 39,
+                            startInt = 0,
+                            endInt = 40,
+                            valueSuffix = " dp",
                             onValueChange = { corner = it },
                         )
-                        SliderRow(
-                            label = "不透明度",
-                            valueText = "${(opacity * 100).roundToInt()}%",
-                            value = opacity,
-                            range = 0.3f..1f,
-                            steps = 13,
-                            onValueChange = { opacity = it },
+                    }
+                    item {
+                        IntNumberPickerWidget(
+                            title = "不透明度",
+                            value = opacityPercent,
+                            startInt = 30,
+                            endInt = 100,
+                            valueSuffix = " %",
+                            onValueChange = { opacityPercent = it },
                         )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SliderRow(
-    label: String,
-    valueText: String,
-    value: Float,
-    range: ClosedFloatingPointRange<Float>,
-    steps: Int,
-    onValueChange: (Float) -> Unit,
-) {
-    Column(modifier = Modifier.padding(top = 12.dp)) {
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
-        Text(
-            text = valueText,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = range,
-            steps = steps,
-        )
     }
 }

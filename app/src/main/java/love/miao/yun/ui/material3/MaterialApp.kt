@@ -38,7 +38,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -55,20 +54,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import love.miao.yun.MiaoState
 import love.miao.yun.service.FloatingWindowService
 import love.miao.yun.ui.AppIcons
-import love.miao.yun.ui.rememberMainPagerState
 import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.material3.about.MaterialAboutScreen
 import love.miao.yun.ui.material3.floating.MaterialFloatingScreen
 import love.miao.yun.ui.material3.home.MaterialHomeScreen
 import love.miao.yun.ui.material3.licenses.MaterialLicensesScreen
 import love.miao.yun.ui.material3.settings.MaterialSettingsScreen
-import kotlin.coroutines.cancellation.CancellationException
+import love.miao.yun.ui.material3.widgets.SwipeableSnackbarHost
+import love.miao.yun.ui.rememberMainPagerState
 
 private const val TAB_HOME = 0
 private const val TAB_FLOATING = 1
@@ -240,7 +239,7 @@ private fun MaterialShell(
                     }
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+            snackbarHost = { SwipeableSnackbarHost(hostState = snackbarHostState) },
         ) { outerPadding ->
             HorizontalPager(
                 state = pagerState,
@@ -250,6 +249,7 @@ private fun MaterialShell(
                 when (page) {
                     TAB_HOME -> MaterialHomeScreen(
                         outerPadding = outerPadding,
+                        useBlur = MiaoState.useBlur,
                         floatingRunning = MiaoState.floatingRunning,
                         hasOverlayPermission = hasOverlayPermission,
                         onToggleFloating = toggleFloating,
@@ -259,6 +259,7 @@ private fun MaterialShell(
 
                     TAB_FLOATING -> MaterialFloatingScreen(
                         outerPadding = outerPadding,
+                        useBlur = MiaoState.useBlur,
                         floatingRunning = MiaoState.floatingRunning,
                         onToggleFloating = toggleFloating,
                         onNotify = notify,
@@ -266,6 +267,7 @@ private fun MaterialShell(
 
                     TAB_SETTINGS -> MaterialSettingsScreen(
                         outerPadding = outerPadding,
+                        useBlur = MiaoState.useBlur,
                         themeMode = themeMode,
                         onThemeModeChange = onThemeModeChange,
                         dynamicColor = dynamicColor,
@@ -275,6 +277,7 @@ private fun MaterialShell(
 
                     else -> MaterialAboutScreen(
                         outerPadding = outerPadding,
+                        useBlur = MiaoState.useBlur,
                         onOpenLicenses = { subPage = MaterialSubPage.Licenses },
                         onNotify = notify,
                     )

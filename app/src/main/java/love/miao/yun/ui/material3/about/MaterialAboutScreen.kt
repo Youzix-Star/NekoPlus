@@ -37,8 +37,12 @@ import androidx.compose.ui.unit.dp
 import love.miao.yun.BuildConfig
 import love.miao.yun.R
 import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.material3.material3AppBarColor
+import love.miao.yun.ui.material3.material3BlurEffect
+import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
 import love.miao.yun.ui.material3.widgets.NavigationItemWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 private const val REPOSITORY_URL = "https://github.com/Youzix-Star/NekoPlus"
 private const val DEVELOPER_URL = "https://github.com/Youzix-Star"
@@ -46,21 +50,28 @@ private const val DEVELOPER_URL = "https://github.com/Youzix-Star"
 @Composable
 fun MaterialAboutScreen(
     outerPadding: PaddingValues,
+    useBlur: Boolean,
     onOpenLicenses: () -> Unit,
     onNotify: (String) -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberMaterial3BlurBackdrop(useBlur)
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.material3BlurEffect(backdrop),
                 title = { Text("关于", modifier = Modifier.padding(start = 12.dp)) },
                 scrollBehavior = scrollBehavior,
                 colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = backdrop.material3AppBarColor(),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    scrolledContainerColor = backdrop.material3AppBarColor(),
                 ),
             )
         },
@@ -68,7 +79,7 @@ fun MaterialAboutScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
             contentPadding = paddingValues + outerPadding,
         ) {
             item { AppHeader() }
