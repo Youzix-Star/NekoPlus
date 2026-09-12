@@ -25,28 +25,18 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import love.miao.yun.ui.AppIcons
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-
-/** One page of the first-run guide. */
-private class GuidePage(
-    val icon: ImageVector,
-    val title: String,
-    val body: String,
-)
 
 /**
  * The first-run guide, drawn over everything else while it is open.
@@ -63,30 +53,7 @@ fun MiuixOnboarding(
     onRequestOverlay: () -> Unit,
     onFinish: () -> Unit,
 ) {
-    val pages = remember {
-        listOf(
-            GuidePage(
-                icon = AppIcons.Sparkle,
-                title = "把输入框里的字改好",
-                body = "点悬浮窗上的按钮：抓取当前输入框，交给 AI 改写，再写回原处。全程不用来回切应用。",
-            ),
-            GuidePage(
-                icon = AppIcons.Grant,
-                title = "先开两个开关",
-                body = "无障碍服务用来读写输入框，悬浮窗权限用来把按钮显示在屏幕上。",
-            ),
-            GuidePage(
-                icon = AppIcons.Touch,
-                title = "按钮怎么用",
-                body = "点按执行动作，长按执行另一个，拖动移动，松手自动贴边。在「悬浮窗」页签里可以加按钮、换图标和文字、改宽高。",
-            ),
-            GuidePage(
-                icon = AppIcons.Key,
-                title = "配好 AI 就能用",
-                body = "在「设置 → AI 配置」里填接口地址和 API Key。界面也可以在设置里换成 Miuix 或 Material Design。",
-            ),
-        )
-    }
+    val pages = GuidePages
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
     val lastPage = pagerState.currentPage == pages.lastIndex
@@ -205,7 +172,7 @@ fun MiuixOnboarding(
                         color = MiuixTheme.colorScheme.secondaryContainer,
                     ),
                     onClick = {
-                        scope.launch { pagerState.animateToPage(pagerState.currentPage - 1) }
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
                     },
                     showIndication = true,
                 ) {
@@ -222,7 +189,7 @@ fun MiuixOnboarding(
                     if (lastPage) {
                         onFinish()
                     } else {
-                        scope.launch { pagerState.animateToPage(pagerState.currentPage + 1) }
+                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                     }
                 },
                 modifier = Modifier.weight(1f),
