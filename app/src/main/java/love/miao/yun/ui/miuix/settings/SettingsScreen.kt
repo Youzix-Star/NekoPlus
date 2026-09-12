@@ -29,7 +29,7 @@ import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.utils.overScrollVertical
-import love.miao.yun.ui.ThemeModeOptions
+import love.miao.yun.ui.miuix.ThemeModeOptions
 import love.miao.yun.ui.UiEngine
 
 @Composable

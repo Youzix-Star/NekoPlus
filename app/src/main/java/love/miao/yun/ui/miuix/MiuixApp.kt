@@ -72,7 +72,7 @@ import love.miao.yun.ui.aospPredictiveBack
 import love.miao.yun.ui.miuix.about.AboutScreen
 import love.miao.yun.ui.miuix.floating.FloatingScreen
 import love.miao.yun.ui.miuix.home.HomeScreen
-import love.miao.yun.ui.liquid.FloatingBottomBar
+import love.miao.yun.ui.miuix.liquid.FloatingBottomBar
 import love.miao.yun.ui.miuix.settings.SettingsScreen
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -113,6 +113,8 @@ fun MiaoShell(
     onColorSchemeModeChange: (ColorSchemeMode) -> Unit,
     useLiquidGlass: Boolean,
     onUseLiquidGlassChange: (Boolean) -> Unit,
+    engine: UiEngine,
+    onEngineChange: (UiEngine) -> Unit,
 ) {
     val context = LocalContext.current
     var hasOverlayPermission by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
@@ -224,6 +226,8 @@ fun MiaoShell(
                     scrollBehavior = MiuixScrollBehavior(),
                     backdrop = backdrop,
                     useLiquidGlass = useLiquidGlass,
+                    engine = engine,
+                    onEngineChange = onEngineChange,
                     snackbarHostState = snackbarHostState,
                     colorSchemeMode = colorSchemeMode,
                     onColorSchemeModeChange = onColorSchemeModeChange,
@@ -262,6 +266,8 @@ fun MiaoShell(
                 scrollBehavior = scrollBehavior,
                 backdrop = backdrop,
                 useLiquidGlass = useLiquidGlass,
+                engine = engine,
+                onEngineChange = onEngineChange,
                 snackbarHostState = snackbarHostState,
                 colorSchemeMode = colorSchemeMode,
                 onColorSchemeModeChange = onColorSchemeModeChange,
@@ -292,6 +298,8 @@ fun MiaoPage(
     scrollBehavior: ScrollBehavior,
     backdrop: LayerBackdrop,
     useLiquidGlass: Boolean,
+    engine: UiEngine,
+    onEngineChange: (UiEngine) -> Unit,
     snackbarHostState: SnackbarHostState,
     colorSchemeMode: ColorSchemeMode,
     onColorSchemeModeChange: (ColorSchemeMode) -> Unit,

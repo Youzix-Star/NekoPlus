@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: AGPL-3.0
  */
 
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package love.miao.yun.ui.material3
 
 import android.content.Intent

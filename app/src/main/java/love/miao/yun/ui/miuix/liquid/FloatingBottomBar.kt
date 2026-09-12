@@ -91,7 +91,7 @@ import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.blur.sensor.rememberDeviceTilt
 import top.yukonga.miuix.kmp.theme.LocalContentColor
 import top.yukonga.miuix.kmp.theme.MiuixTheme
-import love.miao.yun.ui.isInDarkTheme
+import love.miao.yun.ui.miuix.isInDarkTheme
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
