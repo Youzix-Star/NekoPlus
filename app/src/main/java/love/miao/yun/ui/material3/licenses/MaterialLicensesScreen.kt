@@ -106,7 +106,7 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
         modifier = Modifier
             .fillMaxSize()
             .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
-        contentPadding = PaddingValues(16.dp) + paddingValues,
+        contentPadding = paddingValues + PaddingValues(bottom = 24.dp),
     ) {
         item {
             SegmentedColumn(title = "本项目基于 GPL-3.0 开源") {

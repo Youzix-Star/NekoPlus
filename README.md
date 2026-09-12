@@ -79,6 +79,20 @@ bug 就出在这一层：手势取消时，`androidx` 会立刻取消回调所�
   根本不挂，所以一级页面（含液态玻璃底栏的 backdrop）在静止时与以前完全一致。
 - 关闭按钮与返回手势走同一条路径：页面先走完剩下的位移，再从组合里摘掉，不会出现「半路消失」。
 
+## 两套引擎的排版差异
+
+同一批设置页在两个引擎里的内边距来源不同，改布局时容易多塞一层：
+
+- **miuix**：`SegmentedColumn` 没有对应物，卡片自己不带外边距，所以页面要给
+  `innerPadding + 12.dp`。
+- **Material Design**：`SegmentedColumn` **自带** `PADDING_HORIZONTAL = 16`，
+  所以页面再补一层 16 dp 就会让卡片比参考项目窄一圈 —— 二级页面只补
+  `PaddingValues(bottom = 24.dp)`，横向交给 `SegmentedColumn`。
+
+miuix 输入框的颜色也是在这一节定的：默认 `secondaryContainer` 在动态取色下偏深，
+`ui/miuix/MiuixFields.kt` 里的 `miaoTextFieldColors()` 改用参考项目那套
+`surfaceContainer`（浅、中性，仍然是输入框），标签退到次要文字色，焦点描边保留主色。
+
 ## AI 修改文本
 
 第一个真正的功能，从原 NekoNeko 项目移植（`ai/AiManager.kt`、`ai/TokenStats.kt`，
@@ -191,6 +205,15 @@ SharedPreferences），**每个按钮各自独立**：
 「跳过」和「开始使用」等价，都会把 `onboarding` 这个 SharedPreferences 标记为已看过，
 所以引导只在自己会出来的时候出现一次；想再看就去 **关于 → 新手引导**，那只是把
 `MiaoState.showOnboarding` 重新置为 true，不会动那个标记。返回键等于「跳过」。
+
+## 图标
+
+应用图标沿用 **MiaoAssistant 1.1.8 那一套**：`mipmap-*/ic_launcher.png` 与
+`mipmap-anydpi-v26/ic_launcher.xml`（白底 + `drawable/app_icon.png` 前景）都是原样搬过来的，
+清单里指向 `@mipmap/ic_launcher` / `@mipmap/ic_launcher_round`。
+
+原来的矢量猫脸留作**常驻通知的小图标**（`drawable/ic_notification.xml`）—— 通知小图标只用
+alpha 通道，彩色图形会被涂成一个剪影，正好合适。
 
 ## 文案
 

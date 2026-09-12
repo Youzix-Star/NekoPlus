@@ -124,7 +124,10 @@ fun MaterialAiConfigScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
-            contentPadding = paddingValues + PaddingValues(16.dp),
+            // No horizontal padding of our own: SegmentedColumn already insets every card by 16
+            // dp, and adding another 16 on top made the fields visibly narrower than the same
+            // fields in the reference project's edit screens.
+            contentPadding = paddingValues + PaddingValues(bottom = 24.dp),
         ) {
             item {
                 SegmentedColumn(title = "接口") {

@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import love.miao.yun.ai.AiManager
+import love.miao.yun.ui.miuix.miaoTextFieldColors
 import love.miao.yun.ai.TokenStats
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -85,6 +86,7 @@ fun AiConfigScreen(
         }
         item(key = "base-url") {
             TextField(
+                colors = miaoTextFieldColors(),
                 value = config.baseUrl.orEmpty(),
                 onValueChange = { text -> edit { it.baseUrl = text } },
                 label = "接口地址",
@@ -94,6 +96,7 @@ fun AiConfigScreen(
         }
         item(key = "api-key") {
             TextField(
+                colors = miaoTextFieldColors(),
                 value = config.apiKey.orEmpty(),
                 onValueChange = { text -> edit { it.apiKey = text } },
                 label = "API Key",
@@ -104,6 +107,7 @@ fun AiConfigScreen(
         }
         item(key = "model") {
             TextField(
+                colors = miaoTextFieldColors(),
                 value = config.model.orEmpty(),
                 onValueChange = { text -> edit { it.model = text } },
                 label = "模型",
@@ -156,6 +160,7 @@ fun AiConfigScreen(
         }
         item(key = "system-prompt") {
             TextField(
+                colors = miaoTextFieldColors(),
                 value = config.systemPrompt.orEmpty(),
                 onValueChange = { text -> edit { it.systemPrompt = text } },
                 label = "系统提示词",
@@ -165,6 +170,7 @@ fun AiConfigScreen(
         }
         item(key = "prompt") {
             TextField(
+                colors = miaoTextFieldColors(),
                 value = config.prompt.orEmpty(),
                 onValueChange = { text -> edit { it.prompt = text } },
                 label = "用户提示词",
@@ -280,6 +286,7 @@ fun AiConfigScreen(
     ) {
         Column {
             TextField(
+                colors = miaoTextFieldColors(),
                 value = presetName,
                 onValueChange = { presetName = it },
                 label = "预设名",

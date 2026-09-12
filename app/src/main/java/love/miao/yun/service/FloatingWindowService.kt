@@ -604,7 +604,7 @@ class FloatingWindowService : Service() {
         val notification = builder
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(getString(R.string.notif_text))
-            .setSmallIcon(R.drawable.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .build()

@@ -44,6 +44,7 @@ import love.miao.yun.floating.FloatingShape
 import love.miao.yun.floating.FloatingWindowPrefs
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
+import love.miao.yun.ui.miuix.miaoTextFieldColors
 import love.miao.yun.ui.UiEnginePrefs
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
@@ -278,6 +279,7 @@ private fun FloatingItemDialog(
 
             if (item.showsText) {
                 TextField(
+                    colors = miaoTextFieldColors(),
                     value = item.text,
                     onValueChange = { onChange(item.copy(text = it)) },
                     label = "按钮文字",
@@ -470,8 +472,10 @@ private fun ActionChain(
         val labels = FloatingAction.entries.map { it.label }
 
         if (actions.isEmpty() && allowNone) {
-            // Only reachable for a hold gesture that is switched off: the first step still has to
-            // be on screen, or there would be no way to switch it back on.
+            // A hold gesture that is switched off: the first step still has to be on screen, or
+            // there would be no way to switch it back on. The add button below stays on screen
+            // too — hiding it here is what made the hold chain look like it could only ever hold
+            // the one step.
             Text(
                 text = "第 1 步",
                 style = MiuixTheme.textStyles.footnote1,
@@ -484,33 +488,32 @@ private fun ActionChain(
                     FloatingAction.entries.getOrNull(index - 1)?.let { onChange(listOf(it)) }
                 },
             )
-            return@Column
-        }
-
-        actions.forEachIndexed { index, action ->
-            Text(
-                text = "第 ${index + 1} 步",
-                style = MiuixTheme.textStyles.footnote1,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            )
-            TextChips(
-                labels = if (allowNone && index == 0) listOf("无") + labels else labels,
-                selectedIndex = if (allowNone && index == 0) {
-                    FloatingAction.entries.indexOf(action) + 1
-                } else {
-                    FloatingAction.entries.indexOf(action)
-                },
-                onSelect = { choice ->
-                    if (allowNone && index == 0 && choice == 0) {
-                        onChange(emptyList())
+        } else {
+            actions.forEachIndexed { index, action ->
+                Text(
+                    text = "第 ${index + 1} 步",
+                    style = MiuixTheme.textStyles.footnote1,
+                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                )
+                TextChips(
+                    labels = if (allowNone && index == 0) listOf("无") + labels else labels,
+                    selectedIndex = if (allowNone && index == 0) {
+                        FloatingAction.entries.indexOf(action) + 1
                     } else {
-                        val picked = FloatingAction.entries.getOrNull(
-                            if (allowNone && index == 0) choice - 1 else choice,
-                        ) ?: return@TextChips
-                        onChange(actions.toMutableList().also { it[index] = picked })
-                    }
-                },
-            )
+                        FloatingAction.entries.indexOf(action)
+                    },
+                    onSelect = { choice ->
+                        if (allowNone && index == 0 && choice == 0) {
+                            onChange(emptyList())
+                        } else {
+                            val picked = FloatingAction.entries.getOrNull(
+                                if (allowNone && index == 0) choice - 1 else choice,
+                            ) ?: return@TextChips
+                            onChange(actions.toMutableList().also { it[index] = picked })
+                        }
+                    },
+                )
+            }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
