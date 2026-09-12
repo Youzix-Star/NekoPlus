@@ -162,7 +162,8 @@ private fun AppHeader() {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
-            painter = painterResource(R.drawable.ic_launcher),
+            // The real launcher artwork, so About and the home screen never disagree.
+            painter = painterResource(R.mipmap.ic_launcher),
             contentDescription = null,
             modifier = Modifier.size(96.dp),
         )
