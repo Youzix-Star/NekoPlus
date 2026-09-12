@@ -3,8 +3,8 @@
 一个基于 Jetpack Compose 的 Android 应用骨架，**双 UI 引擎**：同一套功能可以用
 [miuix](https://github.com/compose-miuix-ui/miuix) 或 Material Design 渲染，随时切换。
 
-> 当前进度：**空壳 UI + 一个可用的悬浮窗**。业务逻辑尚未接入，界面上的统计数字与开关
-> 大多为占位实现。
+> 当前进度：双引擎界面骨架 + 可用的悬浮窗 + **AI 修改文本**。
+> 界面上的部分统计数字与开关仍是占位实现。
 
 ## 双 UI 引擎
 
@@ -54,12 +54,44 @@
   最小缩放 0.9、缓动 `cubic-bezier(0.1, 0.1, 0, 1)`、边缘判定 8dp、
   垂直方向按 `1-(1-r)²` 阻尼跟手并朝手势方向靠拢。
 
+## AI 修改文本
+
+第一个真正的功能，从原 NekoNeko 项目移植（`ai/AiManager.kt`、`ai/TokenStats.kt`，
+以及 `service/MiaoAccessibilityService.kt`）。链路是：**抓取当前输入框 → 调 AI 改写 → 写回**。
+
+- **只在点击时动作**：`MiaoAccessibilityService.onAccessibilityEvent` 是空的，
+  不会自动读取任何内容。抓取顺序是先 `findFocus(FOCUS_INPUT)`，
+  拿不到焦点信息再遍历节点树找「聚焦且可编辑」的节点；写回走 `ACTION_SET_TEXT`。
+- **接口**：OpenAI 兼容的 `POST {base}/chat/completions`，默认 `https://api.deepseek.com`
+  与 `deepseek-v4-flash`。`GET {base}/models` 用来拉模型列表并顺带验证连通性。
+- **提示词**：用户提示词里含 `{text}` 时整体替换为捕获文本，否则作为人设拼在正文前；
+  系统提示词单独发送。内置「微软式翻译」「微软式中文」「Emoji」三个预设。
+- **配置**：两套引擎各有一个「AI 配置」二级页面（接口 / 连接测试 / 提示词 / 预设 /
+  用量统计）。改动即时落盘，没有保存按钮。SharedPreferences 的文件名与键名与原项目
+  逐字一致，可以直接沿用原来的配置。
+- **入口**：悬浮窗上的「AI」按钮。走完整条链路，状态与失败原因显示在药丸的第二行
+  ——悬浮层没有自己的窗口可以弹对话框。
+
+需要授予无障碍权限（设置 → AI 修改文本 → 无障碍服务），
+`AndroidManifest.xml` 里的服务由 `BIND_ACCESSIBILITY_SERVICE` 保护。
+
 ## 悬浮窗
 
 `service/FloatingWindowService.kt` 用普通 `View`（非 Compose）实现一个圆角可拖拽药丸，
-点 ✕ 关闭，通过 `TYPE_APPLICATION_OVERLAY` 叠加。前台服务类型为 `specialUse`，
-并带一条常驻通知。悬浮窗开关会同步到首页的大卡片：关闭时显示「未在工作」，
+上面有「AI」与「✕」两个按钮，通过 `TYPE_APPLICATION_OVERLAY` 叠加。前台服务类型为
+`specialUse`，并带一条常驻通知。悬浮窗开关会同步到首页的大卡片：关闭时显示「未在工作」，
 开启时整块变成「正在作为悬浮窗」并进入工作态配色。
+
+### 取色
+
+悬浮窗位于任何 Compose 主题之外，颜色不能靠继承，所以在设置里三选一
+（`ui/FloatingColorSource.kt`）：**动态取色**（默认）、**跟随 Miuix**、**跟随 Material Design**。
+
+`ui/FloatingPalette.kt` 负责解析。关键在于 material3 与 miuix 的颜色方案工厂函数都是
+非 `@Composable` 的（`dynamicLight/DarkColorScheme(context)`、`light/darkColorScheme()`），
+所以一个没有任何组合的 `Service` 也能直接拿到调色板。明暗按系统夜间模式决定。
+
+服务注册了 `OnSharedPreferenceChangeListener`：改设置时悬浮窗当场换色，不用重启。
 
 ## 构建
 
@@ -86,21 +118,30 @@ Gradle 9.7.1、Compose BOM 2026.08.00、compileSdk 37 / minSdk 33 / targetSdk 35
 app/src/main/java/love/miao/yun/
 ├── MainActivity.kt              35 行分发器：读引擎选择 → 挂对应引擎的根 Composable
 ├── MiaoState.kt                 跨引擎共享的少量状态（悬浮窗运行中、今日计数、规则数）
+├── ai/                          AI 层（移植自原 NekoNeko）
+│   ├── AiManager.kt             OpenAI 兼容接口、配置、预设
+│   └── TokenStats.kt            用量统计
 ├── ui/
 │   ├── AppIcons.kt              统一图标入口
 │   ├── PredictiveBack.kt        两套引擎共用的 AOSP 预见式返回变换
 │   ├── MainPagerState.kt        一级页签切换动画（移植自参考项目）
-│   ├── UiEngine.kt              引擎枚举、毛玻璃开关与持久化
+│   ├── FloatingColorSource.kt   悬浮窗取色来源（动态取色 / Miuix / MD）
+│   ├── FloatingPalette.kt       把取色来源解析成 ARGB 调色板
+│   ├── UiEngine.kt              引擎枚举、毛玻璃开关、悬浮窗取色与持久化
 │   ├── miuix/                   miuix 引擎：MiuixApp + home/floating/settings/about/licenses
+│   │   ├── ai/                  AI 配置页（miuix 组件）
 │   │   ├── liquid/              液态玻璃底栏与镜片效果（Apache-2.0，来自 NekoEdit）
 │   │   └── animation/           DampedDragAnimation、InteractiveHighlight
 │   └── material3/               Material Design 引擎：MaterialApp + 同名页面树
+│       ├── ai/                  AI 配置页（MD 组件）
 │       ├── Backdrop.kt          MD 顶栏的毛玻璃（复用 miuix 的 backdrop 引擎）
 │       └── widgets/             SegmentedColumn、BaseWidget、SwitchWidget、
 │                                NavigationItemWidget、NumberPickerWidget、
 │                                DropDownMenuWidget、SwipeableSnackbarHost
 │                                （GPL-3.0，来自 InstallerX-Revived）
-└── service/FloatingWindowService.kt
+└── service/
+    ├── FloatingWindowService.kt 悬浮窗（普通 View）
+    └── MiaoAccessibilityService.kt  读取/写回当前输入框
 ```
 
 ## 许可

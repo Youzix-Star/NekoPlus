@@ -42,6 +42,7 @@ import love.miao.yun.ui.material3.material3AppBarColor
 import love.miao.yun.ui.material3.material3BlurEffect
 import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
 import love.miao.yun.ui.material3.widgets.DropDownMenuWidget
+import love.miao.yun.ui.material3.widgets.NavigationItemWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
 import love.miao.yun.ui.material3.widgets.SwitchWidget
 import top.yukonga.miuix.kmp.blur.layerBackdrop

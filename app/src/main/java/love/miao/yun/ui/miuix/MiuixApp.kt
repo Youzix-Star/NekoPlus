@@ -324,7 +324,7 @@ fun MiaoShell(
                         MiuixSubPage.AiConfig -> AiConfigScreen(
                             contentPadding = subPadding,
                             scrollBehavior = MiuixScrollBehavior(),
-                            onNotify = onNotify,
+                            onNotify = notify,
                         )
 
                         MiuixSubPage.Licenses -> LicensesScreen(contentPadding = subPadding)

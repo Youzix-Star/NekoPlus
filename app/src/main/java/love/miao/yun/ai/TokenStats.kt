@@ -70,7 +70,7 @@ object TokenStats {
     ) {
         val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val raw = sp.getString(KEY_RECORDS, "[]")
-        val records = parseRecords(raw)
+        val records = parseRecords(raw).toMutableList()
 
         records.add(
             Record(
