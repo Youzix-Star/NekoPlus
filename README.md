@@ -247,6 +247,13 @@ SharedPreferences），**每个按钮各自独立**：
 版本比较在数字段之后还会比预发布后缀（`2.0.0` > `2.0.0-alpha.2` > `2.0.0-alpha.1`），
 否则 alpha 用户会永远收不到正式版。关于页的「检查更新」会给出更新说明与下载按钮。
 
+**按渠道查**：预发布版本（版本号里带 `-`）走 `/releases` 列表，正式版走 `/releases/latest`。
+两个接口不能混用 —— `/releases/latest` 按设计**忽略预发布**，alpha 用它就永远看不到下一个
+alpha；反过来正式版看全表，就会被推 alpha。另外发布时如果勾了 GitHub 的
+「Set as a pre-release」，只有 alpha 渠道的版本能看见它，这正是想要的行为。
+
+> 刚发布完立刻检查可能仍显示「已是最新版本」：GitHub 的 releases 接口有几十秒缓存。
+
 ## 崩溃日志
 
 `util/CrashHandler.kt`（同样来自 1.1.8 的功能清单）在 `MiaoApp` 里安装，崩溃时把

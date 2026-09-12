@@ -19,6 +19,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
 import love.miao.yun.BuildConfig
+import org.json.JSONArray
 import org.json.JSONObject
 
 /** What a version check found. */
@@ -42,10 +43,20 @@ sealed interface UpdateResult {
  * falls back to the releases page and reads the tag out of its redirect, which needs no token and
  * has no quota. That fallback is the difference between "check for updates" working and quietly
  * failing for the one user who taps it twice.
+ *
+ * A pre-release build asks for every release and a stable build only for the latest stable one:
+ * `/releases/latest` deliberately ignores pre-releases, so an alpha that consulted it would never
+ * see the next alpha — and a stable build that consulted the full list would be offered an alpha.
  */
 object UpdateChecker {
     private const val REPO = "Youzix-Star/NekoPlus"
-    private const val API_URL = "https://api.github.com/repos/$REPO/releases/latest"
+
+    /** The newest stable release; GitHub deliberately leaves pre-releases out of this one. */
+    private const val API_LATEST = "https://api.github.com/repos/$REPO/releases/latest"
+
+    /** Every release, newest first — the only way a pre-release can see other pre-releases. */
+    private const val API_LIST = "https://api.github.com/repos/$REPO/releases?per_page=20"
+
     private const val RELEASES_PAGE = "https://github.com/$REPO/releases/latest"
 
     private val main = Handler(Looper.getMainLooper())
@@ -77,39 +88,57 @@ object UpdateChecker {
     }
 
     private fun viaApi(current: String): UpdateResult {
-        val connection = (URL(API_URL).openConnection() as HttpURLConnection).apply {
+        // Which releases this build is allowed to see follows from what it is: a pre-release looks
+        // at every release, because that is the channel it is on, while a stable build only ever
+        // sees stable ones — otherwise an alpha would be pushed at everyone.
+        val trackPreReleases = current.contains('-')
+        val releases = fetchReleases(if (trackPreReleases) API_LIST else API_LATEST, current)
+            ?: return viaPage(current)
+        val newest = releases
+            .filter { release ->
+                !release.optBoolean("draft") &&
+                    (trackPreReleases || !release.optBoolean("prerelease"))
+            }
+            .maxByOrNull { release -> release.optString("tag_name", "").removePrefix("v") }
+            ?: return UpdateResult.UpToDate
+
+        val version = newest.optString("tag_name", "").removePrefix("v")
+        if (!isNewer(version, current)) return UpdateResult.UpToDate
+
+        var apkUrl: String? = null
+        newest.optJSONArray("assets")?.let { assets ->
+            for (index in 0 until assets.length()) {
+                val asset = assets.optJSONObject(index) ?: continue
+                val name = asset.optString("name", "")
+                if (name.endsWith(".apk") && !name.contains("debug")) {
+                    apkUrl = asset.optString("browser_download_url", null)
+                    break
+                }
+            }
+        }
+        return UpdateResult.Available(
+            version = version,
+            notes = newest.optString("body", ""),
+            apkUrl = apkUrl,
+        )
+    }
+
+    /** Both endpoints answer with JSON; one gives an object, the other an array. */
+    private fun fetchReleases(url: String, current: String): List<JSONObject>? {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = 10_000
             setRequestProperty("Accept", "application/vnd.github.v3+json")
         }
         return try {
-            val code = connection.responseCode
-            if (code >= 400) {
-                // Rate limited or otherwise refused: the page fallback has no quota to hit.
-                return viaPage(current)
-            }
-            val release = JSONObject(readAll(connection.inputStream))
-            val tag = release.optString("tag_name", "")
-            val version = tag.removePrefix("v")
-            val notes = release.optString("body", "")
-
-            var apkUrl: String? = null
-            release.optJSONArray("assets")?.let { assets ->
-                for (index in 0 until assets.length()) {
-                    val asset = assets.optJSONObject(index) ?: continue
-                    val name = asset.optString("name", "")
-                    if (name.endsWith(".apk") && !name.contains("debug")) {
-                        apkUrl = asset.optString("browser_download_url", null)
-                        break
-                    }
-                }
-            }
-
-            if (isNewer(version, current)) {
-                UpdateResult.Available(version = version, notes = notes, apkUrl = apkUrl)
+            if (connection.responseCode >= 400) return null
+            val body = readAll(connection.inputStream)
+            if (body.trimStart().startsWith("[")) {
+                val array = JSONArray(body)
+                (0 until array.length()).mapNotNull { array.optJSONObject(it) }
             } else {
-                UpdateResult.UpToDate
+                listOf(JSONObject(body))
             }
         } finally {
             connection.disconnect()
@@ -133,6 +162,10 @@ object UpdateChecker {
                 } else {
                     UpdateResult.UpToDate
                 }
+            } else if (current.contains('-')) {
+                // This fallback reads /releases/latest, which by definition skips pre-releases,
+                // so for a pre-release build the honest answer is "cannot tell", not "up to date".
+                UpdateResult.Failed("接口受限，暂时无法确认预发布版本")
             } else {
                 UpdateResult.Failed("无法获取版本信息")
             }
