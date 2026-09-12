@@ -1,70 +1,68 @@
-# 喵喵助手 · MiaoAssistant
+# NekoNeko Android 应用
 
-一个基于**无障碍服务**的输入框文本改写工具：在你选定的应用里，把发出去的文字自动加上「喵」和颜文字。
+这是一个简单的Android应用，使用GitHub Actions进行自动构建。
 
-| | |
-| --- | --- |
-| 包名 | `love.miao.yun` |
-| 版本 | `1.1.8`（versionCode 9） |
-| minSdk / targetSdk | 26 / 35 |
-| UI | Jetpack Compose + Material 3（Compose BOM `2024.02.00`） |
-| 构建 | AGP `8.1.4` / Kotlin `1.9.22` / Gradle `8.4` / JDK 17 |
+## 功能特点
 
-## 功能
+- 简单的欢迎界面
+- 自动化APK构建
+- 支持Debug和Release版本
+- 自动上传构建产物
 
-- **实时改写**：无障碍服务读取输入框内容，按规则追加「喵」或颜文字
-- **三种处理模式**：标点触发（`punctuation`）、实时（`realtime`）、悬浮窗（`floating_window`）
-- **颜文字**：支持概率 / 随机 / 按句间隔三种触发方式，可自定义颜文字列表
-- **替换规则**：自定义 `原文=替换` 规则
-- **应用选择**：只勾选的应用里生效
-- **个性化**：空格不加喵、标点优化、删除优化、QQ 猫爪等
-- **保活**：前台服务，另有悬浮按钮 / 悬浮窗 / 日志悬浮窗三种悬浮形态
-- **崩溃记录**：内置 `CrashHandler` 与 `DebugLog`
-
-## 目录结构
+## 项目结构
 
 ```
-app/src/main/java/
-├── com/google/android/accessibility/selecttospeak/
-│   └── SelectToSpeakService.kt      # 无障碍服务（服务类名伪装成系统组件）
-└── love/miao/yun/
-    ├── MainActivity.kt              # 入口 + 导航
-    ├── MiaoApp.kt                   # Application
-    ├── service/
-    │   ├── MiaoAccessibilityService.kt
-    │   ├── FloatingButtonService.kt
-    │   ├── FloatingWindowService.kt
-    │   └── LogFloatingService.kt
-    ├── ui/
-    │   ├── MainScreen.kt / SettingsScreen.kt
-    │   ├── PersonalizationScreen.kt / AppSelectScreen.kt
-    │   ├── KeepAliveScreen.kt / AboutScreen.kt
-    │   └── theme/Theme.kt
-    └── util/
-        ├── MiaoConfig.kt            # 配置模型与持久化
-        ├── TextProcessor.kt         # 文本改写核心
-        ├── CrashHandler.kt / DebugLog.kt
+NekoNeko/
+├── .github/workflows/    # GitHub Actions工作流
+├── app/                  # Android应用模块
+│   ├── src/main/         # 主源代码
+│   └── build.gradle      # 应用构建配置
+├── build.gradle          # 项目构建配置
+├── gradlew              # Gradle Wrapper脚本
+└── settings.gradle      # 项目设置
 ```
 
-## 构建与发布
+## 如何使用
 
-构建全部在 GitHub Actions 上完成，`.github/workflows/android.yml` 会在每次 push / PR 时
-构建**已签名的 release APK** 并上传为 Artifact；推送 `v*` 标签时额外创建 GitHub Release 并附上 APK。
+### 1. 克隆项目
+```bash
+git clone https://github.com/Youzix-Star/NekoNeko.git
+cd NekoNeko
+```
 
-签名材料通过仓库 Secrets 注入，仓库里没有任何私钥或口令：
+### 2. 本地构建
+```bash
+./gradlew assembleDebug    # 构建Debug版本
+./gradlew assembleRelease  # 构建Release版本
+```
 
-| Secret | 说明 |
-| --- | --- |
-| `KEYSTORE_BASE64` | keystore 文件的 base64 内容 |
-| `KEYSTORE_PASSWORD` | keystore 口令 |
-| `KEY_ALIAS` | 密钥别名（`miao`） |
-| `KEY_PASSWORD` | 密钥口令 |
+### 3. 自动构建
+每次推送到`main`或`master`分支时，GitHub Actions会自动：
+1. 检出代码
+2. 设置Java环境
+3. 构建Debug和Release APK
+4. 上传构建产物
 
-`app/build.gradle.kts` 会先读项目根目录的 `keystore.properties`（已被 git 忽略，CI 上不存在），
-读不到再读环境变量。两者都没有时构建依然成功，只是产出未签名的 APK。
+### 4. 创建发布版本
+当推送标签时（如`v1.0`），会自动创建GitHub Release并上传APK文件。
 
-如果需要在本地签名构建，把 `keystore.properties.example` 复制成 `keystore.properties` 并填好即可。
+## 构建产物
+
+构建完成后，APK文件会上传到：
+- **Debug版本**: `app/build/outputs/apk/debug/`
+- **Release版本**: `app/build/outputs/apk/release/`
+
+## 开发说明
+
+- 包名: `com.youzix.nekoneko`
+- 最低SDK版本: 21 (Android 5.0)
+- 目标SDK版本: 33 (Android 13)
+- 使用AndroidX和Material Design组件
 
 ## 许可证
 
-尚未添加，待项目所有者确定。
+本项目基于 GNU AGPL v3 许可证开源，详见[LICENSE](LICENSE)文件。
+
+## 联系方式
+
+如有问题或建议，请通过GitHub Issues联系。

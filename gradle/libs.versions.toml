@@ -1,0 +1,24 @@
+[versions]
+agp = "9.4.0"
+kotlin = "2.4.20"
+composeBom = "2026.08.00"
+# miuix is built against Compose 1.12, which is what this project's BOM resolves to.
+miuix = "0.9.4-rc01"
+# material-icons-extended is frozen upstream at 1.7.8; R8 strips what is unused.
+materialIcons = "1.7.8"
+
+[libraries]
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-foundation = { module = "androidx.compose.foundation:foundation" }
+compose-runtime = { module = "androidx.compose.runtime:runtime" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
+compose-material-icons = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIcons" }
+
+miuix-ui = { module = "top.yukonga.miuix.kmp:miuix-ui-android", version.ref = "miuix" }
+miuix-preference = { module = "top.yukonga.miuix.kmp:miuix-preference-android", version.ref = "miuix" }
+miuix-blur = { module = "top.yukonga.miuix.kmp:miuix-blur-android", version.ref = "miuix" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

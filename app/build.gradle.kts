@@ -1,8 +1,11 @@
 import java.util.Properties
 
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    // AGP 9 compiles Kotlin itself (built-in Kotlin), so the standalone
+    // `org.jetbrains.kotlin.android` plugin must NOT be applied here.
+    alias(libs.plugins.android.application)
+    // The Compose compiler plugin still has to be applied explicitly.
+    alias(libs.plugins.kotlin.compose)
 }
 
 /**
@@ -28,14 +31,14 @@ val hasReleaseSigning =
 
 android {
     namespace = "love.miao.yun"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "love.miao.yun"
-        minSdk = 26
+        minSdk = 33
         targetSdk = 35
-        versionCode = 9
-        versionName = "1.1.8"
+        versionCode = 97
+        versionName = "2.0.0"
     }
 
     signingConfigs {
@@ -45,14 +48,23 @@ android {
                 storePassword = keystorePassword!!
                 keyAlias = releaseKeyAlias!!
                 keyPassword = releaseKeyPassword!!
+                enableV1Signing = false
+                enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 strips the thousands of unused Material icons pulled in by
+            // material-icons-extended, which is what keeps the release APK small.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
             if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
         }
         debug {
@@ -61,30 +73,51 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
-
-    kotlinOptions { jvmTarget = "17" }
 
     buildFeatures {
         compose = true
         buildConfig = true
     }
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.8" }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
 }
 
-dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
+// `kotlin.compilerOptions.jvmTarget` is not set on purpose: with built-in Kotlin it already
+// defaults to `android.compileOptions.targetCompatibility` (Java 21).
 
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    implementation("androidx.navigation:navigation-compose:2.7.7")
+dependencies {
+    implementation(platform(libs.compose.bom))
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.runtime)
+    implementation(libs.compose.ui)
+    implementation(libs.compose.ui.graphics)
+    implementation(libs.compose.material.icons)
+
+    implementation(libs.miuix.ui)
+    implementation(libs.miuix.preference)
+    // The liquid-glass floating bottom bar is built on miuix-blur, which requires minSdk 33.
+    implementation(libs.miuix.blur)
+
+    // ---- legacy platform dependencies, removed as the miuix rewrite lands ----
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.compose.material3:material3:1.5.0-alpha25")
+    implementation("androidx.compose.runtime:runtime-livedata")
+    implementation("androidx.compose.animation:animation")
+    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation("androidx.fragment:fragment-compose:1.8.6")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
+    implementation("androidx.navigation:navigation-compose:2.9.0")
+    implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+    debugImplementation("androidx.compose.ui:ui-tooling")
 }

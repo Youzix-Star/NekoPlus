@@ -2,10 +2,10 @@ name: Android CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
@@ -23,21 +23,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # AGP 8.1.4 and Gradle 8.4 both target JDK 17.
-      - name: Set up JDK 17
+      # AGP 9 and the Kotlin 2.4 toolchain both target JDK 21.
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      # android-35 for compileSdk 35; build-tools 33.0.1 is AGP 8.1.4's default revision.
       - name: Install SDK packages
         run: |
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "build-tools;33.0.1" "platform-tools"
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
