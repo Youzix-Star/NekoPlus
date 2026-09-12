@@ -21,6 +21,14 @@ import love.miao.yun.ui.UiEngine
 object MiaoState {
     var floatingRunning by mutableStateOf(false)
 
+    /**
+     * Whether the accessibility service is switched on.
+     *
+     * Refreshed by [MainActivity.onResume] rather than polled: the only way this changes is the
+     * user leaving for system settings and coming back, which is exactly when onResume runs.
+     */
+    var accessibilityEnabled by mutableStateOf(false)
+
     /** Which engine draws the app; persisted on change via [love.miao.yun.ui.UiEnginePrefs]. */
     var engine by mutableStateOf(UiEngine.Miuix)
 

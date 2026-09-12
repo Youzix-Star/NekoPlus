@@ -5,7 +5,9 @@
 
 package love.miao.yun.ui.miuix.home
 
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +24,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import love.miao.yun.BuildConfig
 import love.miao.yun.MiaoState
@@ -30,7 +34,6 @@ import love.miao.yun.ui.AppIcons
 import top.yukonga.miuix.kmp.basic.BasicComponent
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
@@ -50,6 +53,8 @@ fun HomeScreen(
     onRequestOverlay: () -> Unit,
     onNotify: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -58,10 +63,27 @@ fun HomeScreen(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "status") {
+        // Two status cards on equal footing: the two things the user has to switch on for this
+        // app to do anything. Both are tappable straight from here.
+        item(key = "status-floating") {
             StatusCard(
-                floatingRunning = floatingRunning,
-                hasOverlayPermission = hasOverlayPermission,
+                active = hasOverlayPermission && floatingRunning,
+                icon = AppIcons.Floating,
+                title = when {
+                    !hasOverlayPermission -> "需要悬浮窗权限"
+                    floatingRunning -> "正在作为悬浮窗"
+                    else -> "悬浮窗未运行"
+                },
+                description = when {
+                    !hasOverlayPermission -> "缺少叠加层权限，无法显示悬浮窗"
+                    floatingRunning -> "悬浮窗已经在屏幕上了"
+                    else -> "悬浮窗当前是关闭的"
+                },
+                hint = when {
+                    !hasOverlayPermission -> "去授权"
+                    floatingRunning -> "点击收起"
+                    else -> "点击启动"
+                },
                 onClick = {
                     if (hasOverlayPermission) {
                         onToggleFloating()
@@ -69,6 +91,27 @@ fun HomeScreen(
                     } else {
                         onRequestOverlay()
                     }
+                },
+            )
+        }
+
+        item(key = "status-accessibility") {
+            val enabled = MiaoState.accessibilityEnabled
+            StatusCard(
+                active = enabled,
+                icon = AppIcons.Grant,
+                title = if (enabled) "无障碍服务已开启" else "无障碍服务未开启",
+                description = if (enabled) {
+                    "可以读取并写回当前输入框"
+                } else {
+                    "AI 修改需要它才能拿到输入框文本"
+                },
+                hint = if (enabled) "点击查看" else "去开启",
+                onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
+                    onNotify(if (enabled) "已开启" else "请在系统设置中找到「喵喵助手文本捕获」")
                 },
             )
         }
@@ -108,7 +151,6 @@ fun HomeScreen(
                             )
                         },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     BasicComponent(
                         title = "系统版本",
                         summary = "Android ${Build.VERSION.RELEASE}",
@@ -120,7 +162,6 @@ fun HomeScreen(
                             )
                         },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     BasicComponent(
                         title = "悬浮窗权限",
                         summary = if (hasOverlayPermission) "已授予" else "未授予",
@@ -171,11 +212,13 @@ fun HomeScreen(
  */
 @Composable
 private fun StatusCard(
-    floatingRunning: Boolean,
-    hasOverlayPermission: Boolean,
+    active: Boolean,
+    icon: ImageVector,
+    title: String,
+    description: String,
+    hint: String,
     onClick: () -> Unit,
 ) {
-    val active = hasOverlayPermission && floatingRunning
     val containerColor = if (active) {
         MiuixTheme.colorScheme.primaryContainer
     } else {
@@ -185,21 +228,6 @@ private fun StatusCard(
         MiuixTheme.colorScheme.onPrimaryContainer
     } else {
         MiuixTheme.colorScheme.onErrorContainer
-    }
-    val title = when {
-        !hasOverlayPermission -> "需要悬浮窗权限"
-        floatingRunning -> "正在作为悬浮窗"
-        else -> "悬浮窗未运行"
-    }
-    val description = when {
-        !hasOverlayPermission -> "点击前往系统设置授权，然后回来启动"
-        floatingRunning -> "悬浮窗已经在屏幕上了"
-        else -> "点击启动悬浮窗"
-    }
-    val hint = when {
-        !hasOverlayPermission -> "去授权"
-        floatingRunning -> "点击收起"
-        else -> "点击启动"
     }
 
     Card(
@@ -213,7 +241,7 @@ private fun StatusCard(
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Icon(
-                imageVector = AppIcons.Floating,
+                imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
@@ -224,20 +252,19 @@ private fun StatusCard(
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = title,
-                    style = MiuixTheme.textStyles.title3,
                     color = contentColor,
+                    style = MiuixTheme.textStyles.title4,
                 )
-                Spacer(modifier = Modifier.height(6.dp))
                 Text(
                     text = description,
+                    color = contentColor,
                     style = MiuixTheme.textStyles.body2,
-                    color = contentColor.copy(alpha = 0.85f),
                 )
-                Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = hint,
+                    color = contentColor,
                     style = MiuixTheme.textStyles.footnote1,
-                    color = contentColor.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 8.dp).alpha(0.75f),
                 )
             }
         }

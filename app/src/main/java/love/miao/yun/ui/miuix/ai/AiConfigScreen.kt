@@ -25,7 +25,6 @@ import love.miao.yun.ai.AiManager
 import love.miao.yun.ai.TokenStats
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
@@ -77,33 +76,39 @@ fun AiConfigScreen(
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "endpoint") {
-            Column {
-                SmallTitle(text = "接口")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    TextField(
-                        value = config.baseUrl.orEmpty(),
-                        onValueChange = { text -> edit { it.baseUrl = text } },
-                        label = "接口地址",
-                        singleLine = true,
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    TextField(
-                        value = config.apiKey.orEmpty(),
-                        onValueChange = { text -> edit { it.apiKey = text } },
-                        label = "API Key",
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    TextField(
-                        value = config.model.orEmpty(),
-                        onValueChange = { text -> edit { it.model = text } },
-                        label = "模型",
-                        singleLine = true,
-                    )
-                }
-            }
+        // miuix's TextField draws its own squircle background, so it is already a card.
+        // Wrapping a stack of them in another Card nested two rounded surfaces with no gap
+        // between them, which is what made this section read as one indistinct block.
+        item(key = "endpoint-title") {
+            SmallTitle(text = "接口")
+        }
+        item(key = "base-url") {
+            TextField(
+                value = config.baseUrl.orEmpty(),
+                onValueChange = { text -> edit { it.baseUrl = text } },
+                label = "接口地址",
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item(key = "api-key") {
+            TextField(
+                value = config.apiKey.orEmpty(),
+                onValueChange = { text -> edit { it.apiKey = text } },
+                label = "API Key",
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item(key = "model") {
+            TextField(
+                value = config.model.orEmpty(),
+                onValueChange = { text -> edit { it.model = text } },
+                label = "模型",
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         item(key = "fetch") {
@@ -145,25 +150,26 @@ fun AiConfigScreen(
             }
         }
 
+        item(key = "prompt-title") {
+            SmallTitle(text = "提示词")
+        }
+        item(key = "system-prompt") {
+            TextField(
+                value = config.systemPrompt.orEmpty(),
+                onValueChange = { text -> edit { it.systemPrompt = text } },
+                label = "系统提示词",
+                maxLines = 4,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         item(key = "prompt") {
-            Column {
-                SmallTitle(text = "提示词")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    TextField(
-                        value = config.systemPrompt.orEmpty(),
-                        onValueChange = { text -> edit { it.systemPrompt = text } },
-                        label = "系统提示词",
-                        maxLines = 4,
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    TextField(
-                        value = config.prompt.orEmpty(),
-                        onValueChange = { text -> edit { it.prompt = text } },
-                        label = "用户提示词",
-                        maxLines = 6,
-                    )
-                }
-            }
+            TextField(
+                value = config.prompt.orEmpty(),
+                onValueChange = { text -> edit { it.prompt = text } },
+                label = "用户提示词",
+                maxLines = 6,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         item(key = "preset") {
@@ -175,7 +181,6 @@ fun AiConfigScreen(
                         summary = "内置微软式翻译、微软式中文、Emoji",
                         onClick = { showPresetPicker = true },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     ArrowPreference(
                         title = "保存为预设",
                         summary = "把当前的接口与提示词存成一个预设",
@@ -184,7 +189,6 @@ fun AiConfigScreen(
                             showSaveDialog = true
                         },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     ArrowPreference(
                         title = "恢复默认",
                         summary = "回到 DeepSeek 与默认提示词，API Key 会一并清空",

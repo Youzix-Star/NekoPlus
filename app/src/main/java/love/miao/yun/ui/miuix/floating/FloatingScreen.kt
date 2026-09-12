@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
@@ -21,17 +20,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import love.miao.yun.MiaoState
 import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.FloatingColorSource
+import love.miao.yun.ui.UiEnginePrefs
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SliderPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 @Composable
@@ -47,6 +51,11 @@ fun FloatingScreen(
     var opacity by remember { mutableFloatStateOf(0.9f) }
     var snapToEdge by remember { mutableStateOf(true) }
     var haptic by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val floatingColorItems = remember {
+        FloatingColorSource.entries.map { DropdownItem(text = it.label) }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -75,14 +84,12 @@ fun FloatingScreen(
                             onNotify(if (floatingRunning) "悬浮窗已收起" else "悬浮窗已启动")
                         },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SwitchPreference(
                         title = "贴边吸附",
                         summary = "松手后自动吸到屏幕边缘",
                         checked = snapToEdge,
                         onCheckedChange = { snapToEdge = it },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SwitchPreference(
                         title = "拖动反馈",
                         summary = "拖动时轻微震动",
@@ -97,6 +104,19 @@ fun FloatingScreen(
             Column {
                 SmallTitle(text = "外观")
                 Card(modifier = Modifier.fillMaxWidth()) {
+                    WindowSpinnerPreference(
+                        title = "取色来源",
+                        summary = "悬浮窗是独立于界面的悬浮层，取色可以单独选择",
+                        items = floatingColorItems,
+                        selectedIndex = FloatingColorSource.entries
+                            .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
+                        onSelectedIndexChange = { index ->
+                            FloatingColorSource.entries.getOrNull(index)?.let {
+                                MiaoState.floatingColorSource = it
+                                UiEnginePrefs.saveFloatingColor(context, it)
+                            }
+                        },
+                    )
                     SliderPreference(
                         value = size,
                         onValueChange = { size = it },
@@ -105,7 +125,6 @@ fun FloatingScreen(
                         valueRange = 32f..80f,
                         steps = 47,
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SliderPreference(
                         value = corner,
                         onValueChange = { corner = it },
@@ -114,7 +133,6 @@ fun FloatingScreen(
                         valueRange = 0f..40f,
                         steps = 39,
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SliderPreference(
                         value = opacity,
                         onValueChange = { opacity = it },

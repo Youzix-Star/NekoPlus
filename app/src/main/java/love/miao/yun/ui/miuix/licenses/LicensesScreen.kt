@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -71,7 +70,6 @@ fun LicensesScreen(contentPadding: PaddingValues) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     entries.forEachIndexed { index, entry ->
                         if (index > 0) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                         }
                         ArrowPreference(
                             title = entry.name,

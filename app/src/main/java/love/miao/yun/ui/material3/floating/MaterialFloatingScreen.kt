@@ -28,12 +28,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import love.miao.yun.MiaoState
 import love.miao.yun.ui.AppIcons
+import love.miao.yun.ui.FloatingColorSource
+import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.material3AppBarColor
 import love.miao.yun.ui.material3.material3BlurEffect
 import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
 import love.miao.yun.ui.material3.widgets.BaseItemContainer
+import love.miao.yun.ui.material3.widgets.DropDownMenuWidget
 import love.miao.yun.ui.material3.widgets.IntNumberPickerWidget
 import love.miao.yun.ui.material3.widgets.NavigationItemWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
@@ -54,6 +59,7 @@ fun MaterialFloatingScreen(
     var opacityPercent by remember { mutableIntStateOf(90) }
     var snapToEdge by remember { mutableStateOf(true) }
     var haptic by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
 
@@ -122,6 +128,22 @@ fun MaterialFloatingScreen(
 
             item {
                 SegmentedColumn(title = "外观") {
+                    item {
+                        DropDownMenuWidget(
+                            icon = AppIcons.Floating,
+                            title = "取色来源",
+                            description = "悬浮窗是独立于界面的悬浮层，取色可以单独选择",
+                            choice = FloatingColorSource.entries
+                                .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
+                            data = FloatingColorSource.entries.map { it.label },
+                            onChoiceChange = { index ->
+                                FloatingColorSource.entries.getOrNull(index)?.let {
+                                    MiaoState.floatingColorSource = it
+                                    UiEnginePrefs.saveFloatingColor(context, it)
+                                }
+                            },
+                        )
+                    }
                     item {
                         // IntNumberPickerWidget paints no background of its own, so it has
                         // to be wrapped in a container to sit on a card like every other row.

@@ -9,6 +9,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import love.miao.yun.service.MiaoAccessibilityService
 import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.MaterialApp
@@ -33,5 +34,14 @@ class MainActivity : ComponentActivity() {
                 UiEngine.Material3 -> MaterialApp()
             }
         }
+    }
+
+    /**
+     * The accessibility switch can only be flipped in system settings, so re-read it whenever the
+     * app comes back to the foreground — that is precisely when it may have changed.
+     */
+    override fun onResume() {
+        super.onResume()
+        MiaoState.accessibilityEnabled = MiaoAccessibilityService.isEnabled(this)
     }
 }

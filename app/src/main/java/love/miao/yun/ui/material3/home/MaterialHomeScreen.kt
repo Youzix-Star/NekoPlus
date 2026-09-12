@@ -10,7 +10,9 @@
 
 package love.miao.yun.ui.material3.home
 
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,7 +44,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,6 +72,7 @@ fun MaterialHomeScreen(
     onNotify: (String) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val context = LocalContext.current
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
     val uriHandler = LocalUriHandler.current
     val deviceName = remember {
@@ -105,10 +110,26 @@ fun MaterialHomeScreen(
                 .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
             contentPadding = PaddingValues(16.dp) + paddingValues + outerPadding,
         ) {
+            // The two things the user has to switch on for this app to do anything, given equal
+            // billing and both actionable straight from here.
             item {
                 StatusCard(
-                    floatingRunning = floatingRunning,
-                    hasOverlayPermission = hasOverlayPermission,
+                    active = hasOverlayPermission && floatingRunning,
+                    icon = if (hasOverlayPermission && floatingRunning) {
+                        Icons.TwoTone.TaskAlt
+                    } else {
+                        Icons.TwoTone.Warning
+                    },
+                    title = when {
+                        !hasOverlayPermission -> "需要悬浮窗权限"
+                        floatingRunning -> "正在作为悬浮窗"
+                        else -> "悬浮窗未运行"
+                    },
+                    description = when {
+                        !hasOverlayPermission -> "缺少叠加层权限，无法显示悬浮窗"
+                        floatingRunning -> "悬浮窗已经在屏幕上了，点击可以收起"
+                        else -> "点击启动悬浮窗"
+                    },
                     onClick = {
                         if (hasOverlayPermission) {
                             onToggleFloating()
@@ -116,6 +137,31 @@ fun MaterialHomeScreen(
                         } else {
                             onRequestOverlay()
                         }
+                    },
+                )
+            }
+
+            item {
+                val accessibilityEnabled = MiaoState.accessibilityEnabled
+                StatusCard(
+                    active = accessibilityEnabled,
+                    icon = if (accessibilityEnabled) {
+                        Icons.TwoTone.TaskAlt
+                    } else {
+                        Icons.TwoTone.Warning
+                    },
+                    title = if (accessibilityEnabled) {
+                        "无障碍服务已开启"
+                    } else {
+                        "无障碍服务未开启"
+                    },
+                    description = if (accessibilityEnabled) {
+                        "可以读取并写回当前输入框"
+                    } else {
+                        "AI 修改需要它才能拿到输入框文本，点击去开启"
+                    },
+                    onClick = {
+                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     },
                 )
             }
@@ -255,11 +301,12 @@ private fun StatCard(
  */
 @Composable
 private fun StatusCard(
-    floatingRunning: Boolean,
-    hasOverlayPermission: Boolean,
+    active: Boolean,
+    icon: ImageVector,
+    title: String,
+    description: String,
     onClick: () -> Unit,
 ) {
-    val active = hasOverlayPermission && floatingRunning
     val containerColor = if (active) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
@@ -269,17 +316,6 @@ private fun StatusCard(
         MaterialTheme.colorScheme.onPrimaryContainer
     } else {
         MaterialTheme.colorScheme.onErrorContainer
-    }
-    val icon = if (active) Icons.TwoTone.TaskAlt else Icons.TwoTone.Warning
-    val title = when {
-        !hasOverlayPermission -> "需要悬浮窗权限"
-        floatingRunning -> "正在作为悬浮窗"
-        else -> "悬浮窗未运行"
-    }
-    val description = when {
-        !hasOverlayPermission -> "点击前往系统设置授权，然后回来启动"
-        floatingRunning -> "悬浮窗已经在屏幕上了，点击可以收起"
-        else -> "点击启动悬浮窗"
     }
 
     ElevatedCard(

@@ -11,6 +11,7 @@ package love.miao.yun.ui.material3.ai
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -112,34 +113,31 @@ fun MaterialAiConfigScreen(
             item {
                 SegmentedColumn(title = "接口") {
                     item {
+                        // One card for the whole group, with the fields stacked inside it.
+                        // Wrapping every field in its own container nested rounded rectangles
+                        // inside each other and read as a single blurry block.
                         BaseItemContainer {
-                            Field(
-                                label = "接口地址",
-                                value = config.baseUrl.orEmpty(),
-                                singleLine = true,
-                                onValueChange = { text -> edit { it.baseUrl = text } },
-                            )
-                        }
-                    }
-                    item {
-                        BaseItemContainer {
-                            Field(
-                                label = "API Key",
-                                value = config.apiKey.orEmpty(),
-                                singleLine = true,
-                                secret = true,
-                                onValueChange = { text -> edit { it.apiKey = text } },
-                            )
-                        }
-                    }
-                    item {
-                        BaseItemContainer {
-                            Field(
-                                label = "模型",
-                                value = config.model.orEmpty(),
-                                singleLine = true,
-                                onValueChange = { text -> edit { it.model = text } },
-                            )
+                            FieldGroup {
+                                Field(
+                                    label = "接口地址",
+                                    value = config.baseUrl.orEmpty(),
+                                    singleLine = true,
+                                    onValueChange = { text -> edit { it.baseUrl = text } },
+                                )
+                                Field(
+                                    label = "API Key",
+                                    value = config.apiKey.orEmpty(),
+                                    singleLine = true,
+                                    secret = true,
+                                    onValueChange = { text -> edit { it.apiKey = text } },
+                                )
+                                Field(
+                                    label = "模型",
+                                    value = config.model.orEmpty(),
+                                    singleLine = true,
+                                    onValueChange = { text -> edit { it.model = text } },
+                                )
+                            }
                         }
                     }
                 }
@@ -187,25 +185,23 @@ fun MaterialAiConfigScreen(
                 SegmentedColumn(title = "提示词") {
                     item {
                         BaseItemContainer {
-                            Field(
-                                label = "系统提示词",
-                                value = config.systemPrompt.orEmpty(),
-                                minLines = 2,
-                                maxLines = 6,
-                                onValueChange = { text -> edit { it.systemPrompt = text } },
-                            )
-                        }
-                    }
-                    item {
-                        BaseItemContainer {
-                            Field(
-                                label = "用户提示词",
-                                value = config.prompt.orEmpty(),
-                                minLines = 3,
-                                maxLines = 8,
-                                supporting = "含 {text} 时替换为捕获文本，否则作为人设拼在正文前",
-                                onValueChange = { text -> edit { it.prompt = text } },
-                            )
+                            FieldGroup {
+                                Field(
+                                    label = "系统提示词",
+                                    value = config.systemPrompt.orEmpty(),
+                                    minLines = 2,
+                                    maxLines = 6,
+                                    onValueChange = { text -> edit { it.systemPrompt = text } },
+                                )
+                                Field(
+                                    label = "用户提示词",
+                                    value = config.prompt.orEmpty(),
+                                    minLines = 3,
+                                    maxLines = 8,
+                                    supporting = "含 {text} 时替换为捕获文本，否则作为人设拼在正文前",
+                                    onValueChange = { text -> edit { it.prompt = text } },
+                                )
+                            }
                         }
                     }
                 }
@@ -302,6 +298,25 @@ fun MaterialAiConfigScreen(
 
 /** A labelled text field sized to sit inside a segmented column item. */
 @Composable
+/** Stacks labelled fields inside a single card with even breathing room between them. */
+@Composable
+private fun FieldGroup(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
+}
+
+/**
+ * A labelled field.
+ *
+ * [OutlinedTextField] keeps a transparent container, so it does not fight the surrounding card;
+ * only its outline is drawn.
+ */
+@Composable
 private fun Field(
     label: String,
     value: String,
@@ -312,30 +327,23 @@ private fun Field(
     maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     supporting: String? = null,
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            singleLine = singleLine,
-            minLines = minLines,
-            maxLines = maxLines,
-            visualTransformation = if (secret) {
-                PasswordVisualTransformation()
-            } else {
-                VisualTransformation.None
-            },
-            supportingText = if (supporting != null) {
-                { Text(supporting) }
-            } else {
-                null
-            },
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = singleLine,
+        minLines = minLines,
+        maxLines = maxLines,
+        visualTransformation = if (secret) {
+            PasswordVisualTransformation()
+        } else {
+            VisualTransformation.None
+        },
+        supportingText = if (supporting != null) {
+            { Text(supporting) }
+        } else {
+            null
+        },
+        modifier = Modifier.fillMaxWidth(),
+    )
 }

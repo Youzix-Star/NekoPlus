@@ -5,14 +5,11 @@
 
 package love.miao.yun.ui.miuix.settings
 
-import android.content.Intent
-import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,15 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import love.miao.yun.MiaoState
-import love.miao.yun.service.MiaoAccessibilityService
-import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.UiEngine
-import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.miuix.ThemeModeOptions
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
-import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.preference.ArrowPreference
@@ -60,8 +52,6 @@ fun SettingsScreen(
     val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
     val engineItems = remember { UiEngine.entries.map { DropdownItem(text = it.label) } }
     val context = LocalContext.current
-    val accessibilityEnabled = MiaoAccessibilityService.isEnabled(context)
-    val floatingColorItems = remember { FloatingColorSource.entries.map { DropdownItem(text = it.label) } }
     val selectedThemeIndex = ThemeModeOptions
         .indexOfFirst { it.first == colorSchemeMode }
         .coerceAtLeast(0)
@@ -86,26 +76,11 @@ fun SettingsScreen(
                             ThemeModeOptions.getOrNull(index)?.let { onColorSchemeModeChange(it.first) }
                         },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SwitchPreference(
                         title = "液态玻璃底栏",
                         summary = "底部导航使用实时毛玻璃与高光；关闭后变为不透明悬浮样式",
                         checked = useLiquidGlass,
                         onCheckedChange = onUseLiquidGlassChange,
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    WindowSpinnerPreference(
-                        title = "悬浮窗取色",
-                        summary = "悬浮窗是独立于界面的悬浮层，取色可以单独跟随动态取色、Miuix 或 Material Design",
-                        items = floatingColorItems,
-                        selectedIndex = FloatingColorSource.entries
-                            .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
-                        onSelectedIndexChange = { index ->
-                            FloatingColorSource.entries.getOrNull(index)?.let {
-                                MiaoState.floatingColorSource = it
-                                UiEnginePrefs.saveFloatingColor(context, it)
-                            }
-                        },
                     )
                 }
             }
@@ -132,24 +107,12 @@ fun SettingsScreen(
             Column {
                 SmallTitle(text = "AI 修改文本")
                 Card(modifier = Modifier.fillMaxWidth()) {
+                    // The accessibility switch itself lives on the home page as a status card;
+                    // this page only configures the feature.
                     ArrowPreference(
                         title = "AI 配置",
                         summary = "接口地址、API Key、模型与提示词；悬浮窗的「AI 修改」按钮用这套配置",
                         onClick = onOpenAiConfig,
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                    ArrowPreference(
-                        title = "无障碍服务",
-                        summary = if (accessibilityEnabled) {
-                            "已开启，可以读取并写回当前输入框"
-                        } else {
-                            "未开启，AI 修改需要它才能拿到输入框文本"
-                        },
-                        onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                            }
-                        },
                     )
                 }
             }
@@ -165,7 +128,6 @@ fun SettingsScreen(
                         checked = autoStart,
                         onCheckedChange = { autoStart = it },
                     )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
                     SwitchPreference(
                         title = "保持运行",
                         summary = "显示常驻通知，降低被系统清理的概率",
