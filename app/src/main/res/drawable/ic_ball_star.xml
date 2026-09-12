@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Material Symbols Rounded, from google/material-design-icons (Apache License 2.0).
+  Material Icons (Rounded), from google/material-design-icons, Apache License 2.0.
   Used as the floating window's built-in icon set: a vector drawable is the one form both
-  Compose (painterResource) and the plain-View overlay (setImageResource) can draw, so the
-  picker shows exactly what will end up on screen.
+  Compose (painterResource) and the plain-View overlay (setImageResource) can draw, so what
+  the settings picker shows is exactly what ends up on the button.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"

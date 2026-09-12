@@ -94,7 +94,7 @@ bug 就出在这一层：手势取消时，`androidx` 会立刻取消回调所�
 - **配置**：两套引擎各有一个「AI 配置」二级页面（接口 / 连接测试 / 提示词 / 预设 /
   用量统计）。改动即时落盘，没有保存按钮。SharedPreferences 的文件名与键名与原项目
   逐字一致，可以直接沿用原来的配置。
-- **入口**：任何一个动作为「AI 修改」的悬浮窗按钮（默认就有一个 ✨）。走完整条链路，
+- **入口**：任何一个动作为「AI 修改」的悬浮窗按钮（默认那一个就是）。走完整条链路，
   结果与失败原因用 Toast 告知。
 
 需要授予无障碍权限（设置 → AI 修改文本 → 无障碍服务），
@@ -126,7 +126,7 @@ SharedPreferences），**每个按钮各自独立**：
 
 | 项 | 说明 | 范围 |
 | --- | --- | --- |
-| 图标 | Material Symbols Rounded，15 个内置图标 | 向量 drawable |
+| 图标 | Material Icons（Rounded），15 个内置图标 | 向量 drawable |
 | 文字 | 或者不用图标，自己写 1–3 个字 | 1–3 字 |
 | 点击 | AI 修改 / 复制文本 / 打开应用 / 收起悬浮窗 | 4 选 1 |
 | 长按 | 同上，可另配一个，或留空 | 5 选 1 |
@@ -135,7 +135,7 @@ SharedPreferences），**每个按钮各自独立**：
 | 不透明度 | 整个按钮的透明度 | 30–100% |
 | 位置 | 拖动即移动，松手后写入偏好 | 像素 |
 
-图标做成**向量 drawable**（`res/drawable/ic_ball_*.xml`，取自
+图标是**向量 drawable**（`res/drawable/ic_ball_*.xml`，取自
 [google/material-design-icons](https://github.com/google/material-design-icons)，Apache-2.0）
 而不是字形或 emoji：drawable 是 Compose（`painterResource`）和普通 View 悬浮层
 （`setImageResource`）都能画的那一种形式，所以设置里选到的图和屏幕上出现的图是同一份资源，

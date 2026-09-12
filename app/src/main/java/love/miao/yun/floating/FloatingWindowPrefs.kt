@@ -37,7 +37,7 @@ enum class FloatingAction(val id: String, val label: String) {
 }
 
 /**
- * The built-in icon set, taken from Material Symbols Rounded.
+ * The built-in icon set: Material Icons (Rounded), from google/material-design-icons.
  *
  * These are vector **drawables**, not glyphs: a drawable is the one form both Compose
  * (`painterResource`) and the plain-View overlay (`setImageResource`) can draw, so the picker in
