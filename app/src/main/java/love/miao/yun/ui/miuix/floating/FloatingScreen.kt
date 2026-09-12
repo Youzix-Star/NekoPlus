@@ -137,11 +137,7 @@ fun FloatingScreen(
                         title = "添加悬浮窗",
                         summary = "再放一个按钮到屏幕上，图标、动作、大小都各自独立",
                         onClick = {
-                            val item = FloatingWindowPrefs.newItem(
-                                items,
-                                x = (24 * density).roundToInt(),
-                                y = (240 * density).roundToInt(),
-                            )
+                            val item = FloatingWindowPrefs.newItem(items, density)
                             persist(items + item)
                             editingId = item.id
                         },

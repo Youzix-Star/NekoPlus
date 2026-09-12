@@ -7,6 +7,7 @@ package love.miao.yun.floating
 
 import android.content.Context
 import android.content.SharedPreferences
+import kotlin.math.roundToInt
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -103,6 +104,11 @@ object FloatingWindowPrefs {
     const val MAX_SIZE_DP = 88
     const val DEFAULT_SIZE_DP = 56
 
+    /** Where the first button appears, and how far apart fresh ones are stacked. */
+    private const val START_X_DP = 24
+    private const val START_Y_DP = 320
+    private const val ITEM_GAP_DP = 16
+
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -110,7 +116,7 @@ object FloatingWindowPrefs {
     fun load(context: Context): List<FloatingItem> {
         val raw = prefs(context).getString(KEY_ITEMS, null)
         val parsed = parse(raw)
-        return parsed.ifEmpty { default() }
+        return parsed.ifEmpty { default(context) }
     }
 
     fun save(context: Context, items: List<FloatingItem>) {
@@ -140,7 +146,7 @@ object FloatingWindowPrefs {
     }
 
     /** The single button a fresh install starts with. */
-    fun default(): List<FloatingItem> = listOf(
+    fun default(context: Context): List<FloatingItem> = listOf(
         FloatingItem(
             id = "ai",
             icon = FloatingIcon.Sparkle.id,
@@ -148,20 +154,23 @@ object FloatingWindowPrefs {
             action = FloatingAction.AiModify.id,
             sizeDp = DEFAULT_SIZE_DP,
             round = true,
-            x = 24,
-            y = 320,
+            // Positions are raw pixels — that is what the window manager stores — so the defaults
+            // have to be scaled by the display density rather than kept as dp numbers.
+            x = (START_X_DP * densityOf(context)).roundToInt(),
+            y = (START_Y_DP * densityOf(context)).roundToInt(),
         ),
     )
 
     /**
      * A new button, placed clear of the ones already on screen and given an icon that has not been
-     * used yet so it is obvious which is which.
+     * used yet, so it is obvious at a glance which button is which.
      */
-    fun newItem(existing: List<FloatingItem>, x: Int, y: Int): FloatingItem {
+    fun newItem(existing: List<FloatingItem>, density: Float): FloatingItem {
         val used = existing.map { it.icon }.toSet()
         val icon = FloatingIcon.entries
             .firstOrNull { it != FloatingIcon.Text && it.id !in used }
             ?: FloatingIcon.Bolt
+        val stepPx = ((DEFAULT_SIZE_DP + ITEM_GAP_DP) * density).roundToInt()
         return FloatingItem(
             id = "item-" + System.currentTimeMillis().toString(36),
             icon = icon.id,
@@ -169,10 +178,13 @@ object FloatingWindowPrefs {
             action = FloatingAction.AiModify.id,
             sizeDp = DEFAULT_SIZE_DP,
             round = true,
-            x = x,
-            y = y + existing.size * (DEFAULT_SIZE_DP + 16),
+            x = (START_X_DP * density).roundToInt(),
+            y = (START_Y_DP * density).roundToInt() + existing.size * stepPx,
         )
     }
+
+    private fun densityOf(context: Context): Float =
+        context.resources.displayMetrics.density
 
     /** True when [key] is the button list, i.e. the overlay must be rebuilt. */
     fun isFloatingKey(key: String?): Boolean = key == KEY_ITEMS

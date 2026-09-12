@@ -41,7 +41,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import love.miao.yun.MiaoState
 import love.miao.yun.floating.FloatingAction
 import love.miao.yun.floating.FloatingIcon
@@ -293,11 +292,7 @@ fun MaterialFloatingScreen(
                             title = "添加悬浮窗",
                             description = "再放一个按钮到屏幕上，图标、动作、大小都各自独立",
                             onClick = {
-                                val item = FloatingWindowPrefs.newItem(
-                                    items,
-                                    x = (24 * density).roundToInt(),
-                                    y = (240 * density).roundToInt(),
-                                )
+                                val item = FloatingWindowPrefs.newItem(items, density)
                                 persist(items + item)
                                 expandedId = item.id
                             },
