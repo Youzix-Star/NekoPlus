@@ -10,6 +10,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
@@ -22,8 +24,8 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import love.miao.yun.MainActivity
@@ -31,46 +33,67 @@ import love.miao.yun.MiaoState
 import love.miao.yun.R
 import love.miao.yun.ai.AiManager
 import love.miao.yun.ai.TokenStats
+import love.miao.yun.floating.FloatingAction
+import love.miao.yun.floating.FloatingItem
+import love.miao.yun.floating.FloatingWindowPrefs
+import love.miao.yun.ui.FloatingPalette
 import love.miao.yun.ui.FloatingPalettes
 import love.miao.yun.ui.UiEnginePrefs
 
 /**
- * A deliberately minimal floating window: it drags, it can be closed, and it announces itself
- * through [MiaoState] so the home page's status card can react. It captures nothing and processes
- * nothing — this build only exercises the UI.
+ * The floating window: a set of draggable buttons, one per entry in [FloatingWindowPrefs].
  *
- * The overlay is built from plain framework views on purpose. Material components inside a
- * `TYPE_APPLICATION_OVERLAY` window need a themed context and are a recurring source of
- * inflation crashes, and a rounded panel with two labels does not need them.
+ * Every button is independent — its own icon or label, its own action, its own size, its own place
+ * on screen — which is what makes the overlay configurable at all: the original project offered the
+ * choice between one big panel and one round ball, and this offers any number of either.
+ *
+ * The buttons are plain framework views on purpose. Material components inside a
+ * `TYPE_APPLICATION_OVERLAY` window need a themed context and are a recurring source of inflation
+ * crashes, and a rounded square with one glyph on it does not need them.
  */
 class FloatingWindowService : Service() {
 
     private lateinit var windowManager: WindowManager
-    private var rootView: View? = null
-    private var layoutParams: WindowManager.LayoutParams? = null
 
-    /** Kept so the window can be repainted when the palette preference changes. */
-    private var panelBackground: GradientDrawable? = null
-    private var titleView: TextView? = null
-    private var subtitleView: TextView? = null
-    private var closeView: TextView? = null
-    private var aiView: TextView? = null
+    /** Live buttons, keyed by [FloatingItem.id], in the order the preferences list them. */
+    private val buttons = LinkedHashMap<String, FloatingButton>()
+
+    /** The palette currently painted onto every button. */
+    private var palette: FloatingPalette? = null
+
+    private val density: Float get() = resources.displayMetrics.density
 
     /**
-     * The overlay outlives the activity, so it cannot read the palette once at startup: it
-     * subscribes to the preference and restyles itself while it is on screen.
+     * The overlay outlives the activity, so it cannot read its settings once at startup: it
+     * watches both preferences and rebuilds or repaints itself while it is on screen.
      */
-    private val paletteListener =
+    private val prefsListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-            if (UiEnginePrefs.isFloatingColorKey(key)) applyPalette()
+            when {
+                FloatingWindowPrefs.isFloatingKey(key) -> syncButtons()
+                UiEnginePrefs.isFloatingColorKey(key) -> applyPalette()
+            }
         }
+
+    /** One button on screen, plus the window plumbing needed to move and repaint it. */
+    private class FloatingButton(
+        val view: TextView,
+        val params: WindowManager.LayoutParams,
+        val background: GradientDrawable,
+    ) {
+        var item: FloatingItem? = null
+
+        /** True while this button's action is running, so its label can show progress instead. */
+        var busy: Boolean = false
+    }
 
     override fun onCreate() {
         super.onCreate()
         startForegroundNotification()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        showWindow()
-        UiEnginePrefs.registerListener(this, paletteListener)
+        FloatingWindowPrefs.register(this, prefsListener)
+        UiEnginePrefs.registerListener(this, prefsListener)
+        syncButtons()
         MiaoState.floatingRunning = true
     }
 
@@ -79,169 +102,231 @@ class FloatingWindowService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        UiEnginePrefs.unregisterListener(this, paletteListener)
-        rootView?.let { view -> runCatching { windowManager.removeView(view) } }
-        rootView = null
+        FloatingWindowPrefs.unregister(this, prefsListener)
+        UiEnginePrefs.unregisterListener(this, prefsListener)
+        buttons.values.forEach { button ->
+            runCatching { windowManager.removeView(button.view) }
+        }
+        buttons.clear()
         MiaoState.floatingRunning = false
         super.onDestroy()
     }
 
-    // ------------------------------------------------------------------ palette
+    // ------------------------------------------------------------------ buttons
 
-    /**
-     * Repaint the window from [MiaoState.floatingColorSource].
-     *
-     * The colours come from [FloatingPalettes], which reads the miuix, Material 3 or Monet
-     * colour scheme for this device's night mode without needing a composition.
-     */
-    private fun applyPalette() {
-        val source = UiEnginePrefs.loadFloatingColor(this)
-        val palette = FloatingPalettes.resolve(this, source)
-        panelBackground?.setColor(palette.container)
-        titleView?.setTextColor(palette.onContainer)
-        subtitleView?.setTextColor(palette.onContainerMuted)
-        closeView?.setTextColor(palette.onContainer)
-        aiView?.setTextColor(palette.onContainer)
+    /** Brings the on-screen buttons in line with the preferences: add, drop, update, repaint. */
+    private fun syncButtons() {
+        val items = FloatingWindowPrefs.load(this)
+        val wanted = items.map { it.id }.toSet()
+
+        buttons.keys.filterNot { it in wanted }.forEach { id ->
+            removeButton(id)
+        }
+
+        items.forEach { item ->
+            val existing = buttons[item.id]
+            if (existing == null) {
+                addButton(item)
+            } else {
+                existing.item = item
+                updateButton(existing, item)
+            }
+        }
+
+        applyPalette()
     }
 
-    // ------------------------------------------------------------------ overlay
+    private fun addButton(item: FloatingItem) {
+        val buttonBackground = GradientDrawable()
 
-    private fun showWindow() {
-        val context = this
-        val density = resources.displayMetrics.density
-
-        val panel = LinearLayout(context).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(
-                (14 * density).roundToInt(),
-                (10 * density).roundToInt(),
-                (10 * density).roundToInt(),
-                (10 * density).roundToInt(),
-            )
-            background = GradientDrawable().apply {
-                cornerRadius = 24f * density
-            }.also { panelBackground = it }
+        val view = TextView(this).apply {
+            gravity = Gravity.CENTER
+            maxLines = 1
+            setTextColor(0xFF000000.toInt())
+            // Named apart from the view's own `background` property on purpose: inside `apply`
+            // the two would otherwise resolve against each other.
+            background = buttonBackground
+            elevation = 6f * density
+            setOnTouchListener(DragListener(item.id))
         }
 
-        val labels = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-        labels.addView(
-            TextView(context).apply {
-                text = getString(R.string.notif_title)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            }.also { titleView = it },
-        )
-        labels.addView(
-            TextView(context).apply {
-                text = getString(R.string.ai_idle_hint)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
-            }.also { subtitleView = it },
-        )
-        panel.addView(labels)
-
-        val ai = TextView(context).apply {
-            text = getString(R.string.ai_action)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            setPadding((12 * density).roundToInt(), (6 * density).roundToInt(), (12 * density).roundToInt(), (6 * density).roundToInt())
-            setOnClickListener { runAiModify() }
-        }.also { aiView = it }
-        panel.addView(ai)
-
-        val close = TextView(context).apply {
-            text = "✕"
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-            setPadding((14 * density).roundToInt(), 0, (6 * density).roundToInt(), 0)
-            setOnClickListener { stopSelf() }
-        }.also { closeView = it }
-        panel.addView(close)
-
-        // Paint before the window is added so it never flashes the default background.
-        applyPalette()
-
+        // Painted before the window is added, so a button never flashes the default background.
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            buttonSizePx(item),
+            buttonSizePx(item),
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = (24 * density).roundToInt()
-            y = (240 * density).roundToInt()
+            x = item.x
+            y = item.y
         }
 
-        var downX = 0f
-        var downY = 0f
-        var startX = 0
-        var startY = 0
-        panel.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = event.rawX
-                    downY = event.rawY
-                    startX = params.x
-                    startY = params.y
-                    true
-                }
+        val button = FloatingButton(view = view, params = params, background = buttonBackground)
+        button.item = item
+        paint(button, item)
+        applyPalette(button)
 
-                MotionEvent.ACTION_MOVE -> {
-                    params.x = startX + (event.rawX - downX).roundToInt()
-                    params.y = startY + (event.rawY - downY).roundToInt()
-                    runCatching { windowManager.updateViewLayout(panel, params) }
-                    true
-                }
-
-                MotionEvent.ACTION_UP -> {
-                    if (abs(event.rawX - downX) < 6f && abs(event.rawY - downY) < 6f) {
-                        panel.performClick()
-                    }
-                    true
-                }
-
-                else -> false
-            }
-        }
-
-        runCatching { windowManager.addView(panel, params) }
-            .onSuccess {
-                rootView = panel
-                layoutParams = params
-            }
+        runCatching { windowManager.addView(view, params) }
+            .onSuccess { buttons[item.id] = button }
             .onFailure { stopSelf() }
     }
 
-    // ------------------------------------------------------------------ AI 修改
+    private fun updateButton(button: FloatingButton, item: FloatingItem) {
+        val sizePx = buttonSizePx(item)
+        val resized = button.params.width != sizePx || button.params.height != sizePx
+        button.params.width = sizePx
+        button.params.height = sizePx
+        paint(button, item)
+        if (resized || button.params.x != item.x || button.params.y != item.y) {
+            runCatching { windowManager.updateViewLayout(button.view, button.params) }
+        }
+    }
+
+    private fun removeButton(id: String) {
+        val button = buttons.remove(id) ?: return
+        runCatching { windowManager.removeView(button.view) }
+    }
+
+    private fun buttonSizePx(item: FloatingItem): Int = (item.sizeDp * density).roundToInt()
+
+    /** Applies everything about a button that comes from its own settings. */
+    private fun paint(button: FloatingButton, item: FloatingItem) {
+        val sizeDp = item.sizeDp
+        val label = if (button.busy) "…" else item.label
+        button.view.text = label
+        button.view.setTextSize(
+            TypedValue.COMPLEX_UNIT_SP,
+            when {
+                button.busy -> sizeDp * 0.40f
+                label.length <= 1 -> sizeDp * 0.44f
+                label.length == 2 -> sizeDp * 0.34f
+                else -> sizeDp * 0.25f
+            },
+        )
+        button.background.cornerRadius = if (item.round) {
+            sizeDp * density / 2f
+        } else {
+            sizeDp * density / 3.6f
+        }
+    }
+
+    // ------------------------------------------------------------------ palette
 
     /**
-     * The whole feature in one press: capture the focused field, rewrite it through the
-     * configured model, and write the result back.
+     * Repaint every button from the configured colour source.
      *
-     * Every failure is reported in the panel's second line rather than in a dialog, because the
-     * overlay has no window of its own to show one in.
+     * The colours come from [FloatingPalettes], which resolves the miuix, Material 3 or Monet
+     * scheme for this device's night mode without needing a composition.
      */
-    private fun runAiModify() {
+    private fun applyPalette() {
+        palette = FloatingPalettes.resolve(this, UiEnginePrefs.loadFloatingColor(this))
+        buttons.values.forEach { applyPalette(it) }
+    }
+
+    private fun applyPalette(button: FloatingButton) {
+        val colors = palette ?: return
+        button.background.setColor(colors.container)
+        button.view.setTextColor(colors.onContainer)
+    }
+
+    // ------------------------------------------------------------------ dragging
+
+    /**
+     * Drag to move, tap to act.
+     *
+     * The window is repositioned with the raw touch delta rather than a gesture detector, because
+     * the overlay never gets a gesture arena of its own — it is the only thing in its window.
+     */
+    private inner class DragListener(private val id: String) : View.OnTouchListener {
+        private var downX = 0f
+        private var downY = 0f
+        private var startX = 0
+        private var startY = 0
+        private var dragging = false
+
+        override fun onTouch(view: View, event: MotionEvent): Boolean {
+            val button = buttons[id] ?: return false
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.rawX
+                    downY = event.rawY
+                    startX = button.params.x
+                    startY = button.params.y
+                    dragging = false
+                    return true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - downX
+                    val dy = event.rawY - downY
+                    if (!dragging && (abs(dx) > draggableSlop() || abs(dy) > draggableSlop())) {
+                        dragging = true
+                    }
+                    if (dragging) {
+                        button.params.x = startX + dx.roundToInt()
+                        button.params.y = startY + dy.roundToInt()
+                        runCatching { windowManager.updateViewLayout(view, button.params) }
+                    }
+                    return true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    if (dragging) {
+                        // Only a finished drag is worth persisting, so a tap never rewrites state.
+                        FloatingWindowPrefs.savePosition(
+                            this@FloatingWindowService,
+                            id,
+                            button.params.x,
+                            button.params.y,
+                        )
+                    } else if (event.actionMasked == MotionEvent.ACTION_UP) {
+                        button.item?.let { perform(it, button) }
+                    }
+                    dragging = false
+                    return true
+                }
+            }
+            return false
+        }
+
+        private fun draggableSlop(): Float = 8f * density
+    }
+
+    // ------------------------------------------------------------------ actions
+
+    private fun perform(item: FloatingItem, button: FloatingButton) {
+        when (item.actionEntry) {
+            FloatingAction.AiModify -> runAiModify(button)
+            FloatingAction.Capture -> captureToClipboard()
+            FloatingAction.OpenApp -> openApp()
+            FloatingAction.Close -> stopSelf()
+        }
+    }
+
+    /** Capture the focused field, let the model rewrite it, and write the result back. */
+    private fun runAiModify(button: FloatingButton) {
         val service = MiaoAccessibilityService.instance()
         if (service == null) {
-            setStatus(getString(R.string.ai_need_accessibility))
+            toast(getString(R.string.ai_need_accessibility))
             return
         }
 
         val original = service.getCurrentWindowText()
         if (original.isEmpty()) {
-            setStatus(getString(R.string.ai_no_input))
+            toast(getString(R.string.ai_no_input))
             return
         }
 
         val config = AiManager.load(this)
         if (config.apiKey.isNullOrBlank()) {
-            setStatus(getString(R.string.ai_need_api_key))
+            toast(getString(R.string.ai_need_api_key))
             return
         }
 
-        setStatus(getString(R.string.ai_modifying))
+        setBusy(button, true)
         AiManager.modifyText(
             config,
             original,
@@ -258,7 +343,8 @@ class FloatingWindowService : Service() {
                         )
                     }
                     val written = service.replaceInputText(modifiedText)
-                    setStatus(
+                    setBusy(button, false)
+                    toast(
                         getString(
                             if (written) R.string.ai_replaced else R.string.ai_replace_failed,
                         ),
@@ -266,14 +352,46 @@ class FloatingWindowService : Service() {
                 }
 
                 override fun onError(message: String) {
-                    setStatus(getString(R.string.ai_failed) + "：" + message)
+                    setBusy(button, false)
+                    toast(getString(R.string.ai_failed) + "：" + message)
                 }
             },
         )
     }
 
-    private fun setStatus(text: String) {
-        subtitleView?.text = text
+    /** Copy whatever the focused input box holds onto the clipboard. */
+    private fun captureToClipboard() {
+        val service = MiaoAccessibilityService.instance()
+        if (service == null) {
+            toast(getString(R.string.ai_need_accessibility))
+            return
+        }
+        val text = service.getCurrentWindowText()
+        if (text.isEmpty()) {
+            toast(getString(R.string.ai_no_input))
+            return
+        }
+        val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.notif_title), text))
+        toast(getString(R.string.floating_copied, text.length))
+    }
+
+    private fun openApp() {
+        runCatching {
+            startActivity(
+                Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    }
+
+    private fun setBusy(button: FloatingButton, busy: Boolean) {
+        button.busy = busy
+        button.item?.let { paint(button, it) }
+    }
+
+    /** Results are announced as toasts: a bare button has no panel to write a status line into. */
+    private fun toast(message: String) {
+        runCatching { Toast.makeText(this, message, Toast.LENGTH_SHORT).show() }
     }
 
     // ------------------------------------------------------------------ notification

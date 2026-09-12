@@ -8,6 +8,7 @@ package love.miao.yun.ui.miuix.ai
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -71,7 +72,7 @@ fun AiConfigScreen(
 
     LazyColumn(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .nestedScroll(scrollBehavior.nestedScrollConnection),
         contentPadding = contentPadding,
         verticalArrangement = Arrangement.spacedBy(12.dp),

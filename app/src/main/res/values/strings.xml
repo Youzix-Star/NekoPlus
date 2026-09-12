@@ -113,4 +113,21 @@
     <string name="notif_channel_desc">保持悬浮窗在后台运行</string>
     <string name="notif_title">喵喵助手正在运行</string>
     <string name="notif_text">点击返回应用</string>
+    <!-- 悬浮窗：可自定义的多个按钮 -->
+    <string name="floating_items_title">悬浮窗按钮</string>
+    <string name="floating_add">添加悬浮窗</string>
+    <string name="floating_add_sub">再放一个按钮到屏幕上，图标、动作、大小都各自独立</string>
+    <string name="floating_edit_title">编辑悬浮窗</string>
+    <string name="floating_pick_icon">图标</string>
+    <string name="floating_custom_text">自定义文字</string>
+    <string name="floating_custom_text_hint">按钮上显示的文字，建议 1 到 3 个字</string>
+    <string name="floating_action">点击动作</string>
+    <string name="floating_round">圆形按钮</string>
+    <string name="floating_round_sub">关掉就是一个圆角方形</string>
+    <string name="floating_delete">删除这个悬浮窗</string>
+    <string name="floating_delete_sub">把它从屏幕上拿掉</string>
+    <string name="floating_keep_one">至少要留一个悬浮窗</string>
+    <string name="floating_done">完成</string>
+    <string name="floating_drag_hint">长按拖动即可移动，位置会自动记住</string>
+    <string name="floating_copied">已复制 %1$d 个字符到剪贴板</string>
 </resources>

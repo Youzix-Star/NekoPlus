@@ -97,16 +97,16 @@ fun HomeScreen(
 
         item(key = "status-accessibility") {
             val enabled = MiaoState.accessibilityEnabled
-            StatusCard(
+            CompactStatusCard(
                 active = enabled,
                 icon = AppIcons.Grant,
                 title = if (enabled) "无障碍服务已开启" else "无障碍服务未开启",
-                description = if (enabled) {
+                summary = if (enabled) {
                     "可以读取并写回当前输入框"
                 } else {
                     "AI 修改需要它才能拿到输入框文本"
                 },
-                hint = if (enabled) "点击查看" else "去开启",
+                hint = if (enabled) "已开启" else "去开启",
                 onClick = {
                     runCatching {
                         context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -292,5 +292,72 @@ private fun StatisticCard(
             style = MiuixTheme.textStyles.title3,
             color = MiuixTheme.colorScheme.onSurface,
         )
+    }
+}
+
+/**
+ * The small companion to [StatusCard]: one line saying whether something is on, and what to do
+ * about it. Two full-height blocks stacked on top of each other read as a wall, so the second of
+ * the two things this app has to have switched on gets the compact treatment instead.
+ */
+@Composable
+private fun CompactStatusCard(
+    active: Boolean,
+    icon: ImageVector,
+    title: String,
+    summary: String,
+    hint: String,
+    onClick: () -> Unit,
+) {
+    val containerColor = if (active) {
+        MiuixTheme.colorScheme.primaryContainer
+    } else {
+        MiuixTheme.colorScheme.errorContainer
+    }
+    val contentColor = if (active) {
+        MiuixTheme.colorScheme.onPrimaryContainer
+    } else {
+        MiuixTheme.colorScheme.onErrorContainer
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        insideMargin = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+        colors = CardDefaults.defaultColors(color = containerColor, contentColor = contentColor),
+        onClick = onClick,
+        showIndication = true,
+        pressFeedbackType = PressFeedbackType.Tilt,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp),
+            ) {
+                Text(
+                    text = title,
+                    color = contentColor,
+                    style = MiuixTheme.textStyles.body2,
+                )
+                Text(
+                    text = summary,
+                    color = contentColor,
+                    style = MiuixTheme.textStyles.footnote1,
+                    modifier = Modifier.alpha(0.75f),
+                )
+            }
+            Text(
+                text = hint,
+                color = contentColor,
+                style = MiuixTheme.textStyles.footnote1,
+                modifier = Modifier.alpha(0.75f),
+            )
+        }
     }
 }

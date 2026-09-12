@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -109,6 +108,10 @@ fun MaterialHomeScreen(
                 .fillMaxSize()
                 .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
             contentPadding = PaddingValues(16.dp) + paddingValues + outerPadding,
+            // The status cards used to sit flush against each other: they were separate items in
+            // this list with no arrangement between them, so the two coloured blocks read as one
+            // broken surface instead of two cards.
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // The two things the user has to switch on for this app to do anything, given equal
             // billing and both actionable straight from here.
@@ -165,8 +168,6 @@ fun MaterialHomeScreen(
                     },
                 )
             }
-
-            item { Spacer(modifier = Modifier.size(12.dp)) }
 
             item {
                 Row(

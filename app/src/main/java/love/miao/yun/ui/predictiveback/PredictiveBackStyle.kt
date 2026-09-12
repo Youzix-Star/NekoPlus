@@ -5,35 +5,105 @@
 
 package love.miao.yun.ui.predictiveback
 
-import top.yukonga.miuix.kmp.nav.transition.NavTransition
-import top.yukonga.miuix.kmp.nav.transition.NavTransitions
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.unit.Dp
 
 /**
- * Which flavour of predictive back animation plays on a second-level page.
+ * Which flavour of predictive-back animation plays on a second-level page.
  *
- * Both styles come from the same reference project: [Miuix] is miuix's own built-in transition,
- * [Aosp] is the AOSP-style transition that project reimplements.
+ * Each style is nothing but a set of numbers: the geometry they feed lives in one shared place
+ * ([Modifier.backLayer]), so both engines animate identically and there is only ever one
+ * implementation of the gesture to get right.
  */
 enum class PredictiveBackStyle(val id: String, val label: String) {
-    /** AOSP: the page scales down, hugs the swiped edge, and drifts with the finger. */
+    /** The page follows the finger, shrinking and drifting with it, like a system dismiss. */
     Aosp("aosp", "AOSP"),
 
-    /** MIUIX: miuix's own built-in navigation transition. */
+    /** The page slides away 1:1 with the finger while the page underneath parallaxes into place. */
     Miuix("miuix", "Miuix"),
 
-    /** No visual feedback: the page simply slides away. */
+    /** No gesture feedback at all: the page simply closes. */
     None("none", "无动画"),
     ;
 
-    val transition: NavTransition
+    val config: BackMotionConfig
         get() = when (this) {
-            Aosp -> aospNavTransition
-            Miuix -> NavTransitions.MiuixDefault
-            None -> NavTransitions.None
+            Aosp -> BackMotionConfig(
+                pageFollowsFinger = true,
+                pageVerticalDrift = true,
+                pageScaleAtDismiss = 0.9f,
+                pageCornerRadiusAtDismiss = null,
+                coveredParallaxFraction = 0f,
+                coveredDimAtRest = 0f,
+                coveredScrimAtRest = 0.32f,
+                commitSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                cancelSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMedium),
+            )
+
+            Miuix -> BackMotionConfig(
+                pageFollowsFinger = true,
+                pageVerticalDrift = false,
+                pageScaleAtDismiss = 1f,
+                pageCornerRadiusAtDismiss = 24.dp,
+                coveredParallaxFraction = 0.25f,
+                coveredDimAtRest = 0.1f,
+                coveredScrimAtRest = 0.18f,
+                commitSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+                cancelSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow),
+            )
+
+            None -> BackMotionConfig(
+                // Everything is identity, so the page neither follows the finger nor moves: only
+                // the close itself is timed, and it is kept short so it reads as a plain swap.
+                pageFollowsFinger = false,
+                pageVerticalDrift = false,
+                pageScaleAtDismiss = 1f,
+                pageCornerRadiusAtDismiss = null,
+                coveredParallaxFraction = 0f,
+                coveredDimAtRest = 0f,
+                coveredScrimAtRest = 0f,
+                commitSpec = tween(durationMillis = 140, easing = LinearOutSlowInEasing),
+                cancelSpec = tween(durationMillis = 140, easing = LinearOutSlowInEasing),
+            )
         }
 
     companion object {
-        fun from(id: String?): PredictiveBackStyle =
-            entries.firstOrNull { it.id == id } ?: Aosp
+        // AOSP is the platform's own gesture, so it is what the app does unless told otherwise.
+        fun from(id: String?): PredictiveBackStyle = entries.firstOrNull { it.id == id } ?: Aosp
     }
 }
+
+/**
+ * The geometry one predictive-back style is made of.
+ *
+ * Every value describes the same drag: how the two layers look while the second-level page is
+ * fully open, and how they look once it is gone. The transforms interpolate between those two
+ * ends as a pure function of the drag's progress, which is what keeps the finger tracking exact.
+ *
+ * @param pageFollowsFinger whether the dismissing page translates with the drag at all.
+ * @param pageVerticalDrift whether it also tracks the finger's vertical movement.
+ * @param pageScaleAtDismiss scale the dismissing page shrinks to as it leaves.
+ * @param pageCornerRadiusAtDismiss corner radius it rounds to as it leaves, or `null` for square.
+ * @param coveredParallaxFraction how far the revealed page slides toward the leading edge while it
+ *   is covered, as a fraction of the screen width.
+ * @param coveredDimAtRest how transparent the revealed page is while it is covered.
+ * @param coveredScrimAtRest alpha of the dark scrim laid over the revealed page while covered.
+ * @param commitSpec the animation that carries the drag to completion once the finger lifts.
+ * @param cancelSpec the animation that springs the page back when the gesture is abandoned.
+ */
+data class BackMotionConfig(
+    val pageFollowsFinger: Boolean,
+    val pageVerticalDrift: Boolean,
+    val pageScaleAtDismiss: Float,
+    val pageCornerRadiusAtDismiss: Dp?,
+    val coveredParallaxFraction: Float,
+    val coveredDimAtRest: Float,
+    val coveredScrimAtRest: Float,
+    val commitSpec: AnimationSpec<Float>,
+    val cancelSpec: AnimationSpec<Float>,
+)

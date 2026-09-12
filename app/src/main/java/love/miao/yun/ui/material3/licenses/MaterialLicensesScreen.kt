@@ -14,23 +14,37 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
+import love.miao.yun.ui.material3.material3AppBarColor
+import love.miao.yun.ui.material3.material3BlurEffect
+import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
 import love.miao.yun.ui.material3.widgets.NavigationItemWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 private data class LicenseEntry(val name: String, val license: String, val url: String)
 
 /** Second-level page: the licences of everything this app is built on. */
 @Composable
-fun MaterialLicensesScreen(outerPadding: PaddingValues) {
+fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
     val uriHandler = LocalUriHandler.current
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val backdrop = rememberMaterial3BlurBackdrop(useBlur)
     val entries = remember {
         listOf(
             LicenseEntry("miuix", "Apache License 2.0", "https://github.com/compose-miuix-ui/miuix"),
@@ -58,9 +72,37 @@ fun MaterialLicensesScreen(outerPadding: PaddingValues) {
         )
     }
 
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        topBar = {
+            TopAppBar(
+                modifier = Modifier.material3BlurEffect(backdrop),
+                title = { Text("开源许可", modifier = Modifier.padding(start = 12.dp)) },
+                scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "返回",
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = backdrop.material3AppBarColor(),
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    scrolledContainerColor = backdrop.material3AppBarColor(),
+                ),
+            )
+        },
+    ) { paddingValues ->
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = outerPadding,
+        modifier = Modifier
+            .fillMaxSize()
+            .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
+        contentPadding = PaddingValues(16.dp) + paddingValues,
     ) {
         item {
             SegmentedColumn(title = "本项目基于 AGPL-3.0 开源") {
@@ -84,5 +126,6 @@ fun MaterialLicensesScreen(outerPadding: PaddingValues) {
                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
             )
         }
+    }
     }
 }

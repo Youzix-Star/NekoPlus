@@ -18,12 +18,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,18 +55,22 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 /**
  * The AI configuration page for the Material Design engine.
  *
- * Edits go straight to [AiManager.save], so there is no save button and nothing is lost when
- * the page is left. Text entry uses [OutlinedTextField] wrapped in [BaseItemContainer], because
- * the ported widget set has no text-editing row of its own.
+ * The page is full screen and owns its app bar, exactly as the four tabs do, so nothing is stacked
+ * above its first control. Text entry uses [OutlinedTextField] wrapped in [BaseItemContainer],
+ * because the ported widget set has no text-editing row of its own.
+ *
+ * @param onBack closes the page; the caller animates it out.
  */
 @Composable
 fun MaterialAiConfigScreen(
-    outerPadding: PaddingValues,
+    onBack: () -> Unit,
     useBlur: Boolean,
     onNotify: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    // A small app bar is pinned, not collapsible: a sub-page is short enough that collapsing a
+    // large title would only eat the space the first control wants.
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
 
     var config by remember { mutableStateOf(AiManager.load(context)) }
@@ -92,10 +100,18 @@ fun MaterialAiConfigScreen(
             .fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
         topBar = {
-            LargeFlexibleTopAppBar(
+            TopAppBar(
                 modifier = Modifier.material3BlurEffect(backdrop),
                 title = { Text("AI 配置", modifier = Modifier.padding(start = 12.dp)) },
                 scrollBehavior = scrollBehavior,
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "返回",
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = backdrop.material3AppBarColor(),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
@@ -108,7 +124,7 @@ fun MaterialAiConfigScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
-            contentPadding = paddingValues + outerPadding,
+            contentPadding = paddingValues + PaddingValues(16.dp),
         ) {
             item {
                 SegmentedColumn(title = "接口") {

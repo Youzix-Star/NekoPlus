@@ -107,7 +107,6 @@ dependencies {
     implementation(libs.miuix.preference)
     // The liquid-glass floating bottom bar is built on miuix-blur, which requires minSdk 33.
     implementation(libs.miuix.blur)
-    implementation(libs.miuix.nav)
 
     implementation(libs.androidx.activity.compose)
 
