@@ -29,7 +29,7 @@ enum class PredictiveBackStyle(val id: String, val label: String) {
         get() = when (this) {
             Aosp -> aospNavTransition
             Miuix -> NavTransitions.MiuixDefault
-            None -> NavTransitions.none
+            None -> NavTransitions.None
         }
 
     companion object {

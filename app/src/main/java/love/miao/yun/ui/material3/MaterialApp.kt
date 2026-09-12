@@ -204,7 +204,8 @@ private fun MaterialShell(
         back.onGestureStart()
         back.onDismissed = {
             subPage = null
-            subEnter.snapTo(0f)
+            // snapTo is suspending, and onDismissed is a plain callback, so it needs a scope.
+            settleScope.launch { subEnter.snapTo(0f) }
             back.forceReset()
         }
         try {

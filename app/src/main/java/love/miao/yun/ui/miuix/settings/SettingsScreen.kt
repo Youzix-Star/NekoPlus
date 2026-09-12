@@ -20,8 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import love.miao.yun.MiaoState
 import love.miao.yun.ui.UiEngine
+import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.miuix.ThemeModeOptions
+import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.ScrollBehavior

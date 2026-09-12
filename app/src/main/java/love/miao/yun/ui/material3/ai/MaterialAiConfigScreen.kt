@@ -296,8 +296,6 @@ fun MaterialAiConfigScreen(
     }
 }
 
-/** A labelled text field sized to sit inside a segmented column item. */
-@Composable
 /** Stacks labelled fields inside a single card with even breathing room between them. */
 @Composable
 private fun FieldGroup(content: @Composable ColumnScope.() -> Unit) {
