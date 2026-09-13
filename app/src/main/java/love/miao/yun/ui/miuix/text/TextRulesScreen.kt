@@ -161,7 +161,6 @@ fun TextRulesScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     ArrowPreference(
                         title = TextRuleText.render(rule).removeSuffix("  # 已停用"),
-                        summary = if (rule.enabled) null else "已停用",
                         endActions = {
                             Switch(
                                 checked = rule.enabled,
@@ -176,7 +175,7 @@ fun TextRulesScreen(
                                 },
                             )
                         },
-                        summary = "点按用表单修改",
+                        summary = if (rule.enabled) "点按用表单修改" else "已停用 · 点按用表单修改",
                         onClick = {
                             edit(index)
                             showGui = true
