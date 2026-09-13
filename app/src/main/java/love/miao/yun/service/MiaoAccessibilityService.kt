@@ -318,7 +318,15 @@ open class MiaoAccessibilityService : AccessibilityService() {
             }
             appendLine("→ 当前会选中: " + (candidates.firstOrNull()?.let { describe(it) } ?: "无"))
             appendLine()
-            appendLine("发送按钮助手: " + if (love.miao.yun.sendassist.SendAssistPrefs.isEnabled(this)) "已开启" else "已关闭")
+            // `this` inside buildString is the StringBuilder, not the service.
+            appendLine(
+                "发送按钮助手: " +
+                    if (love.miao.yun.sendassist.SendAssistPrefs.isEnabled(this@MiaoAccessibilityService)) {
+                        "已开启"
+                    } else {
+                        "已关闭"
+                    },
+            )
             active?.packageName?.toString()?.let { pkg ->
                 val target = love.miao.yun.sendassist.SEND_TARGETS[pkg]
                 if (target != null) {
