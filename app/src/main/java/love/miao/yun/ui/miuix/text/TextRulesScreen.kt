@@ -120,7 +120,11 @@ fun TextRulesScreen(
         item(key = "rules") {
             Card(modifier = Modifier.fillMaxWidth()) {
                 if (replacements.isEmpty()) {
-                    Text(text = "还没有规则。", fontSize = 13.sp)
+                    Text(
+                        text = "还没有规则。",
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    )
                 }
                 replacements.forEachIndexed { at, rule ->
                     ArrowPreference(
@@ -161,32 +165,41 @@ fun TextRulesScreen(
         item(key = "emoticons-title") {
             SmallTitle(text = "颜文字")
         }
+        // No Card around it: miuix's TextField draws its own rounded surface, and wrapping it in a
+        // second one puts the text against two borders at once.
         item(key = "emoticons") {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                TextField(
-                    colors = miaoTextFieldColors(),
-                    value = TextSwitches.emoticons(rules),
-                    onValueChange = { update(TextSwitches.setEmoticons(rules, it)) },
-                    label = "一行一个，留空用内置的 ${TextDefaults.EMOTICONS.size} 个",
-                    maxLines = 8,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
+            TextField(
+                colors = miaoTextFieldColors(),
+                value = TextSwitches.emoticons(rules),
+                onValueChange = { update(TextSwitches.setEmoticons(rules, it)) },
+                label = "一行一个，留空用内置的 ${TextDefaults.EMOTICONS.size} 个",
+                maxLines = 8,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         item(key = "trial-title") {
             SmallTitle(text = "试跑")
         }
-        item(key = "trial") {
+        item(key = "trial-sample") {
+            TextField(
+                colors = miaoTextFieldColors(),
+                value = sample,
+                onValueChange = { sample = it },
+                label = "写一句试试",
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        item(key = "trial-result") {
             Card(modifier = Modifier.fillMaxWidth()) {
-                TextField(
-                    colors = miaoTextFieldColors(),
-                    value = sample,
-                    onValueChange = { sample = it },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                Text(
+                    text = preview.ifEmpty { "（空的）" },
+                    fontSize = 15.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                 )
-                Text(text = preview.ifEmpty { "（空的）" }, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp))
             }
         }
     }

@@ -161,7 +161,9 @@ fun MaterialTextRulesScreen(
                                 Text(
                                     text = "还没有规则。",
                                     style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
                                 )
                             }
                             replacements.forEachIndexed { at, rule ->
