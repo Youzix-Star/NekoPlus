@@ -35,9 +35,15 @@
           无障碍服务：只在用户点悬浮窗按钮时读取 / 写回当前输入框。
           exported="true" 是官方文档给出的形式，实际入口由 BIND_ACCESSIBILITY_SERVICE
           保护，只有系统持有该权限。
+
+          组件名伪装成系统自带的 select-to-speak 服务：微信 8.0.52+ 对不认识的无障碍服务会
+          返回一棵空节点树（窗口在、根节点没有 class/bounds/子节点），换个组件名就绕过去了。
+          真正的实现仍是 love.miao.yun.service.MiaoAccessibilityService，这里只声明这个壳 ——
+          两个都声明会让系统设置里出现两条，也会把真名暴露给微信。
         -->
         <service
-            android:name=".service.MiaoAccessibilityService"
+            android:name="com.google.android.accessibility.selecttospeak.SelectToSpeakService"
+            android:enabled="true"
             android:exported="true"
             android:label="@string/accessibility_service_label"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">

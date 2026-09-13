@@ -36,7 +36,7 @@ import java.util.Locale
  * `AccessibilityNodeInfo.recycle()` is intentionally not called: it has been a no-op since
  * API 33, which is this app's `minSdk`, so the original's recycling dance is dead code here.
  */
-class MiaoAccessibilityService : AccessibilityService() {
+open class MiaoAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // Intentionally empty: nothing is ever captured without the user asking for it.
@@ -105,11 +105,19 @@ class MiaoAccessibilityService : AccessibilityService() {
     private fun bestInputNode(): AccessibilityNodeInfo? = inputCandidates().firstOrNull()
 
     private fun inputCandidates(): List<AccessibilityNodeInfo> {
-        val roots = orderedRoots()
+        val foreground = rootInActiveWindow?.packageName?.toString()
         val found = mutableListOf<AccessibilityNodeInfo>()
-        roots.forEach { root -> collectTextNodes(root, 0, found) }
-        return found
-            .distinct()
+        orderedRoots().forEach { root -> collectTextNodes(root, 0, found) }
+
+        val unique = found.distinct()
+        // Invisible fields are other apps' plumbing, not something the user is typing in: Termux
+        // keeps an invisible EditText as its keyboard proxy, and writing into that instead of the
+        // app in front is worse than finding nothing at all.
+        val visible = unique.filter { it.isVisibleToUser }
+        val pool = visible.ifEmpty { unique }
+        // Then the app in front wins: a field in a background window is never the chat box.
+        val inFront = pool.filter { it.packageName?.toString() == foreground }
+        return (inFront.ifEmpty { pool })
             .sortedByDescending { score(it) }
             .take(MAX_CANDIDATES)
     }
@@ -141,7 +149,7 @@ class MiaoAccessibilityService : AccessibilityService() {
         if (className.contains("AutoComplete")) score += 10
         if (className.contains("WebView")) score += 5
         if (node.text?.isNotEmpty() == true) score += 5
-        if (node.isVisibleToUser) score += 5
+        if (node.isVisibleToUser) score += 60 else score -= 40
         if (node.isPassword) score -= 5
         // Containers that merely accept text actions are a weak signal on their own.
         if (node.childCount > 3) score -= 10
@@ -241,11 +249,22 @@ class MiaoAccessibilityService : AccessibilityService() {
             appendLine()
 
             appendLine("===== 捕获诊断 =====")
-            appendLine("rootInActiveWindow: " + (rootInActiveWindow?.packageName?.toString() ?: "无"))
+            val active = rootInActiveWindow
+            appendLine("rootInActiveWindow: " + (active?.packageName?.toString() ?: "无"))
+            appendLine("  直接子节点数: ${active?.childCount ?: -1}")
+            if (active != null && active.childCount == 0) {
+                // A window whose tree looks empty may just be stale; refresh before believing it.
+                active.refresh()
+                appendLine("  refresh() 之后: ${active.childCount}")
+            }
             appendLine("可交互窗口数: ${runCatching { windows }.getOrNull()?.size ?: 0}")
+            appendLine()
             appendLine("候选输入节点: ${candidates.size}")
             candidates.forEachIndexed { index, node ->
-                appendLine("  #${index + 1} score=${score(node)} ${describe(node)}")
+                appendLine(
+                    "  #${index + 1} score=${score(node)} pkg=${node.packageName ?: "?"} " +
+                        "visible=${node.isVisibleToUser} ${describe(node)}",
+                )
             }
             appendLine("→ 当前会选中: " + (candidates.firstOrNull()?.let { describe(it) } ?: "无"))
             appendLine()
@@ -280,9 +299,14 @@ class MiaoAccessibilityService : AccessibilityService() {
             else -> "类型${window.type}"
         }
         val title = runCatching { window.title?.toString() }.getOrNull().orEmpty()
-        return "--- 窗口 ${index + 1}: $type · active=${window.isActive} " +
+        val root = runCatching { window.root }.getOrNull()
+        // `直接子节点数=0` on the window the user is looking at is the signature of an app that
+        // hides its whole tree from accessibility, which is worth stating rather than leaving as
+        // "the dump is empty".
+        return "--- 窗口 ${index + 1}: $type · id=${window.id} active=${window.isActive} " +
             "focused=${window.isFocused} layer=${window.layer} " +
-            "pkg=${window.root?.packageName?.toString() ?: "?"}" +
+            "rootPkg=${root?.packageName?.toString() ?: "?"} " +
+            "rootChildren=${root?.childCount ?: -1}" +
             (if (title.isNotEmpty()) " title=$title" else "")
     }
 
@@ -389,8 +413,11 @@ class MiaoAccessibilityService : AccessibilityService() {
          * enabled while not yet connected, and the UI needs to tell those apart from "off".
          */
         fun isEnabled(context: Context): Boolean {
-            val expected = ComponentName(context, MiaoAccessibilityService::class.java)
-                .flattenToString()
+            // The name the system binds is the disguised one, so that is the name to look for.
+            val expected = ComponentName(
+                context,
+                com.google.android.accessibility.selecttospeak.SelectToSpeakService::class.java,
+            ).flattenToString()
             val enabled = Settings.Secure.getString(
                 context.contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
