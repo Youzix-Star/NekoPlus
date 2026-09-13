@@ -54,6 +54,9 @@ jobs:
 
       # The rule language is a parser and an engine: the things that fail silently. Run its tests
       # before spending a release build on the APK.
+      - name: List test tasks
+        run: ./gradlew --no-daemon tasks --all | grep -iE "test" | head -30 || true
+
       - name: Test the rule engine
         run: ./gradlew --no-daemon --stacktrace testReleaseUnitTest
 
