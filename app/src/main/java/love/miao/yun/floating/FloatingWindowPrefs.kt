@@ -24,6 +24,14 @@ enum class FloatingAction(val id: String, val label: String) {
     /** Bring the app to the front. */
     OpenApp("app", "打开应用"),
 
+    /**
+     * Press the chat app's own send button.
+     *
+     * The step that turns a rewrite into a sent message, and the reason the send-button assistant
+     * needs no separate "auto send" switch of its own: it is just the next step in the chain.
+     */
+    Send("send", "按发送"),
+
     /** Take every floating button off the screen. */
     Close("close", "收起悬浮窗"),
 
@@ -235,6 +243,86 @@ data class FloatingOptions(
 )
 
 /**
+ * One item as JSON.
+ *
+ * Public because the send-button assistant stores its button the same way it stores its own: it is
+ * a floating button that happens to be anchored to a chat app's send key, so it is serialised by
+ * the same code, with the same backward compatibility, rather than by a second copy of it.
+ */
+fun FloatingItem.toJson(): JSONObject = JSONObject().apply {
+    put("id", id)
+    put("enabled", enabled)
+    put("icon", icon)
+    put("showIcon", showIcon)
+    put("text", text)
+    put("actions", JSONArray(actions))
+    put("holds", JSONArray(holdActions))
+    put("width", widthDp)
+    put("height", heightDp)
+    put("corner", cornerDp)
+    put("opacity", opacity)
+    put("x", x)
+    put("y", y)
+}
+
+/**
+ * Reads one item back, or `null` when the record cannot be one.
+ *
+ * Every key is optional and every range is clamped: these are preferences, and a hand-edited or
+ * half-written record should give a usable button rather than a crash on the way to the screen.
+ */
+fun readFloatingItem(json: JSONObject, fallbackId: String): FloatingItem? {
+    val id = json.optString("id").ifBlank { fallbackId }
+    if (id.isBlank()) return null
+
+    // `size` is what an earlier build stored, before the two edges were split.
+    val legacySize = json.optInt("size", FloatingWindowPrefs.DEFAULT_SIZE_DP)
+        .coerceIn(FloatingWindowPrefs.MIN_SIZE_DP, FloatingWindowPrefs.MAX_SIZE_DP)
+    val width = json.optInt("width", legacySize)
+        .coerceIn(FloatingWindowPrefs.MIN_SIZE_DP, FloatingWindowPrefs.MAX_SIZE_DP)
+    val height = json.optInt("height", legacySize)
+        .coerceIn(FloatingWindowPrefs.MIN_SIZE_DP, FloatingWindowPrefs.MAX_SIZE_DP)
+    val shorter = minOf(width, height)
+
+    // `round` is what the first build stored; a button saved back then keeps the shape it was
+    // given instead of jumping to a default.
+    val corner = if (json.has("corner")) {
+        json.optInt("corner", shorter / 2)
+    } else {
+        if (json.optBoolean("round", true)) shorter / 2 else shorter / 3
+    }
+
+    return FloatingItem(
+        id = id,
+        enabled = json.optBoolean("enabled", true),
+        icon = FloatingIcon.from(json.optString("icon")).id,
+        showIcon = json.optBoolean("showIcon", true),
+        text = json.optString("text", ""),
+        // `action` / `hold` are what the first build stored: one action each, before a button
+        // could run a chain.
+        actions = readChain(json.optJSONArray("actions"))
+            .ifEmpty { listOf(FloatingAction.from(json.optString("action")).id) },
+        holdActions = readChain(json.optJSONArray("holds"))
+            .ifEmpty { listOfNotNull(FloatingAction.fromOrNull(json.optString("hold"))?.id) },
+        widthDp = width,
+        heightDp = height,
+        cornerDp = corner.coerceIn(0, shorter / 2),
+        opacity = json.optInt("opacity", FloatingWindowPrefs.MAX_OPACITY)
+            .coerceIn(FloatingWindowPrefs.MIN_OPACITY, FloatingWindowPrefs.MAX_OPACITY),
+        x = json.optInt("x", 24),
+        y = json.optInt("y", 320),
+    )
+}
+
+/** Reads a stored chain, dropping anything no longer recognised. */
+private fun readChain(array: JSONArray?): List<String> {
+    if (array == null) return emptyList()
+    return (0 until array.length())
+        .mapNotNull { array.optString(it).takeIf { id -> FloatingAction.fromOrNull(id) != null } }
+        .take(FloatingWindowPrefs.MAX_CHAIN)
+}
+
+/**
  * The floating buttons, stored as JSON because the list is variable length.
  *
  * Everyone who reads this — the overlay itself and both settings screens — goes through here, so
@@ -278,25 +366,7 @@ object FloatingWindowPrefs {
 
     fun save(context: Context, items: List<FloatingItem>) {
         val array = JSONArray()
-        items.forEach { item ->
-            array.put(
-                JSONObject().apply {
-                    put("id", item.id)
-                    put("enabled", item.enabled)
-                    put("icon", item.icon)
-                    put("showIcon", item.showIcon)
-                    put("text", item.text)
-                    put("actions", JSONArray(item.actions))
-                    put("holds", JSONArray(item.holdActions))
-                    put("width", item.widthDp)
-                    put("height", item.heightDp)
-                    put("corner", item.cornerDp)
-                    put("opacity", item.opacity)
-                    put("x", item.x)
-                    put("y", item.y)
-                },
-            )
-        }
+        items.forEach { array.put(it.toJson()) }
         prefs(context).edit().putString(KEY_ITEMS, array.toString()).apply()
     }
 
@@ -407,59 +477,15 @@ object FloatingWindowPrefs {
     private fun densityOf(context: Context): Float =
         context.resources.displayMetrics.density
 
-    /** Reads a stored chain, dropping anything no longer recognised. */
-    private fun readChain(array: JSONArray?): List<String> {
-        if (array == null) return emptyList()
-        return (0 until array.length())
-            .mapNotNull { array.optString(it).takeIf { id -> FloatingAction.fromOrNull(id) != null } }
-            .take(MAX_CHAIN)
-    }
-
     private fun parse(raw: String?): List<FloatingItem> {
         if (raw.isNullOrBlank()) return emptyList()
         return runCatching {
             val array = JSONArray(raw)
             (0 until array.length()).mapNotNull { index ->
                 val json = array.optJSONObject(index) ?: return@mapNotNull null
-                val id = json.optString("id")
-                if (id.isBlank()) return@mapNotNull null
-                // `size` is what an earlier build stored, before the two edges were split.
-                val legacySize = json.optInt("size", DEFAULT_SIZE_DP)
-                    .coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
-                val width = json.optInt("width", legacySize).coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
-                val height = json.optInt("height", legacySize).coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
-                val shorter = minOf(width, height)
-                // `round` is what the first build stored; a button saved back then keeps the
-                // shape it was given instead of jumping to a default.
-                val corner = if (json.has("corner")) {
-                    json.optInt("corner", shorter / 2)
-                } else {
-                    if (json.optBoolean("round", true)) shorter / 2 else shorter / 3
-                }
-                FloatingItem(
-                    id = id,
-                    enabled = json.optBoolean("enabled", true),
-                    icon = FloatingIcon.from(json.optString("icon")).id,
-                    showIcon = json.optBoolean("showIcon", true),
-                    text = json.optString("text", ""),
-                    // `action` / `hold` are what the first build stored: one action each, before
-                    // a button could run a chain.
-                    actions = readChain(json.optJSONArray("actions"))
-                        .ifEmpty { listOf(FloatingAction.from(json.optString("action")).id) },
-                    holdActions = readChain(json.optJSONArray("holds"))
-                        .ifEmpty {
-                            listOfNotNull(
-                                FloatingAction.fromOrNull(json.optString("hold"))?.id,
-                            )
-                        },
-                    widthDp = width,
-                    heightDp = height,
-                    cornerDp = corner.coerceIn(0, shorter / 2),
-                    opacity = json.optInt("opacity", MAX_OPACITY)
-                        .coerceIn(MIN_OPACITY, MAX_OPACITY),
-                    x = json.optInt("x", 24),
-                    y = json.optInt("y", 320),
-                )
+                // A record with no id cannot be addressed by the overlay, so it is dropped rather
+                // than given a made-up one.
+                readFloatingItem(json, fallbackId = "")
             }
         }.getOrDefault(emptyList())
     }

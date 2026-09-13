@@ -9,68 +9,45 @@ import android.graphics.Rect
 import android.graphics.RectF
 
 /**
- * Where the assistant button goes, worked out in exactly one place.
+ * Where the assistant button goes: the one definition, used by the overlay that draws it on the
+ * phone and by the diagram in the settings page.
  *
- * The settings preview and the real overlay both call [assistantRect]. That is the entire point:
- * a preview that re-implements the placement is a second opinion, and the two drifted apart the
- * first time one of them was right and the other was not.
+ * The anchor is the send button's **top-right corner**. The assistant's right edge lines up with the
+ * send button's right edge and its **bottom edge rests on the send button's top edge** — 0 dp means
+ * touching, which is the look the button kept ending up with on a real phone, so it is what the
+ * number now means instead of pretending to be 8 dp of clearance.
+ *
+ * `offsetX` is positive to the right and `offsetY` positive downwards, in the same unit as [send].
+ * [topLimit] is the highest the button may get: `0` on a screen, or negative when the y axis starts
+ * below the screen's top edge. A chat app's input bar can end up near the top with the keyboard up,
+ * and a button pushed past the top can never be tapped.
  */
 object SendAssistGeometry {
 
-    /** The gap between the assistant's bottom edge and the send button's top edge, before offsets. */
-    const val GAP_DP = 8f
+    fun assistantRect(
+        send: Rect,
+        width: Int,
+        height: Int,
+        offsetX: Int,
+        offsetY: Int,
+        topLimit: Int,
+    ): Rect {
+        val right = send.right + offsetX
+        val top = (send.top - height + offsetY).coerceAtLeast(topLimit)
+        return Rect(right - width, top, right, top + height)
+    }
 
-    /**
-     * The rect the assistant button occupies.
-     *
-     * Only two edges of [send] matter: the assistant hangs off the send button's **right edge** and
-     * sits [gap] above its **top edge**. Everything else about the send button — how wide it is,
-     * how tall — is irrelevant, which is what lets a measured send key and a guessed one produce
-     * the same placement.
-     *
-     * `size`, `gap`, `offsetX`, `offsetY` and [topLimit] must all be in the same unit as [send]:
-     * the overlay passes pixels in screen coordinates, the preview passes dp. `offsetX` is positive
-     * to the right and `offsetY` positive downwards, on screen.
-     *
-     * [topLimit] is the smallest top the button may have — `0` on a screen, or a negative number
-     * when the y axis starts below the screen's top edge. A chat app's input bar can end up near the
-     * top of the screen with the keyboard up, and a button pushed past the top can never be tapped.
-     */
+    /** The same placement in dp, for the settings diagram, which has no pixels to work with. */
     fun assistantRect(
         send: RectF,
-        size: Float,
-        gap: Float,
+        width: Float,
+        height: Float,
         offsetX: Float,
         offsetY: Float,
         topLimit: Float,
     ): RectF {
         val right = send.right + offsetX
-        val top = (send.top - gap - size + offsetY).coerceAtLeast(topLimit)
-        return RectF(right - size, top, right, top + size)
-    }
-
-    /** [assistantRect] with integer pixels, for `WindowManager` and for the debug dump. */
-    fun assistantRect(
-        send: Rect,
-        size: Int,
-        gap: Int,
-        offsetX: Int,
-        offsetY: Int,
-        topLimit: Int,
-    ): Rect {
-        val rect = assistantRect(
-            send = RectF(send),
-            size = size.toFloat(),
-            gap = gap.toFloat(),
-            offsetX = offsetX.toFloat(),
-            offsetY = offsetY.toFloat(),
-            topLimit = topLimit.toFloat(),
-        )
-        return Rect(
-            Math.round(rect.left),
-            Math.round(rect.top),
-            Math.round(rect.right),
-            Math.round(rect.bottom),
-        )
+        val top = (send.top - height + offsetY).coerceAtLeast(topLimit)
+        return RectF(right - width, top, right, top + height)
     }
 }
