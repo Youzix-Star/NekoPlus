@@ -63,7 +63,7 @@ open class MiaoAccessibilityService : AccessibilityService() {
 
     /** Brings the overlay in line with the preference: created when on, gone when off. */
     private fun syncSendAssist() {
-        if (love.miao.yun.sendassist.SendAssistPrefs.isEnabled(this)) {
+        if (love.miao.yun.sendassist.SendAssistPrefs.anyEnabled(this)) {
             val overlay = sendAssist ?: SendAssistOverlay(this).also { sendAssist = it }
             overlay.onEvent(rootInActiveWindow?.packageName?.toString().orEmpty())
         } else {
@@ -326,12 +326,13 @@ open class MiaoAccessibilityService : AccessibilityService() {
             appendLine()
             // `this` inside buildString is the StringBuilder, not the service.
             appendLine(
-                "发送按钮助手: " +
-                    if (love.miao.yun.sendassist.SendAssistPrefs.isEnabled(this@MiaoAccessibilityService)) {
-                        "已开启"
-                    } else {
-                        "已关闭"
-                    },
+                "发送按钮助手: " + love.miao.yun.sendassist.SEND_TARGETS.joinToString("、") { target ->
+                    val config = love.miao.yun.sendassist.SendAssistPrefs.load(
+                        this@MiaoAccessibilityService,
+                        target.packageName,
+                    )
+                    target.label + if (config.enabled) "(开)" else "(关)"
+                },
             )
             active?.packageName?.toString()?.let { pkg ->
                 val target = love.miao.yun.sendassist.SEND_TARGETS[pkg]

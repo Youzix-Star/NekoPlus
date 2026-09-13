@@ -23,7 +23,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -43,10 +42,14 @@ import love.miao.yun.floating.FloatingItem
 import love.miao.yun.floating.FloatingOptions
 import love.miao.yun.floating.FloatingShape
 import love.miao.yun.floating.FloatingWindowPrefs
+import love.miao.yun.sendassist.SEND_TARGETS
 import love.miao.yun.sendassist.SendAssistAction
+import love.miao.yun.sendassist.SendAssistConfig
+import love.miao.yun.sendassist.sendTargetFor
 import love.miao.yun.sendassist.SendAssistPrefs
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
+import love.miao.yun.ui.SendAssistPreview
 import love.miao.yun.ui.miuix.miaoTextFieldColors
 import love.miao.yun.ui.UiEnginePrefs
 import top.yukonga.miuix.kmp.basic.Button
@@ -82,14 +85,18 @@ fun FloatingScreen(
     var items by remember { mutableStateOf(FloatingWindowPrefs.load(context)) }
     var options by remember { mutableStateOf(FloatingWindowPrefs.loadOptions(context)) }
     var editingId by remember { mutableStateOf<String?>(null) }
-    var assistOn by remember { mutableStateOf(SendAssistPrefs.isEnabled(context)) }
-    var assistAction by remember { mutableStateOf(SendAssistPrefs.action(context)) }
-    var assistAutoSend by remember { mutableStateOf(SendAssistPrefs.autoSend(context)) }
-    var assistSize by remember { mutableFloatStateOf(SendAssistPrefs.sizeDp(context).toFloat()) }
-    var assistCorner by remember { mutableFloatStateOf(SendAssistPrefs.cornerDp(context).toFloat()) }
-    var assistOpacity by remember { mutableFloatStateOf(SendAssistPrefs.opacity(context).toFloat()) }
-    var assistOffsetX by remember { mutableFloatStateOf(SendAssistPrefs.offsetXDp(context).toFloat()) }
-    var assistOffsetY by remember { mutableFloatStateOf(SendAssistPrefs.offsetYDp(context).toFloat()) }
+    var editingTarget by remember { mutableStateOf<String?>(null) }
+    var assistConfigs by remember {
+        mutableStateOf(
+            SEND_TARGETS.associate { it.packageName to SendAssistPrefs.load(context, it.packageName) },
+        )
+    }
+
+    /** One funnel for assistant edits too: kept in state so the preview redraws as it is changed. */
+    fun updateAssist(config: SendAssistConfig) {
+        SendAssistPrefs.save(context, config)
+        assistConfigs = assistConfigs + (config.packageName to config)
+    }
 
     /** One funnel for edits, so the on-screen buttons and this list never drift apart. */
     fun persist(next: List<FloatingItem>) {
@@ -215,118 +222,36 @@ fun FloatingScreen(
             }
         }
 
-        // The chat-app assistant lives here because it is the same kind of thing: an overlay this
-        // app draws over other apps, sharing the floating window's colour source.
+        // The chat-app assistants live here because they are the same kind of thing: overlays this
+        // app draws over other apps, sharing the floating window's colour source. One row per app,
+        // each with its own switch, exactly like the floating buttons above.
         item(key = "send-assist") {
             Column {
                 SmallTitle(text = "发送按钮助手")
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    SwitchPreference(
-                        title = "显示助手按钮",
-                        summary = "在微信 / QQ 的发送按钮上方加一个",
-                        checked = assistOn,
-                        onCheckedChange = {
-                            assistOn = it
-                            SendAssistPrefs.setEnabled(context, it)
-                        },
-                    )
-                    if (assistOn) {
-                        WindowSpinnerPreference(
-                            title = "点它做什么",
-                            summary = "做完后可以选择替你按下发送",
-                            items = assistActionItems,
-                            selectedIndex = SendAssistAction.entries
-                                .indexOf(assistAction)
-                                .coerceAtLeast(0),
-                            onSelectedIndexChange = { index ->
-                                SendAssistAction.entries.getOrNull(index)?.let {
-                                    assistAction = it
-                                    SendAssistPrefs.setAction(context, it)
-                                }
+                    SEND_TARGETS.forEach { target ->
+                        val config = assistConfigs[target.packageName]
+                            ?: SendAssistConfig(target.packageName)
+                        ArrowPreference(
+                            title = target.label,
+                            summary = if (config.enabled) config.summary else "已关闭",
+                            startAction = {
+                                Image(
+                                    painter = painterResource(R.drawable.ic_ball_auto_awesome),
+                                    contentDescription = null,
+                                    colorFilter = ColorFilter.tint(MiuixTheme.colorScheme.primary),
+                                    modifier = Modifier.size(22.dp),
+                                )
                             },
-                        )
-                        SwitchPreference(
-                            title = "做完自动发送",
-                            summary = "改写失败时绝不会发送",
-                            checked = assistAutoSend,
-                            onCheckedChange = {
-                                assistAutoSend = it
-                                SendAssistPrefs.setAutoSend(context, it)
+                            endActions = {
+                                Switch(
+                                    checked = config.enabled,
+                                    onCheckedChange = { enabled ->
+                                        updateAssist(config.copy(enabled = enabled))
+                                    },
+                                )
                             },
-                        )
-                    }
-                }
-            }
-        }
-
-        if (assistOn) {
-            item(key = "send-assist-style") {
-                Column {
-                    SmallTitle(text = "助手外观")
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        SliderPreference(
-                            value = assistSize,
-                            onValueChange = {
-                                assistSize = it
-                                SendAssistPrefs.setSizeDp(context, it.roundToInt())
-                                assistCorner = SendAssistPrefs.cornerDp(context).toFloat()
-                            },
-                            title = "大小",
-                            valueText = "${assistSize.roundToInt()} dp",
-                            valueRange = SendAssistPrefs.MIN_SIZE_DP.toFloat()..SendAssistPrefs.MAX_SIZE_DP.toFloat(),
-                            steps = SendAssistPrefs.MAX_SIZE_DP - SendAssistPrefs.MIN_SIZE_DP - 1,
-                        )
-                        SliderPreference(
-                            value = assistCorner,
-                            onValueChange = {
-                                assistCorner = it
-                                SendAssistPrefs.setCornerDp(context, it.roundToInt())
-                            },
-                            title = "圆角",
-                            valueText = "${assistCorner.roundToInt()} dp",
-                            valueRange = 0f..(assistSize / 2f),
-                            steps = (assistSize.roundToInt() / 2 - 1).coerceAtLeast(0),
-                        )
-                        SliderPreference(
-                            value = assistOpacity,
-                            onValueChange = {
-                                assistOpacity = it
-                                SendAssistPrefs.setOpacity(context, it.roundToInt())
-                            },
-                            title = "不透明度",
-                            valueText = "${assistOpacity.roundToInt()}%",
-                            valueRange = SendAssistPrefs.MIN_OPACITY.toFloat()..SendAssistPrefs.MAX_OPACITY.toFloat(),
-                            steps = SendAssistPrefs.MAX_OPACITY - SendAssistPrefs.MIN_OPACITY - 1,
-                        )
-                    }
-                }
-            }
-
-            item(key = "send-assist-offset") {
-                Column {
-                    SmallTitle(text = "助手偏移")
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        SliderPreference(
-                            value = assistOffsetX,
-                            onValueChange = {
-                                assistOffsetX = it
-                                SendAssistPrefs.setOffsetXDp(context, it.roundToInt())
-                            },
-                            title = "水平偏移",
-                            valueText = signed(assistOffsetX.roundToInt()),
-                            valueRange = -SendAssistPrefs.MAX_OFFSET_DP.toFloat()..SendAssistPrefs.MAX_OFFSET_DP.toFloat(),
-                            steps = SendAssistPrefs.MAX_OFFSET_DP * 2 - 1,
-                        )
-                        SliderPreference(
-                            value = assistOffsetY,
-                            onValueChange = {
-                                assistOffsetY = it
-                                SendAssistPrefs.setOffsetYDp(context, it.roundToInt())
-                            },
-                            title = "垂直偏移",
-                            valueText = signed(assistOffsetY.roundToInt()),
-                            valueRange = -SendAssistPrefs.MAX_OFFSET_DP.toFloat()..SendAssistPrefs.MAX_OFFSET_DP.toFloat(),
-                            steps = SendAssistPrefs.MAX_OFFSET_DP * 2 - 1,
+                            onClick = { editingTarget = target.packageName },
                         )
                     }
                 }
@@ -350,6 +275,116 @@ fun FloatingScreen(
                             }
                         },
                     )
+                }
+            }
+        }
+    }
+
+    val assistTarget = sendTargetFor(editingTarget)
+    if (assistTarget != null) {
+        val config = assistConfigs[assistTarget.packageName]
+            ?: SendAssistConfig(assistTarget.packageName)
+        OverlayDialog(
+            show = true,
+            title = "发送按钮助手 · ${assistTarget.label}",
+            onDismissRequest = { editingTarget = null },
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                SendAssistPreview(
+                    config = config,
+                    surfaceColor = MiuixTheme.colorScheme.surfaceContainer,
+                    fieldColor = MiuixTheme.colorScheme.surfaceContainerHigh,
+                    accentColor = MiuixTheme.colorScheme.primary,
+                    onAccentColor = MiuixTheme.colorScheme.onPrimary,
+                    labelColor = MiuixTheme.colorScheme.onSurface,
+                )
+
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    SwitchPreference(
+                        title = "启用",
+                        summary = "在 ${assistTarget.label} 的发送按钮上方显示",
+                        checked = config.enabled,
+                        onCheckedChange = { updateAssist(config.copy(enabled = it)) },
+                    )
+                    WindowSpinnerPreference(
+                        title = "点它做什么",
+                        summary = "做完后可以选择替你按下发送",
+                        items = assistActionItems,
+                        selectedIndex = SendAssistAction.entries
+                            .indexOf(config.actionEntry)
+                            .coerceAtLeast(0),
+                        onSelectedIndexChange = { index ->
+                            SendAssistAction.entries.getOrNull(index)?.let {
+                                updateAssist(config.copy(action = it.id))
+                            }
+                        },
+                    )
+                    SwitchPreference(
+                        title = "做完自动发送",
+                        summary = "改写失败时绝不会发送",
+                        checked = config.autoSend,
+                        onCheckedChange = { updateAssist(config.copy(autoSend = it)) },
+                    )
+                }
+
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    SliderPreference(
+                        value = config.sizeDp.toFloat(),
+                        onValueChange = { updateAssist(config.copy(sizeDp = it.roundToInt())) },
+                        title = "大小",
+                        valueText = "${config.sizeDp} dp",
+                        valueRange = SendAssistPrefs.MIN_SIZE_DP.toFloat()..SendAssistPrefs.MAX_SIZE_DP.toFloat(),
+                        steps = SendAssistPrefs.MAX_SIZE_DP - SendAssistPrefs.MIN_SIZE_DP - 1,
+                    )
+                    SliderPreference(
+                        value = config.effectiveCornerDp.toFloat(),
+                        onValueChange = { updateAssist(config.copy(cornerDp = it.roundToInt())) },
+                        title = "圆角",
+                        valueText = if (config.effectiveCornerDp >= config.sizeDp / 2) {
+                            "胶囊"
+                        } else {
+                            "${config.effectiveCornerDp} dp"
+                        },
+                        valueRange = 0f..(config.sizeDp / 2).toFloat(),
+                        steps = (config.sizeDp / 2 - 1).coerceAtLeast(0),
+                    )
+                    SliderPreference(
+                        value = config.opacity.toFloat(),
+                        onValueChange = { updateAssist(config.copy(opacity = it.roundToInt())) },
+                        title = "不透明度",
+                        valueText = "${config.opacity}%",
+                        valueRange = SendAssistPrefs.MIN_OPACITY.toFloat()..SendAssistPrefs.MAX_OPACITY.toFloat(),
+                        steps = SendAssistPrefs.MAX_OPACITY - SendAssistPrefs.MIN_OPACITY - 1,
+                    )
+                }
+
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    SliderPreference(
+                        value = config.offsetXDp.toFloat(),
+                        onValueChange = { updateAssist(config.copy(offsetXDp = it.roundToInt())) },
+                        title = "水平偏移",
+                        valueText = signed(config.offsetXDp),
+                        valueRange = -SendAssistPrefs.MAX_OFFSET_DP.toFloat()..SendAssistPrefs.MAX_OFFSET_DP.toFloat(),
+                        steps = SendAssistPrefs.MAX_OFFSET_DP * 2 - 1,
+                    )
+                    SliderPreference(
+                        value = config.offsetYDp.toFloat(),
+                        onValueChange = { updateAssist(config.copy(offsetYDp = it.roundToInt())) },
+                        title = "垂直偏移",
+                        valueText = signed(config.offsetYDp),
+                        valueRange = -SendAssistPrefs.MAX_OFFSET_DP.toFloat()..SendAssistPrefs.MAX_OFFSET_DP.toFloat(),
+                        steps = SendAssistPrefs.MAX_OFFSET_DP * 2 - 1,
+                    )
+                }
+
+                Button(onClick = { editingTarget = null }, modifier = Modifier.fillMaxWidth()) {
+                    Text("完成")
                 }
             }
         }

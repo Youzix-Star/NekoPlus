@@ -22,9 +22,10 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import love.miao.yun.R
 import love.miao.yun.sendassist.SEND_LABEL
-import love.miao.yun.sendassist.SEND_TARGETS
 import love.miao.yun.sendassist.SendAssistAction
+import love.miao.yun.sendassist.SendAssistConfig
 import love.miao.yun.sendassist.SendAssistPrefs
+import love.miao.yun.sendassist.sendTargetFor
 import love.miao.yun.ui.FloatingPalettes
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.util.AiRewrite
@@ -59,6 +60,9 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     private var placed: Rect? = null
     private var misses = 0
 
+    /** The settings of the app the button is currently drawn for; null while it is not on screen. */
+    private var config: SendAssistConfig? = null
+
     /** Events arrive in bursts; one look at the tree per burst is enough. */
     private val refresh = Runnable { refreshNow() }
 
@@ -86,6 +90,7 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     fun hide() {
         handler.removeCallbacks(refresh)
         misses = 0
+        config = null
         val current = view ?: return
         view = null
         params = null
@@ -98,16 +103,18 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     // ------------------------------------------------------------------ placement
 
     private fun refreshNow() {
-        if (!SendAssistPrefs.isEnabled(service)) return hide()
+        val window = findTargetWindow() ?: return miss()
+        val settings = SendAssistPrefs.load(service, window.first)
+        if (!settings.enabled) return hide()
 
-        val target = findTargetWindow() ?: return miss()
-        val send = findSendButton(target.second, target.first) ?: return miss()
+        val send = findSendButton(window.second, window.first) ?: return miss()
         val bounds = Rect()
         send.getBoundsInScreen(bounds)
         if (bounds.isEmpty) return miss()
 
         misses = 0
-        show(bounds)
+        config = settings
+        show(bounds, settings)
     }
 
     /**
@@ -120,14 +127,14 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     private fun findTargetWindow(): Pair<String, AccessibilityNodeInfo>? {
         service.rootInActiveWindow?.let { root ->
             val packageName = root.packageName?.toString()
-            if (packageName in SEND_TARGETS) return packageName!! to root
+            if (sendTargetFor(packageName) != null) return packageName!! to root
         }
 
         val windows = runCatching { service.windows }.getOrNull().orEmpty()
         windows.sortedByDescending { it.isActive }.forEach { window ->
             val root = runCatching { window.root }.getOrNull() ?: return@forEach
             val packageName = root.packageName?.toString() ?: return@forEach
-            if (packageName in SEND_TARGETS) return packageName to root
+            if (sendTargetFor(packageName) != null) return packageName to root
         }
         return null
     }
@@ -149,7 +156,7 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
      * screen first, because that is where a send button lives and a header is not.
      */
     private fun findSendButton(root: AccessibilityNodeInfo, packageName: String): AccessibilityNodeInfo? {
-        SEND_TARGETS[packageName].orEmpty().forEach { id ->
+        sendTargetFor(packageName)?.sendIds.orEmpty().forEach { id ->
             val byId = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull()
             // Visible is the one condition that matters: QQ keeps a second, hidden `send_btn` in
             // its album panel, and a chat app disables the real one while the box is empty —
@@ -186,11 +193,11 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         }
     }
 
-    private fun show(bounds: Rect) {
-        val size = sizePx()
+    private fun show(bounds: Rect, settings: SendAssistConfig) {
+        val size = (settings.sizeDp * density).toInt()
         val gap = (GAP_DP * density).toInt()
-        val offsetX = (SendAssistPrefs.offsetXDp(service) * density).toInt()
-        val offsetY = (SendAssistPrefs.offsetYDp(service) * density).toInt()
+        val offsetX = (settings.offsetXDp * density).toInt()
+        val offsetY = (settings.offsetYDp * density).toInt()
         val target = Rect(
             bounds.right - size + offsetX,
             (bounds.top - size - gap + offsetY).coerceAtLeast(0),
@@ -200,7 +207,7 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
 
         val existing = view
         if (existing == null) {
-            create(size)
+            create(size, settings)
         } else if (placed == target) {
             return
         }
@@ -219,19 +226,21 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         }
     }
 
-    private fun sizePx(): Int = (SendAssistPrefs.sizeDp(service) * density).toInt()
-
     /**
-     * Repaints size, corner, opacity and padding from the preferences, and repositions.
+     * Repaints size, corner, opacity and padding, and repositions.
      *
      * Called when the settings change: the button is on screen while the user is dragging those
      * sliders in our own app, so without this they would have to reopen the chat app to see it.
      */
     fun applyStyle() {
         val current = view ?: return
-        val size = sizePx()
-        background?.cornerRadius = (SendAssistPrefs.cornerDp(service) * density)
-        current.alpha = SendAssistPrefs.opacity(service) / 100f
+        val packageName = config?.packageName ?: return
+        val settings = SendAssistPrefs.load(service, packageName)
+        val size = (settings.sizeDp * density).toInt()
+
+        config = settings
+        background?.cornerRadius = settings.effectiveCornerDp * density
+        current.alpha = settings.opacity / 100f
         icon?.let { iconView ->
             val inset = (size * 0.26f).toInt()
             iconView.setPadding(inset, inset, inset, inset)
@@ -249,9 +258,9 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         placed = null
     }
 
-    private fun create(size: Int) {
+    private fun create(size: Int, settings: SendAssistConfig) {
         val drawable = GradientDrawable().apply {
-            cornerRadius = (SendAssistPrefs.cornerDp(service) * density)
+            cornerRadius = settings.effectiveCornerDp * density
         }
         background = drawable
 
@@ -283,7 +292,7 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
             )
             background = drawable
             elevation = 6f * density
-            alpha = SendAssistPrefs.opacity(service) / 100f
+            alpha = settings.opacity / 100f
             contentDescription = "喵喵助手"
             setOnClickListener { activate() }
         }
@@ -317,8 +326,8 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
 
     private fun activate() {
         if (busy) return
-        val action = SendAssistPrefs.action(service)
-        when (action) {
+        val settings = config ?: return
+        when (settings.actionEntry) {
             SendAssistAction.AiModify -> {
                 setBusy(true)
                 AiRewrite.run(service, service) { written, message ->
@@ -326,7 +335,7 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
                     toast(message)
                     // Only send what the model actually produced; a failed rewrite must never be
                     // followed by pressing send.
-                    if (written && SendAssistPrefs.autoSend(service)) sendNow()
+                    if (written && settings.autoSend) sendNow()
                 }
             }
 
@@ -338,7 +347,7 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
                     val clipboard = service.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
                     clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("miao", text))
                     toast(service.getString(R.string.floating_copied, text.length))
-                    if (SendAssistPrefs.autoSend(service)) sendNow()
+                    if (settings.autoSend) sendNow()
                 }
             }
 
