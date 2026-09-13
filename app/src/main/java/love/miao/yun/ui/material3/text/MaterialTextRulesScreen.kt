@@ -76,6 +76,8 @@ fun MaterialTextRulesScreen(
     var rules by remember { mutableStateOf(TextPrefs.load(context)) }
     var autoAfterAi by remember { mutableStateOf(TextPrefs.loadAutoAfterAi(context)) }
     var sample by remember { mutableStateOf(DEFAULT_SAMPLE) }
+    // What the box held before the last 套用, so 恢复 can put it back.
+    var sampleBackup by remember { mutableStateOf<String?>(null) }
 
     // The rules are edited as text, one per line: pasting a whole set in is the point, and 1.1.8
     // did the same.
@@ -213,11 +215,37 @@ fun MaterialTextRulesScreen(
                     item {
                         BaseItemContainer {
                             FormField(
-                                label = "",
+                                label = "写一句试试",
                                 value = sample,
                                 singleLine = true,
                                 onValueChange = { sample = it },
                             )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (sampleBackup == null) sampleBackup = sample
+                                        sample = runCatching { TextEngine().apply(sample, rules, null) }
+                                            .getOrDefault(sample)
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("套用")
+                                }
+                                Button(
+                                    onClick = {
+                                        sampleBackup?.let { sample = it }
+                                        sampleBackup = null
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("恢复")
+                                }
+                            }
                             Text(
                                 text = preview.ifEmpty { "（空的）" },
                                 style = MaterialTheme.typography.bodyLarge,

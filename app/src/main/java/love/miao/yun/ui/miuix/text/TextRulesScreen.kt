@@ -65,6 +65,9 @@ fun TextRulesScreen(
     var rules by remember { mutableStateOf(TextPrefs.load(context)) }
     var autoAfterAi by remember { mutableStateOf(TextPrefs.loadAutoAfterAi(context)) }
     var sample by remember { mutableStateOf(DEFAULT_SAMPLE) }
+    // What the box held before the last 套用, so 恢复 can put it back for the next test. Kept across
+    // repeated taps, so the original survives trying the rules three times in a row.
+    var sampleBackup by remember { mutableStateOf<String?>(null) }
 
     // The rules are edited as text, one per line: pasting a whole set in is the point, and 1.1.8
     // did the same. A form per rule would be a second, subtler copy of the syntax.
@@ -179,6 +182,31 @@ fun TextRulesScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+        item(key = "trial-actions") {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = {
+                        if (sampleBackup == null) sampleBackup = sample
+                        // A fresh engine each time: trying a rule out must not advance a 每 N 次
+                        // counter that the real one is counting.
+                        sample = runCatching { TextEngine().apply(sample, rules, null) }
+                            .getOrDefault(sample)
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("套用")
+                }
+                Button(
+                    onClick = {
+                        sampleBackup?.let { sample = it }
+                        sampleBackup = null
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("恢复")
+                }
+            }
         }
         item(key = "trial-result") {
             Card(modifier = Modifier.fillMaxWidth()) {
