@@ -82,6 +82,9 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     private val probedBounds = mutableMapOf<String, Rect>()
     private val probedAt = mutableMapOf<String, Long>()
 
+    /** The send button's bounds as of the previous look at the screen, to tell settled from moving. */
+    private var lastSendBounds: Rect? = null
+
     /** The settings of the app the button is currently drawn for; null while it is not on screen. */
     private var config: SendAssistConfig? = null
 
@@ -155,6 +158,16 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         misses = 0
         config = settings
         show(bounds, settings)
+
+        // Two looks in a row at the same send button mean the window has stopped moving — the
+        // keyboard has finished coming up, the animation is over. Only then is a read-back of the
+        // button's position worth anything: taken mid-animation it measures the animation, and a
+        // confident wrong number in the settings page is worse than no number at all.
+        val settled = bounds == lastSendBounds
+        lastSendBounds = Rect(bounds)
+        if (settled) {
+            view?.let { readBackGap(it, bounds, settings) }
+        }
     }
 
     // ------------------------------------------------------------------ measuring
@@ -340,7 +353,6 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         } else {
             runCatching { windowManager?.updateViewLayout(current, layout) }
         }
-        readBackGap(current, bounds, settings)
     }
 
     /**
