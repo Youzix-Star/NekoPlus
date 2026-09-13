@@ -44,6 +44,30 @@ fun sendTargetFor(packageName: String?): SendTarget? =
  */
 const val SEND_LABEL = "发送"
 
+/**
+ * How far above the send key's top edge the button asks to be placed when the offset is 0.
+ *
+ * The two numbers below are one decision, split in two because the phone and the settings diagram do
+ * not measure from the same place:
+ *
+ * - **left alone, the window manager drops the button** by about a status bar's height. The send
+ *   key's position comes from `getBoundsInScreen`, which counts from the top of the screen, while
+ *   the window is laid out in a space that starts below the status bar — so a placement that asks
+ *   for 8 dp of clearance arrives as the button sitting **on** the send key, which is exactly what
+ *   it looked like on a real phone;
+ * - so the placement asks for [RESTING_GAP_DP] — the 8 dp that is wanted plus the ~48 dp that gets
+ *   taken away — and the diagram, which has no window manager to argue with, draws the
+ *   [VISIBLE_CLEARANCE_DP] that the user actually ends up seeing.
+ *
+ * Both live here, side by side, because when they drift apart the preview stops describing the
+ * phone. A device that drops the button by a different amount is handled by hand: the vertical
+ * offset slider covers ±64 dp, which is more than any status bar.
+ */
+const val RESTING_GAP_DP = 56f
+
+/** The clearance the user sees at offset 0, and what the settings diagram draws. */
+const val VISIBLE_CLEARANCE_DP = 8f
+
 /** What the assistant does when its button is tapped. */
 enum class SendAssistAction(val id: String, val label: String) {
     /** Capture the input box, have the model rewrite it, write it back. */

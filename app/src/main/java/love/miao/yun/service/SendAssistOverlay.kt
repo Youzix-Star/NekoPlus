@@ -21,6 +21,7 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
 import love.miao.yun.R
+import love.miao.yun.sendassist.RESTING_GAP_DP
 import love.miao.yun.sendassist.SEND_LABEL
 import love.miao.yun.sendassist.SendAssistAction
 import love.miao.yun.sendassist.SendAssistConfig
@@ -195,7 +196,8 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
 
     private fun show(bounds: Rect, settings: SendAssistConfig) {
         val size = (settings.sizeDp * density).toInt()
-        val gap = (GAP_DP * density).toInt()
+        // Not the 8 dp of clearance the button is supposed to end up with: see [RESTING_GAP_DP].
+        val gap = (RESTING_GAP_DP * density).toInt()
         val offsetX = (settings.offsetXDp * density).toInt()
         val offsetY = (settings.offsetYDp * density).toInt()
         val target = Rect(
@@ -387,8 +389,6 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         /** How many consecutive looks may fail to find the send button before the overlay goes. */
         const val MISSES_BEFORE_HIDE = 2
 
-        /** The gap between the button and the send button it sits above, before any offset. */
-        const val GAP_DP = 8f
         const val MAX_DEPTH = 40
     }
 }

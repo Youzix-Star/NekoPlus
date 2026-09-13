@@ -32,13 +32,20 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import love.miao.yun.R
 import love.miao.yun.sendassist.SendAssistConfig
+import love.miao.yun.sendassist.VISIBLE_CLEARANCE_DP
 
-/** The mock input bar's proportions, matching what the offsets are measured against. */
+/**
+ * The mock input bar's proportions, matching what the offsets are measured against.
+ *
+ * [Gap] is the clearance the button ends up with on the phone, not the number the placement asks
+ * for: the placement asks for more because the window manager takes a status bar back. Drawing the
+ * ask instead of the result is what made this diagram disagree with the phone.
+ */
 private val BarInset = 12.dp
 private val BarPadding = 10.dp
 private val SendWidth = 64.dp
 private val SendHeight = 40.dp
-private val Gap = 8.dp
+private val Gap = VISIBLE_CLEARANCE_DP.dp
 
 /**
  * A fake chat input bar with the assistant button above its send button.
