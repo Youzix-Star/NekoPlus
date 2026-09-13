@@ -54,7 +54,10 @@ open class MiaoAccessibilityService : AccessibilityService() {
         info.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
         info.notificationTimeout = 100
         info.flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
-            AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS
+            AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
+            // Without this most apps omit their view ids, and an id is often the only stable way
+            // to name the field we are after.
+            AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         serviceInfo = info
     }
 
@@ -249,6 +252,16 @@ open class MiaoAccessibilityService : AccessibilityService() {
             appendLine()
 
             appendLine("===== 捕获诊断 =====")
+            // The component name is the whole point of the disguise, so print the one the system
+            // actually bound: it is the difference between "WeChat blocks us" and "the disguised
+            // build was never installed".
+            appendLine("本服务组件名: " + (serviceInfo?.id ?: "?"))
+            appendLine(
+                "服务 flags: 0x" + Integer.toHexString(serviceInfo?.flags ?: 0) +
+                    " (RETRIEVE_INTERACTIVE_WINDOWS=" +
+                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS.toString(16) +
+                    " VIEW_IDS=" + AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS.toString(16) + ")",
+            )
             val active = rootInActiveWindow
             appendLine("rootInActiveWindow: " + (active?.packageName?.toString() ?: "无"))
             appendLine("  直接子节点数: ${active?.childCount ?: -1}")
@@ -256,6 +269,10 @@ open class MiaoAccessibilityService : AccessibilityService() {
                 // A window whose tree looks empty may just be stale; refresh before believing it.
                 active.refresh()
                 appendLine("  refresh() 之后: ${active.childCount}")
+                if (active.childCount == 0) {
+                    appendLine("  ⚠ 前台窗口没有节点树：这个应用屏蔽了无障碍内容（微信 8.0.52+ 的已知行为），")
+                    appendLine("    只能靠组件名伪装绕过去，伪装没生效时就是这个样子。")
+                }
             }
             appendLine("可交互窗口数: ${runCatching { windows }.getOrNull()?.size ?: 0}")
             appendLine()
