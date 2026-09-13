@@ -56,6 +56,21 @@ object SendAssistPrefs {
     private const val KEY_ENABLED = "enabled"
     private const val KEY_ACTION = "action"
     private const val KEY_AUTO_SEND = "auto_send"
+    private const val KEY_SIZE = "size_dp"
+    private const val KEY_CORNER = "corner_dp"
+    private const val KEY_OPACITY = "opacity"
+    private const val KEY_OFFSET_X = "offset_x_dp"
+    private const val KEY_OFFSET_Y = "offset_y_dp"
+
+    const val MIN_SIZE_DP = 24
+    const val MAX_SIZE_DP = 72
+    const val DEFAULT_SIZE_DP = 40
+    const val MIN_OPACITY = 30
+    const val MAX_OPACITY = 100
+    const val DEFAULT_OPACITY = 92
+
+    /** How far the button may be nudged off its default spot, in either direction. */
+    const val MAX_OFFSET_DP = 64
 
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -85,6 +100,57 @@ object SendAssistPrefs {
     fun setAutoSend(context: Context, autoSend: Boolean) {
         prefs(context).edit().putBoolean(KEY_AUTO_SEND, autoSend).apply()
     }
+
+    /** Edge length of the button. */
+    fun sizeDp(context: Context): Int =
+        prefs(context).getInt(KEY_SIZE, DEFAULT_SIZE_DP).coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
+
+    fun setSizeDp(context: Context, value: Int) {
+        val clamped = value.coerceIn(MIN_SIZE_DP, MAX_SIZE_DP)
+        prefs(context).edit().putInt(KEY_SIZE, clamped).putInt(KEY_CORNER, cornerFor(context, clamped)).apply()
+    }
+
+    /** Corner radius; a third of the edge until the user says otherwise. */
+    fun cornerDp(context: Context): Int =
+        prefs(context).getInt(KEY_CORNER, sizeDp(context) / 3)
+            .coerceIn(0, sizeDp(context) / 2)
+
+    fun setCornerDp(context: Context, value: Int) {
+        prefs(context).edit().putInt(KEY_CORNER, value.coerceIn(0, sizeDp(context) / 2)).apply()
+    }
+
+    fun opacity(context: Context): Int =
+        prefs(context).getInt(KEY_OPACITY, DEFAULT_OPACITY).coerceIn(MIN_OPACITY, MAX_OPACITY)
+
+    fun setOpacity(context: Context, value: Int) {
+        prefs(context).edit().putInt(KEY_OPACITY, value.coerceIn(MIN_OPACITY, MAX_OPACITY)).apply()
+    }
+
+    /**
+     * Where the button sits, relative to its default spot — right-aligned with the send button,
+     * one button's height above it. `+x` is to the right and `+y` is downwards, so a negative `y`
+     * lifts it further up.
+     */
+    fun offsetXDp(context: Context): Int =
+        prefs(context).getInt(KEY_OFFSET_X, 0).coerceIn(-MAX_OFFSET_DP, MAX_OFFSET_DP)
+
+    fun setOffsetXDp(context: Context, value: Int) {
+        prefs(context).edit()
+            .putInt(KEY_OFFSET_X, value.coerceIn(-MAX_OFFSET_DP, MAX_OFFSET_DP))
+            .apply()
+    }
+
+    fun offsetYDp(context: Context): Int =
+        prefs(context).getInt(KEY_OFFSET_Y, 0).coerceIn(-MAX_OFFSET_DP, MAX_OFFSET_DP)
+
+    fun setOffsetYDp(context: Context, value: Int) {
+        prefs(context).edit()
+            .putInt(KEY_OFFSET_Y, value.coerceIn(-MAX_OFFSET_DP, MAX_OFFSET_DP))
+            .apply()
+    }
+
+    private fun cornerFor(context: Context, size: Int): Int =
+        prefs(context).getInt(KEY_CORNER, size / 3).coerceIn(0, size / 2)
 
     fun register(
         context: Context,

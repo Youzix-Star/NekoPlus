@@ -70,7 +70,8 @@ open class MiaoAccessibilityService : AccessibilityService() {
             sendAssist?.hide()
         }
         // Turning the switch on while the chat app is already open has to place the button now,
-        // and turning it off has to take it away now.
+        // and turning it off has to take it away now. Style changes land here too.
+        sendAssist?.applyStyle()
         sendAssist?.refresh()
     }
 

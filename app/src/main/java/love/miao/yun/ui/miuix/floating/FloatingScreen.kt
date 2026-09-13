@@ -23,6 +23,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,6 +43,8 @@ import love.miao.yun.floating.FloatingItem
 import love.miao.yun.floating.FloatingOptions
 import love.miao.yun.floating.FloatingShape
 import love.miao.yun.floating.FloatingWindowPrefs
+import love.miao.yun.sendassist.SendAssistAction
+import love.miao.yun.sendassist.SendAssistPrefs
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.miuix.miaoTextFieldColors
@@ -79,6 +82,14 @@ fun FloatingScreen(
     var items by remember { mutableStateOf(FloatingWindowPrefs.load(context)) }
     var options by remember { mutableStateOf(FloatingWindowPrefs.loadOptions(context)) }
     var editingId by remember { mutableStateOf<String?>(null) }
+    var assistOn by remember { mutableStateOf(SendAssistPrefs.isEnabled(context)) }
+    var assistAction by remember { mutableStateOf(SendAssistPrefs.action(context)) }
+    var assistAutoSend by remember { mutableStateOf(SendAssistPrefs.autoSend(context)) }
+    var assistSize by remember { mutableFloatStateOf(SendAssistPrefs.sizeDp(context).toFloat()) }
+    var assistCorner by remember { mutableFloatStateOf(SendAssistPrefs.cornerDp(context).toFloat()) }
+    var assistOpacity by remember { mutableFloatStateOf(SendAssistPrefs.opacity(context).toFloat()) }
+    var assistOffsetX by remember { mutableFloatStateOf(SendAssistPrefs.offsetXDp(context).toFloat()) }
+    var assistOffsetY by remember { mutableFloatStateOf(SendAssistPrefs.offsetYDp(context).toFloat()) }
 
     /** One funnel for edits, so the on-screen buttons and this list never drift apart. */
     fun persist(next: List<FloatingItem>) {
@@ -93,6 +104,9 @@ fun FloatingScreen(
 
     val floatingColorItems = remember {
         FloatingColorSource.entries.map { DropdownItem(text = it.label) }
+    }
+    val assistActionItems = remember {
+        SendAssistAction.entries.map { DropdownItem(text = it.label) }
     }
 
     LazyColumn(
@@ -197,6 +211,124 @@ fun FloatingScreen(
                             editingId = item.id
                         },
                     )
+                }
+            }
+        }
+
+        // The chat-app assistant lives here because it is the same kind of thing: an overlay this
+        // app draws over other apps, sharing the floating window's colour source.
+        item(key = "send-assist") {
+            Column {
+                SmallTitle(text = "发送按钮助手")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    SwitchPreference(
+                        title = "显示助手按钮",
+                        summary = "在微信 / QQ 的发送按钮上方加一个",
+                        checked = assistOn,
+                        onCheckedChange = {
+                            assistOn = it
+                            SendAssistPrefs.setEnabled(context, it)
+                        },
+                    )
+                    if (assistOn) {
+                        WindowSpinnerPreference(
+                            title = "点它做什么",
+                            summary = "做完后可以选择替你按下发送",
+                            items = assistActionItems,
+                            selectedIndex = SendAssistAction.entries
+                                .indexOf(assistAction)
+                                .coerceAtLeast(0),
+                            onSelectedIndexChange = { index ->
+                                SendAssistAction.entries.getOrNull(index)?.let {
+                                    assistAction = it
+                                    SendAssistPrefs.setAction(context, it)
+                                }
+                            },
+                        )
+                        SwitchPreference(
+                            title = "做完自动发送",
+                            summary = "改写失败时绝不会发送",
+                            checked = assistAutoSend,
+                            onCheckedChange = {
+                                assistAutoSend = it
+                                SendAssistPrefs.setAutoSend(context, it)
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (assistOn) {
+            item(key = "send-assist-style") {
+                Column {
+                    SmallTitle(text = "助手外观")
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        SliderPreference(
+                            value = assistSize,
+                            onValueChange = {
+                                assistSize = it
+                                SendAssistPrefs.setSizeDp(context, it.roundToInt())
+                                assistCorner = SendAssistPrefs.cornerDp(context).toFloat()
+                            },
+                            title = "大小",
+                            valueText = "${assistSize.roundToInt()} dp",
+                            valueRange = SendAssistPrefs.MIN_SIZE_DP.toFloat()..SendAssistPrefs.MAX_SIZE_DP.toFloat(),
+                            steps = SendAssistPrefs.MAX_SIZE_DP - SendAssistPrefs.MIN_SIZE_DP - 1,
+                        )
+                        SliderPreference(
+                            value = assistCorner,
+                            onValueChange = {
+                                assistCorner = it
+                                SendAssistPrefs.setCornerDp(context, it.roundToInt())
+                            },
+                            title = "圆角",
+                            valueText = "${assistCorner.roundToInt()} dp",
+                            valueRange = 0f..(assistSize / 2f),
+                            steps = (assistSize.roundToInt() / 2 - 1).coerceAtLeast(0),
+                        )
+                        SliderPreference(
+                            value = assistOpacity,
+                            onValueChange = {
+                                assistOpacity = it
+                                SendAssistPrefs.setOpacity(context, it.roundToInt())
+                            },
+                            title = "不透明度",
+                            valueText = "${assistOpacity.roundToInt()}%",
+                            valueRange = SendAssistPrefs.MIN_OPACITY.toFloat()..SendAssistPrefs.MAX_OPACITY.toFloat(),
+                            steps = SendAssistPrefs.MAX_OPACITY - SendAssistPrefs.MIN_OPACITY - 1,
+                        )
+                    }
+                }
+            }
+
+            item(key = "send-assist-offset") {
+                Column {
+                    SmallTitle(text = "助手偏移")
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        SliderPreference(
+                            value = assistOffsetX,
+                            onValueChange = {
+                                assistOffsetX = it
+                                SendAssistPrefs.setOffsetXDp(context, it.roundToInt())
+                            },
+                            title = "水平偏移",
+                            valueText = signed(assistOffsetX.roundToInt()),
+                            valueRange = -SendAssistPrefs.MAX_OFFSET_DP.toFloat()..SendAssistPrefs.MAX_OFFSET_DP.toFloat(),
+                            steps = SendAssistPrefs.MAX_OFFSET_DP * 2 - 1,
+                        )
+                        SliderPreference(
+                            value = assistOffsetY,
+                            onValueChange = {
+                                assistOffsetY = it
+                                SendAssistPrefs.setOffsetYDp(context, it.roundToInt())
+                            },
+                            title = "垂直偏移",
+                            valueText = signed(assistOffsetY.roundToInt()),
+                            valueRange = -SendAssistPrefs.MAX_OFFSET_DP.toFloat()..SendAssistPrefs.MAX_OFFSET_DP.toFloat(),
+                            steps = SendAssistPrefs.MAX_OFFSET_DP * 2 - 1,
+                        )
+                    }
                 }
             }
         }
@@ -607,3 +739,8 @@ private fun ChoiceCell(
         }
     }
 }
+
+/** Offsets read better with an explicit sign: "+8 dp" rather than "8 dp". */
+private fun signed(value: Int): String = if (value > 0) "+$value dp" else "$value dp"
+
+/** One line describing a button's shape, so the list stays readable. */

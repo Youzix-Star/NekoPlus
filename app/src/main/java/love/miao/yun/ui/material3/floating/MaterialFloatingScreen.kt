@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,6 +53,8 @@ import love.miao.yun.floating.FloatingItem
 import love.miao.yun.floating.FloatingOptions
 import love.miao.yun.floating.FloatingShape
 import love.miao.yun.floating.FloatingWindowPrefs
+import love.miao.yun.sendassist.SendAssistAction
+import love.miao.yun.sendassist.SendAssistPrefs
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.UiEnginePrefs
@@ -83,6 +86,14 @@ fun MaterialFloatingScreen(
 
     /** Which button's editor is open; editing happens in place, under the row itself. */
     var expandedId by remember { mutableStateOf<String?>(null) }
+    var assistOn by remember { mutableStateOf(SendAssistPrefs.isEnabled(context)) }
+    var assistAction by remember { mutableStateOf(SendAssistPrefs.action(context)) }
+    var assistAutoSend by remember { mutableStateOf(SendAssistPrefs.autoSend(context)) }
+    var assistSize by remember { mutableIntStateOf(SendAssistPrefs.sizeDp(context)) }
+    var assistCorner by remember { mutableIntStateOf(SendAssistPrefs.cornerDp(context)) }
+    var assistOpacity by remember { mutableIntStateOf(SendAssistPrefs.opacity(context)) }
+    var assistOffsetX by remember { mutableIntStateOf(SendAssistPrefs.offsetXDp(context)) }
+    var assistOffsetY by remember { mutableIntStateOf(SendAssistPrefs.offsetYDp(context)) }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
@@ -419,6 +430,132 @@ fun MaterialFloatingScreen(
                                 expandedId = item.id
                             },
                         )
+                    }
+                }
+            }
+
+            // The chat-app assistant lives here because it is the same kind of thing: an overlay
+            // this app draws over other apps, sharing the floating window's colour source.
+            item {
+                SegmentedColumn(title = "发送按钮助手") {
+                    item {
+                        SwitchWidget(
+                            icon = AppIcons.Floating,
+                            title = "显示助手按钮",
+                            description = "在微信 / QQ 的发送按钮上方加一个",
+                            checked = assistOn,
+                            onCheckedChange = {
+                                assistOn = it
+                                SendAssistPrefs.setEnabled(context, it)
+                            },
+                        )
+                    }
+                    if (assistOn) {
+                        item {
+                            DropDownMenuWidget(
+                                icon = AppIcons.Sparkle,
+                                title = "点它做什么",
+                                description = "做完后可以选择替你按下发送",
+                                choice = SendAssistAction.entries
+                                    .indexOf(assistAction)
+                                    .coerceAtLeast(0),
+                                data = SendAssistAction.entries.map { it.label },
+                                onChoiceChange = { index ->
+                                    SendAssistAction.entries.getOrNull(index)?.let {
+                                        assistAction = it
+                                        SendAssistPrefs.setAction(context, it)
+                                    }
+                                },
+                            )
+                        }
+                        item {
+                            SwitchWidget(
+                                icon = AppIcons.Tune,
+                                title = "做完自动发送",
+                                description = "改写失败时绝不会发送",
+                                checked = assistAutoSend,
+                                onCheckedChange = {
+                                    assistAutoSend = it
+                                    SendAssistPrefs.setAutoSend(context, it)
+                                },
+                            )
+                        }
+                        item {
+                            BaseItemContainer {
+                                IntNumberPickerWidget(
+                                    title = "大小",
+                                    value = assistSize,
+                                    startInt = SendAssistPrefs.MIN_SIZE_DP,
+                                    endInt = SendAssistPrefs.MAX_SIZE_DP,
+                                    valueSuffix = " dp",
+                                    onValueChange = { size ->
+                                        assistSize = size
+                                        SendAssistPrefs.setSizeDp(context, size)
+                                        assistCorner = SendAssistPrefs.cornerDp(context)
+                                    },
+                                )
+                            }
+                        }
+                        item {
+                            BaseItemContainer {
+                                IntNumberPickerWidget(
+                                    title = "圆角",
+                                    value = assistCorner,
+                                    startInt = 0,
+                                    endInt = (assistSize / 2).coerceAtLeast(1),
+                                    valueSuffix = " dp",
+                                    onValueChange = { corner ->
+                                        assistCorner = corner
+                                        SendAssistPrefs.setCornerDp(context, corner)
+                                    },
+                                )
+                            }
+                        }
+                        item {
+                            BaseItemContainer {
+                                IntNumberPickerWidget(
+                                    title = "不透明度",
+                                    value = assistOpacity,
+                                    startInt = SendAssistPrefs.MIN_OPACITY,
+                                    endInt = SendAssistPrefs.MAX_OPACITY,
+                                    valueSuffix = " %",
+                                    onValueChange = { opacity ->
+                                        assistOpacity = opacity
+                                        SendAssistPrefs.setOpacity(context, opacity)
+                                    },
+                                )
+                            }
+                        }
+                        item {
+                            BaseItemContainer {
+                                IntNumberPickerWidget(
+                                    title = "水平偏移",
+                                    value = assistOffsetX,
+                                    startInt = -SendAssistPrefs.MAX_OFFSET_DP,
+                                    endInt = SendAssistPrefs.MAX_OFFSET_DP,
+                                    valueSuffix = " dp",
+                                    onValueChange = { value ->
+                                        assistOffsetX = value
+                                        SendAssistPrefs.setOffsetXDp(context, value)
+                                    },
+                                )
+                            }
+                        }
+                        item {
+                            BaseItemContainer {
+                                IntNumberPickerWidget(
+                                    title = "垂直偏移",
+                                    value = assistOffsetY,
+                                    startInt = -SendAssistPrefs.MAX_OFFSET_DP,
+                                    endInt = SendAssistPrefs.MAX_OFFSET_DP,
+                                    valueSuffix = " dp",
+                                    onValueChange = { value ->
+                                        assistOffsetY = value
+                                        SendAssistPrefs.setOffsetYDp(context, value)
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -187,13 +187,15 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     }
 
     private fun show(bounds: Rect) {
-        val size = (SIZE_DP * density).toInt()
+        val size = sizePx()
         val gap = (GAP_DP * density).toInt()
+        val offsetX = (SendAssistPrefs.offsetXDp(service) * density).toInt()
+        val offsetY = (SendAssistPrefs.offsetYDp(service) * density).toInt()
         val target = Rect(
-            bounds.right - size,
-            (bounds.top - size - gap).coerceAtLeast(0),
-            bounds.right,
-            (bounds.top - gap).coerceAtLeast(size),
+            bounds.right - size + offsetX,
+            (bounds.top - size - gap + offsetY).coerceAtLeast(0),
+            bounds.right + offsetX,
+            (bounds.top - gap + offsetY).coerceAtLeast(size),
         )
 
         val existing = view
@@ -217,8 +219,40 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         }
     }
 
+    private fun sizePx(): Int = (SendAssistPrefs.sizeDp(service) * density).toInt()
+
+    /**
+     * Repaints size, corner, opacity and padding from the preferences, and repositions.
+     *
+     * Called when the settings change: the button is on screen while the user is dragging those
+     * sliders in our own app, so without this they would have to reopen the chat app to see it.
+     */
+    fun applyStyle() {
+        val current = view ?: return
+        val size = sizePx()
+        background?.cornerRadius = (SendAssistPrefs.cornerDp(service) * density)
+        current.alpha = SendAssistPrefs.opacity(service) / 100f
+        icon?.let { iconView ->
+            val inset = (size * 0.26f).toInt()
+            iconView.setPadding(inset, inset, inset, inset)
+        }
+        spinner?.layoutParams = (spinner?.layoutParams as? FrameLayout.LayoutParams)?.apply {
+            width = (size * 0.55f).toInt()
+            height = (size * 0.55f).toInt()
+        }
+        params?.let { layout ->
+            layout.width = size
+            layout.height = size
+            runCatching { windowManager?.updateViewLayout(current, layout) }
+        }
+        // The next look at the screen decides where it goes, with the new size.
+        placed = null
+    }
+
     private fun create(size: Int) {
-        val drawable = GradientDrawable().apply { cornerRadius = size * 0.32f }
+        val drawable = GradientDrawable().apply {
+            cornerRadius = (SendAssistPrefs.cornerDp(service) * density)
+        }
         background = drawable
 
         val iconView = ImageView(service).apply {
@@ -249,7 +283,7 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
             )
             background = drawable
             elevation = 6f * density
-            alpha = 0.92f
+            alpha = SendAssistPrefs.opacity(service) / 100f
             contentDescription = "喵喵助手"
             setOnClickListener { activate() }
         }
@@ -343,7 +377,8 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
 
         /** How many consecutive looks may fail to find the send button before the overlay goes. */
         const val MISSES_BEFORE_HIDE = 2
-        const val SIZE_DP = 40f
+
+        /** The gap between the button and the send button it sits above, before any offset. */
         const val GAP_DP = 8f
         const val MAX_DEPTH = 40
     }
