@@ -387,6 +387,10 @@ private val TEMPLATES = listOf(
     "加颜文字",
     "当 随机 30% 则 加颜文字",
     "你好 = 您好",
+    // The app scope is a package name. These two are the ones this feature exists for, but the
+    // syntax takes any of them — a picker belongs with the form editor, which is not built yet.
+    "末尾加\"{后缀}\" @com.tencent.mm",
+    "首尾包裹\"{猫爪}\" @com.tencent.mobileqq",
 )
 
 /** 1.1.8's behaviour, kept as something one tap can bring back. */
