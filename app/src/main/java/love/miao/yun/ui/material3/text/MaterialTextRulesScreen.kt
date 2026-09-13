@@ -380,7 +380,7 @@ fun MaterialTextRulesScreen(
                         )
                     }
 
-                    Field(
+                    FormField(
                         label = "只在这些应用生效（包名，逗号分隔，留空=全部）",
                         value = appsText,
                         singleLine = true,

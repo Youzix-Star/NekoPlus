@@ -83,20 +83,20 @@ object TextRuleForm {
     fun form(condition: TextCondition): Form = when (condition) {
         TextCondition.Always -> Form(condition = Condition.Always)
 
-        is TextCondition.Contains -> Form(Condition.Contains, condition.text)
-        is TextCondition.StartsWith -> Form(Condition.StartsWith, condition.text)
-        is TextCondition.EndsWith -> Form(Condition.EndsWith, condition.text)
-        is TextCondition.Equals -> Form(Condition.Equals, condition.text)
-        is TextCondition.Matches -> Form(Condition.Matches, condition.pattern)
+        is TextCondition.Contains -> Form(condition = Condition.Contains, conditionText = condition.text)
+        is TextCondition.StartsWith -> Form(condition = Condition.StartsWith, conditionText = condition.text)
+        is TextCondition.EndsWith -> Form(condition = Condition.EndsWith, conditionText = condition.text)
+        is TextCondition.Equals -> Form(condition = Condition.Equals, conditionText = condition.text)
+        is TextCondition.Matches -> Form(condition = Condition.Matches, conditionText = condition.pattern)
 
-        is TextCondition.LongerThan -> Form(Condition.Longer, conditionNumber = condition.characters)
-        is TextCondition.ShorterThan -> Form(Condition.Shorter, conditionNumber = condition.characters)
-        is TextCondition.Chance -> Form(Condition.Chance, conditionNumber = condition.percent)
-        is TextCondition.EveryNth -> Form(Condition.EveryNth, conditionNumber = condition.count)
+        is TextCondition.LongerThan -> Form(condition = Condition.Longer, conditionNumber = condition.characters)
+        is TextCondition.ShorterThan -> Form(condition = Condition.Shorter, conditionNumber = condition.characters)
+        is TextCondition.Chance -> Form(condition = Condition.Chance, conditionNumber = condition.percent)
+        is TextCondition.EveryNth -> Form(condition = Condition.EveryNth, conditionNumber = condition.count)
 
         is TextCondition.Not -> when (val inner = condition.condition) {
             // 不含 gets its own kind, because that is how a person thinks about it.
-            is TextCondition.Contains -> Form(Condition.NotContains, inner.text)
+            is TextCondition.Contains -> Form(condition = Condition.NotContains, conditionText = inner.text)
             else -> form(inner).copy(negated = true)
         }
     }
@@ -114,15 +114,17 @@ object TextRuleForm {
                 )
             }
 
-        is TextAction.ReplaceRegex -> Form(Action.Regex, first = action.pattern, second = action.replacement)
-        is TextAction.Prefix -> Form(Action.Prefix, first = action.text)
-        is TextAction.Suffix -> Form(Action.Suffix, first = action.text)
-        is TextAction.Wrap -> Form(Action.Wrap, first = action.text)
-        is TextAction.SuffixPerSentence ->
-            Form(Action.PerSentence, first = action.text, skipSpaced = action.skipSpaced)
+        is TextAction.ReplaceRegex ->
+            Form(action = Action.Regex, first = action.pattern, second = action.replacement)
 
-        TextAction.TrimTrailingPunctuation -> Form(Action.TrimPunctuation)
-        TextAction.Emoticon -> Form(Action.Emoticon)
+        is TextAction.Prefix -> Form(action = Action.Prefix, first = action.text)
+        is TextAction.Suffix -> Form(action = Action.Suffix, first = action.text)
+        is TextAction.Wrap -> Form(action = Action.Wrap, first = action.text)
+        is TextAction.SuffixPerSentence ->
+            Form(action = Action.PerSentence, first = action.text, skipSpaced = action.skipSpaced)
+
+        TextAction.TrimTrailingPunctuation -> Form(action = Action.TrimPunctuation)
+        TextAction.Emoticon -> Form(action = Action.Emoticon)
     }
 
     // ------------------------------------------------------------------ writing

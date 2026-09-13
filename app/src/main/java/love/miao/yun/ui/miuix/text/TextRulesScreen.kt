@@ -32,6 +32,7 @@ import love.miao.yun.text.TextRules
 import love.miao.yun.ui.miuix.miaoTextFieldColors
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Switch
@@ -258,7 +259,7 @@ fun TextRulesScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     WindowSpinnerPreference(
                         title = "条件",
-                        items = TextRuleForm.Condition.entries.map { it.label },
+                        items = TextRuleForm.Condition.entries.map { DropdownItem(text = it.label) },
                         selectedIndex = form.condition.ordinal,
                         onSelectedIndexChange = { index ->
                             form = form.copy(condition = TextRuleForm.Condition.entries[index])
@@ -301,7 +302,7 @@ fun TextRulesScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     WindowSpinnerPreference(
                         title = "动作",
-                        items = TextRuleForm.Action.entries.map { it.label },
+                        items = TextRuleForm.Action.entries.map { DropdownItem(text = it.label) },
                         selectedIndex = form.action.ordinal,
                         onSelectedIndexChange = { index ->
                             form = form.copy(action = TextRuleForm.Action.entries[index])
