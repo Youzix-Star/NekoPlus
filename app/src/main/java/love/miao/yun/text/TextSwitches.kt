@@ -16,9 +16,9 @@ package love.miao.yun.text
 object TextSwitches {
 
     enum class Toggle(val label: String, val summary: String) {
-        Suffix("末尾加后缀", "1.1.8 的「喵」，写在每一句后面"),
+        Suffix("末尾加后缀", "「喵」写在每一句后面"),
         Emoticon("句末颜文字", "从颜文字表里随机挑一个接在最后"),
-        Paw("QQ 猫爪", "首尾印记，只在 QQ 里生效（1.1.8 就是这样）"),
+        Paw("QQ 猫爪", "首尾各加一个印记，只在 QQ 生效"),
     }
 
     /** Whether this switch is on, i.e. whether a rule of its shape is enabled. */
@@ -54,20 +54,28 @@ object TextSwitches {
     fun setReplacements(rules: TextRules, replacements: List<TextRule>): TextRules =
         rules.copy(rules = rules.rules.filterNot { isReplacement(it) } + replacements)
 
-    /** The custom emoticon list, one per line; empty when the built-in list is in use. */
+    /**
+     * What the user added, one per line — the built-in ones are not shown back to them.
+     *
+     * The list the engine draws from is always the built-in table plus whatever is here, so the
+     * emoticons work out of the box for everybody and typing a few of your own **adds** to them
+     * rather than replacing them. Replacing is what 1.1.8 did, and it meant one careless edit left
+     * a user with a single emoticon and no way to get the other fifty-three back.
+     */
     fun emoticons(rules: TextRules): String {
         val stored = rules.variable(TextDefaults.EMOTICON_NAME) ?: return ""
-        if (stored == builtInEmoticons()) return ""
         return stored.split(TextDefaults.EMOTICON_SEPARATOR)
             .map { it.trim() }
-            .filter { it.isNotEmpty() }
+            .filter { it.isNotEmpty() && it !in TextDefaults.EMOTICONS }
             .joinToString("\n")
     }
 
-    /** Sets the custom emoticons; an empty list goes back to the built-in one, as 1.1.8 did. */
+    /** Sets the additions; an empty list leaves exactly the built-in table. */
     fun setEmoticons(rules: TextRules, text: String): TextRules {
-        val list = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
-        val value = if (list.isEmpty()) builtInEmoticons() else list.joinToString(TextDefaults.EMOTICON_SEPARATOR)
+        val custom = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        val value = (TextDefaults.EMOTICONS + custom)
+            .distinct()
+            .joinToString(TextDefaults.EMOTICON_SEPARATOR)
         return rules.copy(variables = rules.variables + (TextDefaults.EMOTICON_NAME to value))
     }
 
@@ -96,9 +104,6 @@ object TextSwitches {
             apps = setOf(QQ),
         )
     }
-
-    private fun builtInEmoticons(): String =
-        TextDefaults.EMOTICONS.joinToString(TextDefaults.EMOTICON_SEPARATOR)
 
     /** The one app 1.1.8 ever marked with the paw. */
     private const val QQ = "com.tencent.mobileqq"

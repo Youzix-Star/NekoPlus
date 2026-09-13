@@ -176,18 +176,6 @@ fun MaterialTextRulesScreen(
                                         editing = at
                                         showEdit = true
                                     },
-                                    trailingContent = { _ ->
-                                        TextButton(onClick = {
-                                            update(
-                                                TextSwitches.setReplacements(
-                                                    rules,
-                                                    replacements.filterIndexed { i, _ -> i != at },
-                                                ),
-                                            )
-                                        }) {
-                                            Text("删除")
-                                        }
-                                    },
                                 )
                             }
                             NavigationItemWidget(
@@ -257,6 +245,19 @@ fun MaterialTextRulesScreen(
                         maxLines = 12,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (editing >= 0) {
+                        TextButton(onClick = {
+                            update(
+                                TextSwitches.setReplacements(
+                                    rules,
+                                    replacements.filterIndexed { i, _ -> i != editing },
+                                ),
+                            )
+                            showEdit = false
+                        }) {
+                            Text("删除这条规则")
+                        }
+                    }
                     Row(
                         modifier = Modifier.padding(top = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),

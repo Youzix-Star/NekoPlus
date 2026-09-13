@@ -311,15 +311,22 @@ class TextRulesTest {
     }
 
     @Test
-    fun `custom emoticons replace the built-in list, and empty goes back to it`() {
+    fun `custom emoticons are added to the built-in list, never replacing it`() {
         val rules = TextDefaults.starter()
-        val custom = TextSwitches.setEmoticons(rules, "ฅ\n(=^･ω･^=)")
-        assertEquals("ฅ\n(=^･ω･^=)", TextSwitches.emoticons(custom))
-        val result = TextEngine(Random(1)).apply("你好", TextSwitches.set(custom, TextSwitches.Toggle.Emoticon, true))
-        assertTrue(result == "你好 ฅ" || result == "你好 (=^･ω･^=)")
+        val custom = TextSwitches.setEmoticons(rules, "🐾\n@w@")
+        // The field shows back only what the user added...
+        assertEquals("🐾\n@w@", TextSwitches.emoticons(custom))
+        // ...while the engine draws from everything, so the built-ins survive an edit.
+        val stored = custom.variable(TextDefaults.EMOTICON_NAME).orEmpty()
+            .split(TextDefaults.EMOTICON_SEPARATOR)
+        assertTrue(TextDefaults.EMOTICONS.all { it in stored })
+        assertTrue("🐾" in stored)
 
-        val back = TextSwitches.setEmoticons(custom, "  ")
-        assertEquals("", TextSwitches.emoticons(back))
+        // Clearing the field leaves exactly the built-in table.
+        val cleared = TextSwitches.setEmoticons(custom, "  ")
+        assertEquals("", TextSwitches.emoticons(cleared))
+        assertEquals(TextDefaults.EMOTICONS, cleared.variable(TextDefaults.EMOTICON_NAME).orEmpty()
+            .split(TextDefaults.EMOTICON_SEPARATOR))
     }
 
     @Test

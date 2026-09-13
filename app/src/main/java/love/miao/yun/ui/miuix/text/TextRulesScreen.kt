@@ -126,23 +126,12 @@ fun TextRulesScreen(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                     )
                 }
+                // No trailing button on these rows: a wide control in the end slot leaves the title
+                // squeezed against the card's edge, which is what "the text is being eaten" was.
+                // Deleting lives in the editor, where there is room to say what it does.
                 replacements.forEachIndexed { at, rule ->
                     ArrowPreference(
                         title = TextRuleText.render(rule),
-                        endActions = {
-                            Button(
-                                onClick = {
-                                    update(
-                                        TextSwitches.setReplacements(
-                                            rules,
-                                            replacements.filterIndexed { i, _ -> i != at },
-                                        ),
-                                    )
-                                },
-                            ) {
-                                Text("删除")
-                            }
-                        },
                         onClick = {
                             draft = TextRuleText.render(rule)
                             editing = at
@@ -227,6 +216,22 @@ fun TextRulesScreen(
                         .fillMaxWidth()
                         .heightIn(min = 150.dp),
                 )
+                if (editing >= 0) {
+                    Button(
+                        onClick = {
+                            update(
+                                TextSwitches.setReplacements(
+                                    rules,
+                                    replacements.filterIndexed { i, _ -> i != editing },
+                                ),
+                            )
+                            showEdit = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("删除这条规则")
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
                         onClick = { draft = clipboardText(context) },
