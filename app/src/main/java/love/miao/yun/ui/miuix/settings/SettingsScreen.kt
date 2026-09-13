@@ -126,7 +126,7 @@ fun SettingsScreen(
 
         item(key = "engine") {
             Column {
-                SmallTitle(text = "界面引擎")
+                SmallTitle(text = "引擎")
                 Card(modifier = Modifier.fillMaxWidth()) {
                     WindowSpinnerPreference(
                         title = "界面引擎",
@@ -143,7 +143,7 @@ fun SettingsScreen(
 
         item(key = "ai") {
             Column {
-                SmallTitle(text = "AI 修改文本")
+                SmallTitle(text = "AI")
                 Card(modifier = Modifier.fillMaxWidth()) {
                     // The accessibility switch itself lives on the home page as a status card;
                     // this page only configures the feature.
@@ -158,7 +158,7 @@ fun SettingsScreen(
 
         item(key = "text") {
             Column {
-                SmallTitle(text = "文本替换")
+                SmallTitle(text = "替换")
                 Card(modifier = Modifier.fillMaxWidth()) {
                     ArrowPreference(
                         title = "替换规则",

@@ -207,7 +207,8 @@ internal fun isNewer(latest: String, current: String): Boolean {
 }
 
 private fun splitVersion(version: String): Pair<List<Int>, String?> {
-    val cleaned = version.trim().removePrefix("v")
+    // "2.0.1 Beta 1" is a version name a person would write; the comparison wants a separator.
+    val cleaned = version.trim().replace(' ', '-').removePrefix("v")
     val core = cleaned.substringBefore('-')
     val pre = cleaned.substringAfter('-', missingDelimiterValue = "").ifBlank { null }
     val numbers = core.split('.').map { part ->

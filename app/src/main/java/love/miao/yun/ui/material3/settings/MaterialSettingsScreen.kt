@@ -158,7 +158,7 @@ fun MaterialSettingsScreen(
             }
 
             item {
-                SegmentedColumn(title = "界面引擎") {
+                SegmentedColumn(title = "引擎") {
                     item {
                         DropDownMenuWidget(
                             icon = AppIcons.Tune,
@@ -178,7 +178,7 @@ fun MaterialSettingsScreen(
             }
 
             item {
-                SegmentedColumn(title = "AI 修改文本") {
+                SegmentedColumn(title = "AI") {
                     // The accessibility switch itself is a status card on the home page; this
                     // page only configures the feature.
                     item {
@@ -193,7 +193,7 @@ fun MaterialSettingsScreen(
             }
 
             item {
-                SegmentedColumn(title = "文本替换") {
+                SegmentedColumn(title = "替换") {
                     item {
                         NavigationItemWidget(
                             icon = AppIcons.Rule,

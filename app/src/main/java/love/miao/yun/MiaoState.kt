@@ -44,7 +44,7 @@ object MiaoState {
     var floatingColorSource by mutableStateOf(FloatingColorSource.Dynamic)
 
     /** Which predictive-back animation plays on second-level pages. */
-    var predictiveBackStyle by mutableStateOf(PredictiveBackStyle.Aosp)
+    var predictiveBackStyle by mutableStateOf(PredictiveBackStyle.Miuix)
 
     /**
      * Whether the first-run guide is on screen.

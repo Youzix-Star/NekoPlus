@@ -7,7 +7,9 @@ package love.miao.yun.ui.material3.text
 
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,10 +77,11 @@ fun MaterialTextRulesScreen(
     var autoAfterAi by remember { mutableStateOf(TextPrefs.loadAutoAfterAi(context)) }
     var sample by remember { mutableStateOf(DEFAULT_SAMPLE) }
 
+    // The rules are edited as text, one per line: pasting a whole set in is the point, and 1.1.8
+    // did the same.
     var showEdit by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(NEW_RULE) }
-    var from by remember { mutableStateOf("") }
-    var to by remember { mutableStateOf("") }
+    var draft by remember { mutableStateOf("") }
 
     fun update(next: TextRules) {
         rules = next
@@ -121,12 +126,12 @@ fun MaterialTextRulesScreen(
             contentPadding = paddingValues + PaddingValues(bottom = 24.dp),
         ) {
             item {
-                SegmentedColumn(title = "开关") {
+                SegmentedColumn(title = "处理") {
                     item {
                         SwitchWidget(
                             icon = AppIcons.Sparkle,
-                            title = "AI 修改后自动套用",
-                            description = "关掉就只在你点「套用规则」时生效",
+                            title = "AI 改完自动套用",
+                            description = "关掉只在点「套用规则」时生效",
                             checked = autoAfterAi,
                             onCheckedChange = { value ->
                                 autoAfterAi = value
@@ -134,11 +139,6 @@ fun MaterialTextRulesScreen(
                             },
                         )
                     }
-                }
-            }
-
-            item {
-                SegmentedColumn(title = "文字处理") {
                     TextSwitches.Toggle.entries.forEach { toggle ->
                         item {
                             SwitchWidget(
@@ -155,65 +155,56 @@ fun MaterialTextRulesScreen(
 
             item {
                 SegmentedColumn(title = "替换规则") {
-                    if (replacements.isEmpty()) {
-                        item {
-                            BaseItemContainer {
+                    item {
+                        BaseItemContainer {
+                            if (replacements.isEmpty()) {
                                 Text(
-                                    text = "还没有替换规则。",
+                                    text = "还没有规则。",
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(16.dp),
                                 )
                             }
-                        }
-                    }
-                    replacements.forEachIndexed { at, rule ->
-                        item {
-                            BaseWidget(
-                                icon = AppIcons.Rule,
-                                title = TextRuleText.render(rule),
-                                description = if (rule.enabled) "点按修改" else "已停用",
-                                onClick = {
-                                    val replace = rule.action as? TextAction.Replace
-                                    if (replace != null) {
-                                        from = replace.from
-                                        to = replace.to
+                            replacements.forEachIndexed { at, rule ->
+                                BaseWidget(
+                                    icon = AppIcons.Rule,
+                                    title = TextRuleText.render(rule),
+                                    description = if (rule.enabled) "点按修改" else "已停用",
+                                    onClick = {
+                                        draft = TextRuleText.render(rule)
                                         editing = at
                                         showEdit = true
-                                    }
-                                },
-                                trailingContent = { _ ->
-                                    TextButton(onClick = {
-                                        update(
-                                            TextSwitches.setReplacements(
-                                                rules,
-                                                replacements.filterIndexed { i, _ -> i != at },
-                                            ),
-                                        )
-                                    }) {
-                                        Text("删除")
-                                    }
+                                    },
+                                    trailingContent = { _ ->
+                                        TextButton(onClick = {
+                                            update(
+                                                TextSwitches.setReplacements(
+                                                    rules,
+                                                    replacements.filterIndexed { i, _ -> i != at },
+                                                ),
+                                            )
+                                        }) {
+                                            Text("删除")
+                                        }
+                                    },
+                                )
+                            }
+                            NavigationItemWidget(
+                                icon = AppIcons.Tune,
+                                title = "批量添加",
+                                description = "一行一条，粘贴文本即可",
+                                onClick = {
+                                    draft = ""
+                                    editing = NEW_RULE
+                                    showEdit = true
                                 },
                             )
                         }
-                    }
-                    item {
-                        NavigationItemWidget(
-                            icon = AppIcons.Tune,
-                            title = "新增替换规则",
-                            description = "也可以粘一整行「原文 = 替换为」",
-                            onClick = {
-                                from = ""
-                                to = ""
-                                editing = NEW_RULE
-                                showEdit = true
-                            },
-                        )
                     }
                 }
             }
 
             item {
-                SegmentedColumn(title = "自定义颜文字") {
+                SegmentedColumn(title = "颜文字") {
                     item {
                         BaseItemContainer {
                             FormField(
@@ -253,56 +244,53 @@ fun MaterialTextRulesScreen(
     if (showEdit) {
         AlertDialog(
             onDismissRequest = { showEdit = false },
-            title = { Text(if (editing < 0) "新增替换规则" else "修改替换规则") },
+            title = { Text("替换规则") },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    FormField(
-                        label = "原文",
-                        value = from,
-                        singleLine = true,
-                        onValueChange = { from = it },
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        label = { Text("一行一条，例如 你好 = 您好") },
+                        minLines = 6,
+                        maxLines = 12,
+                        modifier = Modifier.fillMaxWidth(),
                     )
-                    FormField(
-                        label = "替换为",
-                        value = to,
-                        singleLine = true,
-                        onValueChange = { to = it },
-                    )
-                    Text(
-                        text = "也可以从别处复制一整行「原文 = 替换为」，粘进来。",
-                        style = MaterialTheme.typography.bodySmall,
+                    Row(
                         modifier = Modifier.padding(top = 8.dp),
-                    )
-                    TextButton(onClick = {
-                        val pasted = TextRuleText.parse(clipboardText(context)).config.rules.firstOrNull()
-                        val replace = pasted?.action as? TextAction.Replace
-                        if (replace == null) {
-                            onNotify("剪贴板里没有一行「原文 = 替换为」")
-                        } else {
-                            from = replace.from
-                            to = replace.to
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Button(
+                            onClick = { draft = clipboardText(context) },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("粘贴")
                         }
-                    }) {
-                        Text("粘贴一行")
+                        Button(
+                            onClick = {
+                                val parsed = TextRuleText.parse(draft).config.rules
+                                    .filter { it.action is TextAction.Replace }
+                                if (parsed.isEmpty()) {
+                                    onNotify("没读懂，写成一行的 原文 = 替换为")
+                                } else {
+                                    val next = replacements.toMutableList()
+                                    if (editing < 0) {
+                                        next += parsed
+                                    } else {
+                                        next.removeAt(editing)
+                                        next.addAll(editing, parsed)
+                                    }
+                                    update(TextSwitches.setReplacements(rules, next))
+                                    showEdit = false
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            Text("保存")
+                        }
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (from.isEmpty()) {
-                        onNotify("原文不能是空的")
-                    } else {
-                        val next = replacements.toMutableList()
-                        val rule = TextSwitches.replacement(from, to)
-                        if (editing < 0) next += rule else next[editing] = rule
-                        update(TextSwitches.setReplacements(rules, next))
-                        showEdit = false
-                    }
-                }) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
                 TextButton(onClick = { showEdit = false }) { Text("取消") }
             },
         )

@@ -75,7 +75,13 @@ enum class PredictiveBackStyle(val id: String, val label: String) {
 
     companion object {
         // AOSP is the platform's own gesture, so it is what the app does unless told otherwise.
-        fun from(id: String?): PredictiveBackStyle = entries.firstOrNull { it.id == id } ?: Aosp
+        /**
+         * The style for a stored id, or for a fresh install.
+         *
+         * Defaults to [Miuix]: it is the animation this app was written against, and the platform's
+         * own is a fallback for phones whose launcher does not do predictive back at all.
+         */
+        fun from(id: String?): PredictiveBackStyle = entries.firstOrNull { it.id == id } ?: Miuix
     }
 }
 
