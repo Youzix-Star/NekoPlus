@@ -337,6 +337,7 @@ private fun MiaoTabs(
     onRequestOverlay: () -> Unit,
     onNotify: (String) -> Unit,
     onOpenAiConfig: () -> Unit,
+    onOpenTextRules: () -> Unit,
     onOpenLicenses: () -> Unit,
     onTabSelected: (Int) -> Unit,
 ) {
@@ -418,6 +419,7 @@ private fun MiaoTabs(
                         engine = engine,
                         onEngineChange = onEngineChange,
                         onOpenAiConfig = onOpenAiConfig,
+                        onOpenTextRules = onOpenTextRules,
                         onNotify = onNotify,
                     )
 

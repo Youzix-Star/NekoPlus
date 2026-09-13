@@ -44,10 +44,10 @@ import love.miao.yun.text.TextPrefs
 import love.miao.yun.text.TextRuleText
 import love.miao.yun.text.TextRules
 import love.miao.yun.ui.AppIcons
-import love.miao.yun.ui.material3.blur.material3AppBarColor
-import love.miao.yun.ui.material3.blur.material3BlurEffect
-import love.miao.yun.ui.material3.blur.layerBackdrop
-import love.miao.yun.ui.material3.blur.rememberMaterial3BlurBackdrop
+import love.miao.yun.ui.material3.material3AppBarColor
+import love.miao.yun.ui.material3.material3BlurEffect
+import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import love.miao.yun.ui.material3.widgets.BaseItemContainer
 import love.miao.yun.ui.material3.widgets.BaseWidget
 import love.miao.yun.ui.material3.widgets.NavigationItemWidget
