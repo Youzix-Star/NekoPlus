@@ -10,13 +10,19 @@
 package love.miao.yun.ui.material3.settings
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -27,7 +33,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import love.miao.yun.MiaoState
 import love.miao.yun.ui.AppIcons
@@ -36,6 +45,7 @@ import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.ThemeMode
 import love.miao.yun.ui.material3.material3AppBarColor
 import love.miao.yun.ui.rememberBackupActions
+import love.miao.yun.util.DebugDump
 import love.miao.yun.ui.material3.material3BlurEffect
 import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
 import love.miao.yun.ui.material3.widgets.DropDownMenuWidget
@@ -60,6 +70,10 @@ fun MaterialSettingsScreen(
     var autoStart by remember { mutableStateOf(false) }
     var keepAlive by remember { mutableStateOf(true) }
     val backup = rememberBackupActions(onNotify)
+    val clipboard = LocalClipboardManager.current
+    var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
+    var dump by remember { mutableStateOf(DebugDump.read(context)) }
+    var showDump by remember { mutableStateOf(false) }
     val engine = MiaoState.engine
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
@@ -177,6 +191,38 @@ fun MaterialSettingsScreen(
             }
 
             item {
+                SegmentedColumn(title = "调试") {
+                    item {
+                        SwitchWidget(
+                            icon = AppIcons.Tune,
+                            title = "调试模式",
+                            description = "排查「抓不到输入框」这类问题",
+                            checked = debugMode,
+                            onCheckedChange = {
+                                debugMode = it
+                                UiEnginePrefs.saveDebugMode(context, it)
+                            },
+                        )
+                    }
+                    if (debugMode) {
+                        item {
+                            NavigationItemWidget(
+                                icon = AppIcons.Rule,
+                                title = "查看最近一次抓取",
+                                description = dump
+                                    ?.let { "共 ${it.lineSequence().count()} 行" }
+                                    ?: "还没有抓取过",
+                                onClick = {
+                                    dump = DebugDump.read(context)
+                                    showDump = true
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
                 SegmentedColumn(title = "备份") {
                     item {
                         NavigationItemWidget(
@@ -220,5 +266,59 @@ fun MaterialSettingsScreen(
                 }
             }
         }
+    }
+
+    if (showDump) {
+        val text = dump
+        AlertDialog(
+            onDismissRequest = { showDump = false },
+            title = { Text("最近一次抓取") },
+            text = {
+                if (text.isNullOrBlank()) {
+                    Text("还没有抓取过。把「导出界面元素」设成某个悬浮窗按钮的动作，在目标应用里点一下即可。")
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 380.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        Text(
+                            text = text,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (!text.isNullOrBlank()) {
+                    TextButton(
+                        onClick = {
+                            clipboard.setText(AnnotatedString(text))
+                            onNotify("已复制抓取结果")
+                        },
+                    ) {
+                        Text("复制")
+                    }
+                }
+            },
+            dismissButton = {
+                if (text.isNullOrBlank()) {
+                    TextButton(onClick = { showDump = false }) { Text("关闭") }
+                } else {
+                    TextButton(
+                        onClick = {
+                            DebugDump.clear(context)
+                            dump = null
+                            showDump = false
+                            onNotify("已清空")
+                        },
+                    ) {
+                        Text("清空")
+                    }
+                }
+            },
+        )
     }
 }

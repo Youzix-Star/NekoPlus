@@ -44,6 +44,7 @@ import love.miao.yun.floating.FloatingAction
 import love.miao.yun.floating.FloatingItem
 import love.miao.yun.floating.FloatingWindowPrefs
 import love.miao.yun.ui.FloatingPalette
+import love.miao.yun.util.DebugDump
 import love.miao.yun.ui.FloatingPalettes
 import love.miao.yun.ui.UiEnginePrefs
 
@@ -476,6 +477,11 @@ class FloatingWindowService : Service() {
                 onDone()
             }
 
+            FloatingAction.DumpUi -> {
+                dumpScreen()
+                onDone()
+            }
+
             // The last step of all: the buttons are gone, so there is nothing left to continue to.
             FloatingAction.Close -> stopSelf()
         }
@@ -551,6 +557,17 @@ class FloatingWindowService : Service() {
         val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.notif_title), text))
         toast(getString(R.string.floating_copied, text.length))
+    }
+
+    /** Writes everything the accessibility service can see to a file the settings page reads. */
+    private fun dumpScreen() {
+        val service = MiaoAccessibilityService.instance()
+        if (service == null) {
+            toast(getString(R.string.ai_need_accessibility))
+            return
+        }
+        val saved = DebugDump.save(this, service.dumpScreen())
+        toast(if (saved) "界面元素已导出，去「设置 → 调试」查看" else "导出失败")
     }
 
     private fun openApp() {

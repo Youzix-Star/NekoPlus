@@ -26,6 +26,14 @@ enum class FloatingAction(val id: String, val label: String) {
 
     /** Take every floating button off the screen. */
     Close("close", "收起悬浮窗"),
+
+    /**
+     * Write every window and node the accessibility service can see to a file.
+     *
+     * For the app that will not co-operate: it has to be pressed while that app is on screen, so
+     * it belongs on a floating button rather than in a settings page.
+     */
+    DumpUi("dump", "导出界面元素"),
     ;
 
     companion object {

@@ -31,6 +31,7 @@ object UiEnginePrefs {
     private const val KEY_USE_BLUR = "use_blur"
     private const val KEY_FLOATING_COLOR = "floating_color"
     private const val KEY_PREDICTIVE_BACK = "predictive_back"
+    private const val KEY_DEBUG_MODE = "debug_mode"
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -86,6 +87,14 @@ object UiEnginePrefs {
 
     fun savePredictiveBackStyle(context: Context, style: PredictiveBackStyle) {
         prefs(context).edit().putString(KEY_PREDICTIVE_BACK, style.id).apply()
+    }
+
+    /** Whether the diagnostic tools are on show in Settings. */
+    fun loadDebugMode(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_DEBUG_MODE, false)
+
+    fun saveDebugMode(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_DEBUG_MODE, enabled).apply()
     }
 
     /** True when [key] is the floating window's palette, i.e. the overlay must restyle. */

@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +22,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import love.miao.yun.MiaoState
 import love.miao.yun.ui.AppIcons
@@ -27,12 +33,15 @@ import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.miuix.ThemeModeOptions
 import love.miao.yun.ui.rememberBackupActions
+import love.miao.yun.util.DebugDump
 import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
@@ -55,6 +64,10 @@ fun SettingsScreen(
     var autoStart by remember { mutableStateOf(false) }
     var keepAlive by remember { mutableStateOf(true) }
     val backup = rememberBackupActions(onNotify)
+    val clipboard = LocalClipboardManager.current
+    var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
+    var dump by remember { mutableStateOf(DebugDump.read(context)) }
+    var showDump by remember { mutableStateOf(false) }
 
     // One row that opens a chooser, mirroring how the reference app picks its UI engine.
     val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
@@ -140,6 +153,40 @@ fun SettingsScreen(
             }
         }
 
+        item(key = "debug") {
+            Column {
+                SmallTitle(text = "调试")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    SwitchPreference(
+                        title = "调试模式",
+                        summary = "排查「抓不到输入框」这类问题",
+                        checked = debugMode,
+                        onCheckedChange = {
+                            debugMode = it
+                            UiEnginePrefs.saveDebugMode(context, it)
+                        },
+                    )
+                    if (debugMode) {
+                        ArrowPreference(
+                            title = "查看最近一次抓取",
+                            summary = dump?.let { "共 ${it.lineSequence().count()} 行" } ?: "还没有抓取过",
+                            startAction = {
+                                Icon(
+                                    imageVector = AppIcons.Rule,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            },
+                            onClick = {
+                                dump = DebugDump.read(context)
+                                showDump = true
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
         item(key = "backup") {
             Column {
                 SmallTitle(text = "备份")
@@ -188,6 +235,58 @@ fun SettingsScreen(
                         checked = keepAlive,
                         onCheckedChange = { keepAlive = it },
                     )
+                }
+            }
+        }
+    }
+
+    if (showDump) {
+        val text = dump
+        OverlayDialog(
+            show = true,
+            title = "最近一次抓取",
+            summary = DebugDump.location(context),
+            onDismissRequest = { showDump = false },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (text.isNullOrBlank()) {
+                    Text("还没有抓取过。把「导出界面元素」设成某个悬浮窗按钮的动作，在目标应用里点一下即可。")
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 380.dp)
+                            .verticalScroll(rememberScrollState()),
+                    ) {
+                        Text(
+                            text = text,
+                            style = MiuixTheme.textStyles.footnote2,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                    }
+                    Button(
+                        onClick = {
+                            clipboard.setText(AnnotatedString(text))
+                            onNotify("已复制抓取结果")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("复制")
+                    }
+                    Button(
+                        onClick = {
+                            DebugDump.clear(context)
+                            dump = null
+                            showDump = false
+                            onNotify("已清空")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("清空")
+                    }
+                }
+                Button(onClick = { showDump = false }, modifier = Modifier.fillMaxWidth()) {
+                    Text("关闭")
                 }
             }
         }
