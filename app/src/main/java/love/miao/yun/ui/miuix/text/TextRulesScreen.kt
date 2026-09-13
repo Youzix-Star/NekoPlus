@@ -72,7 +72,7 @@ fun TextRulesScreen(
     // One dialog, three faces. Editing a rule, listing them and managing packs are the same job, and
     // stacking dialogs on dialogs is how the old version ended up with a page nobody could navigate.
     var showForm by remember { mutableStateOf(false) }
-    var face by remember { mutableStateOf(Face.List) }
+    var face by remember { mutableStateOf(Face.Add) }
     var editing by remember { mutableStateOf(NEW_RULE) }
     var form by remember { mutableStateOf(TextRuleForm.Form()) }
     var appsText by remember { mutableStateOf("") }
@@ -118,7 +118,7 @@ fun TextRulesScreen(
             next[editing] = TextRuleForm.rule(form, rules.rules[editing]).copy(apps = apps)
         }
         update(rules.copy(rules = next))
-        face = Face.List
+        showForm = false
     }
 
     // What the trial box runs: the text being edited while the editor is open, so the result below
@@ -321,10 +321,10 @@ fun TextRulesScreen(
                                             rules = rules.rules.filterIndexed { i, _ -> i != editing },
                                         ),
                                     )
-                                    face = Face.List
+                                    showForm = false
                                 }
                             },
-                            onBack = { face = Face.List },
+                            onBack = { showForm = false },
                         )
                     }
 
@@ -346,14 +346,14 @@ fun TextRulesScreen(
                         onLoad = { pack ->
                             update(pack.rules)
                             hasLegacy = false
-                            face = Face.List
+                            showForm = false
                             onNotify("已载入「${pack.name}」")
                         },
                         onDelete = { pack ->
                             TextPrefs.deletePack(context, pack.name)
                             packs = TextPrefs.loadPacks(context)
                         },
-                        onBack = { face = Face.List },
+                        onBack = { showForm = false },
                     )
                 }
             }

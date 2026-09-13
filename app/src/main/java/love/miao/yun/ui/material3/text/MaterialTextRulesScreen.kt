@@ -54,6 +54,7 @@ import love.miao.yun.ui.material3.widgets.BaseItemContainer
 import love.miao.yun.ui.material3.widgets.BaseWidget
 import love.miao.yun.ui.material3.widgets.DropDownMenuWidget
 import love.miao.yun.ui.material3.widgets.FormField
+import love.miao.yun.ui.material3.widgets.NavigationItemWidget
 import love.miao.yun.ui.material3.widgets.SegmentedColumn
 import love.miao.yun.ui.material3.widgets.SwitchWidget
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -81,7 +82,7 @@ fun MaterialTextRulesScreen(
     var hasLegacy by remember { mutableStateOf(TextPrefs.hasLegacyConfig(context)) }
 
     var showForm by remember { mutableStateOf(false) }
-    var face by remember { mutableStateOf(Face.List) }
+    var face by remember { mutableStateOf(Face.Add) }
     var editing by remember { mutableStateOf(NEW_RULE) }
     var form by remember { mutableStateOf(TextRuleForm.Form()) }
     var appsText by remember { mutableStateOf("") }
@@ -126,7 +127,7 @@ fun MaterialTextRulesScreen(
             next[editing] = TextRuleForm.rule(form, rules.rules[editing]).copy(apps = apps)
         }
         update(rules.copy(rules = next))
-        face = Face.List
+        showForm = false
     }
 
     // What the trial box runs: the text being edited while the editor is open, so the result below
@@ -369,7 +370,7 @@ fun MaterialTextRulesScreen(
                                                 rules = rules.rules.filterIndexed { i, _ -> i != editing },
                                             ),
                                         )
-                                        face = Face.List
+                                        showForm = false
                                     }
                                 },
                             )
@@ -392,7 +393,7 @@ fun MaterialTextRulesScreen(
                                 onLoad = { pack ->
                                     update(pack.rules)
                                     hasLegacy = false
-                                    face = Face.List
+                                    showForm = false
                                     onNotify("已载入「${pack.name}」")
                                 },
                                 onDelete = { pack ->
@@ -411,9 +412,8 @@ fun MaterialTextRulesScreen(
                 }
             },
             dismissButton = {
-                when (face) {
-                    Face.List -> Unit
-                    else -> TextButton(onClick = { face = Face.List }) { Text("返回") }
+                TextButton(onClick = { showForm = false }) {
+                    Text(if (face == Face.Add) "取消" else "返回")
                 }
             },
         )
