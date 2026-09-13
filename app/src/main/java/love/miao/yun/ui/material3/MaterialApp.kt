@@ -55,6 +55,7 @@ import love.miao.yun.ui.material3.floating.MaterialFloatingScreen
 import love.miao.yun.ui.material3.home.MaterialHomeScreen
 import love.miao.yun.ui.material3.licenses.MaterialLicensesScreen
 import love.miao.yun.ui.material3.settings.MaterialSettingsScreen
+import love.miao.yun.ui.material3.text.MaterialTextRulesScreen
 import love.miao.yun.ui.onboarding.MaterialOnboarding
 import love.miao.yun.ui.onboarding.OnboardingPrefs
 import love.miao.yun.ui.material3.widgets.SwipeableSnackbarHost
@@ -73,6 +74,7 @@ private const val TAB_ABOUT = 3
  */
 private enum class MaterialSubPage(val title: String) {
     AiConfig("AI 配置"),
+    TextRules("文本替换"),
     Licenses("开源许可"),
 }
 
@@ -229,6 +231,7 @@ private fun MaterialShell(
                             dynamicColor = dynamicColor,
                             onDynamicColorChange = onDynamicColorChange,
                             onOpenAiConfig = { subPage = MaterialSubPage.AiConfig },
+                            onOpenTextRules = { subPage = MaterialSubPage.TextRules },
                             onNotify = notify,
                         )
 
@@ -248,6 +251,12 @@ private fun MaterialShell(
             }
             when (subPage) {
                 MaterialSubPage.AiConfig -> MaterialAiConfigScreen(
+                    onBack = closeSubPage,
+                    useBlur = MiaoState.useBlur,
+                    onNotify = notify,
+                )
+
+                MaterialSubPage.TextRules -> MaterialTextRulesScreen(
                     onBack = closeSubPage,
                     useBlur = MiaoState.useBlur,
                     onNotify = notify,

@@ -52,6 +52,7 @@ import love.miao.yun.ui.miuix.home.HomeScreen
 import love.miao.yun.ui.miuix.licenses.LicensesScreen
 import love.miao.yun.ui.miuix.liquid.FloatingBottomBar
 import love.miao.yun.ui.miuix.settings.SettingsScreen
+import love.miao.yun.ui.miuix.text.TextRulesScreen
 import love.miao.yun.ui.onboarding.MiuixOnboarding
 import love.miao.yun.ui.onboarding.OnboardingPrefs
 import love.miao.yun.ui.rememberMainPagerState
@@ -83,6 +84,7 @@ const val TAB_ABOUT = 3
  */
 enum class MiuixSubPage(val title: String) {
     AiConfig("AI 配置"),
+    TextRules("文本替换"),
     Licenses("开源许可"),
 }
 
@@ -224,6 +226,7 @@ fun MiaoShell(
                 onRequestOverlay = requestOverlay,
                 onNotify = notify,
                 onOpenAiConfig = { subPage = MiuixSubPage.AiConfig },
+                onOpenTextRules = { subPage = MiuixSubPage.TextRules },
                 onOpenLicenses = { subPage = MiuixSubPage.Licenses },
                 onTabSelected = { index -> mainPagerState.animateToPage(index) },
             )
@@ -262,6 +265,12 @@ fun MiaoShell(
                     )
                     when (page) {
                         MiuixSubPage.AiConfig -> AiConfigScreen(
+                            contentPadding = subPadding,
+                            scrollBehavior = pageScrollBehavior,
+                            onNotify = notify,
+                        )
+
+                        MiuixSubPage.TextRules -> TextRulesScreen(
                             contentPadding = subPadding,
                             scrollBehavior = pageScrollBehavior,
                             onNotify = notify,

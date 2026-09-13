@@ -62,6 +62,7 @@ fun SettingsScreen(
     onEngineChange: (UiEngine) -> Unit,
     onNotify: (String) -> Unit,
     onOpenAiConfig: () -> Unit,
+    onOpenTextRules: () -> Unit,
 ) {
     var autoStart by remember { mutableStateOf(false) }
     var keepAlive by remember { mutableStateOf(true) }
@@ -150,6 +151,19 @@ fun SettingsScreen(
                         title = "AI 配置",
                         summary = "接口、密钥与提示词",
                         onClick = onOpenAiConfig,
+                    )
+                }
+            }
+        }
+
+        item(key = "text") {
+            Column {
+                SmallTitle(text = "文本替换")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    ArrowPreference(
+                        title = "替换规则",
+                        summary = "后缀、颜文字、按条件的替换；1.1.8 的功能都在这里",
+                        onClick = onOpenTextRules,
                     )
                 }
             }

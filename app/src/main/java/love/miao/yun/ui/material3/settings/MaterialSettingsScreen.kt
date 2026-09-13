@@ -66,6 +66,7 @@ fun MaterialSettingsScreen(
     onDynamicColorChange: (Boolean) -> Unit,
     onNotify: (String) -> Unit,
     onOpenAiConfig: () -> Unit,
+    onOpenTextRules: () -> Unit,
 ) {
     val context = LocalContext.current
     var autoStart by remember { mutableStateOf(false) }
@@ -186,6 +187,19 @@ fun MaterialSettingsScreen(
                             title = "AI 配置",
                             description = "接口、密钥与提示词",
                             onClick = onOpenAiConfig,
+                        )
+                    }
+                }
+            }
+
+            item {
+                SegmentedColumn(title = "文本替换") {
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Rule,
+                            title = "替换规则",
+                            description = "后缀、颜文字、按条件的替换；1.1.8 的功能都在这里",
+                            onClick = onOpenTextRules,
                         )
                     }
                 }
