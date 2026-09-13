@@ -56,7 +56,6 @@ import love.miao.yun.sendassist.SEND_TARGETS
 import love.miao.yun.sendassist.SendAssistAction
 import love.miao.yun.sendassist.SendAssistConfig
 import love.miao.yun.sendassist.SendAssistPrefs
-import love.miao.yun.sendassist.SendAssistPrefs
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.SendAssistPreview

@@ -36,6 +36,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import love.miao.yun.MiaoState
+import love.miao.yun.R
 import love.miao.yun.floating.FloatingAction
 import love.miao.yun.floating.FloatingIcon
 import love.miao.yun.floating.FloatingItem

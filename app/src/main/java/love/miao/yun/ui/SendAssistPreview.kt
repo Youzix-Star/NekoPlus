@@ -117,13 +117,13 @@ fun SendAssistPreview(
                 .size(size)
                 .alpha(config.opacity / 100f)
                 .clip(RoundedCornerShape(config.effectiveCornerDp.dp))
-                .background(palette.container),
+                .background(Color(palette.container)),
             contentAlignment = Alignment.Center,
         ) {
             Image(
                 painter = painterResource(R.drawable.ic_ball_auto_awesome),
                 contentDescription = null,
-                colorFilter = ColorFilter.tint(palette.onContainer),
+                colorFilter = ColorFilter.tint(Color(palette.onContainer)),
                 modifier = Modifier.size(size * 0.48f),
             )
         }

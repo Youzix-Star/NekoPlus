@@ -335,15 +335,18 @@ open class MiaoAccessibilityService : AccessibilityService() {
                 },
             )
             active?.packageName?.toString()?.let { pkg ->
-                val target = love.miao.yun.sendassist.SEND_TARGETS[pkg]
+                val target = love.miao.yun.sendassist.sendTargetFor(pkg)
                 if (target != null) {
-                    val button = target.firstNotNullOfOrNull { id ->
+                    val button = target.sendIds.firstNotNullOfOrNull { id ->
                         runCatching { active.findAccessibilityNodeInfosByViewId(id) }.getOrNull()
-                            ?.firstOrNull { it.isVisibleToUser && it.isEnabled }
+                            ?.firstOrNull { it.isVisibleToUser }
                     }
                     appendLine(
                         "  已适配的应用，按 id 找到的发送按钮: " +
-                            (button?.let { describe(it) } ?: "无（会退化为按文字「${love.miao.yun.sendassist.SEND_LABEL}」查找）"),
+                            (
+                                button?.let { describe(it) } ?: "无（会退化为按文字「" +
+                                    love.miao.yun.sendassist.SEND_LABEL + "」查找）"
+                                ),
                     )
                 }
             }
