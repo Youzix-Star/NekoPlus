@@ -181,17 +181,4 @@ object TextRuleForm {
             negated = conditionForm.negated,
         )
     }
-
-    /**
-     * The apps this feature is almost always limited to, offered as one-tap chips.
-     *
-     * A full package picker would mean asking the system for every installed app, which on a modern
-     * Android is a special permission. The rules take any package name typed into the field; these
-     * are the three that made the feature necessary, on the two phones it was written for.
-     */
-    val KNOWN_APPS: List<Pair<String, String>> = listOf(
-        "com.tencent.mm" to "微信",
-        "com.tencent.mobileqq" to "QQ",
-        "com.tencent.wetype" to "微信输入法",
-    )
 }
