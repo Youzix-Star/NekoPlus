@@ -1,0 +1,304 @@
+/*
+ * Copyright 2026, Youzix-Star
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+
+package love.miao.yun.service
+
+import android.content.Context
+import android.graphics.PixelFormat
+import android.graphics.PorterDuff
+import android.graphics.Rect
+import android.graphics.drawable.GradientDrawable
+import android.os.Handler
+import android.os.Looper
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.Toast
+import love.miao.yun.R
+import love.miao.yun.sendassist.SEND_LABEL
+import love.miao.yun.sendassist.SEND_TARGETS
+import love.miao.yun.sendassist.SendAssistAction
+import love.miao.yun.sendassist.SendAssistPrefs
+import love.miao.yun.ui.FloatingPalettes
+import love.miao.yun.ui.UiEnginePrefs
+import love.miao.yun.util.AiRewrite
+import love.miao.yun.util.DebugDump
+
+/**
+ * A button that sits just above a chat app's send button.
+ *
+ * Tapping it runs the configured action — AI 修改 by default — and, if asked to, presses send
+ * afterwards. The point is to make the rewrite reach the conversation without the user having to
+ * find the send button again after the text changes under their fingers.
+ *
+ * It is an **accessibility overlay** (`TYPE_ACCESSIBILITY_OVERLAY`), which is why it needs neither
+ * the overlay permission nor a service of its own: it belongs to the accessibility service that
+ * already has to be running, and it goes away with it.
+ */
+class SendAssistOverlay(private val service: MiaoAccessibilityService) {
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val density = service.resources.displayMetrics.density
+
+    private val windowManager: WindowManager? =
+        service.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+
+    private var view: FrameLayout? = null
+    private var icon: ImageView? = null
+    private var spinner: ProgressBar? = null
+    private var background: GradientDrawable? = null
+    private var params: WindowManager.LayoutParams? = null
+
+    private var busy = false
+    private var placed: Rect? = null
+
+    /** Events arrive in bursts; one look at the tree per burst is enough. */
+    private val refresh = Runnable { refreshNow() }
+
+    /** Called for every accessibility event; the caller has already filtered to target apps. */
+    fun onEvent(packageName: String) {
+        if (packageName in SEND_TARGETS) {
+            handler.removeCallbacks(refresh)
+            handler.postDelayed(refresh, REFRESH_DELAY_MS)
+        } else {
+            hide()
+        }
+    }
+
+    /** Drops the overlay, e.g. when the feature is switched off. */
+    fun hide() {
+        handler.removeCallbacks(refresh)
+        val current = view ?: return
+        view = null
+        params = null
+        placed = null
+        runCatching { windowManager?.removeView(current) }
+    }
+
+    fun dispose() = hide()
+
+    // ------------------------------------------------------------------ placement
+
+    private fun refreshNow() {
+        if (!SendAssistPrefs.isEnabled(service)) return hide()
+
+        val root = service.rootInActiveWindow ?: return hide()
+        val packageName = root.packageName?.toString() ?: return hide()
+        if (packageName !in SEND_TARGETS) return hide()
+
+        val send = findSendButton(root, packageName) ?: return hide()
+        val bounds = Rect()
+        send.getBoundsInScreen(bounds)
+        if (bounds.isEmpty) return hide()
+
+        show(bounds)
+    }
+
+    /**
+     * The send button of [packageName], or null when there is none on screen.
+     *
+     * The known view ids are tried first; when an app renames them — WeChat's are obfuscated per
+     * release — a visible, enabled button labelled [SEND_LABEL] is accepted instead, lowest on the
+     * screen first, because that is where a send button lives and a header is not.
+     */
+    private fun findSendButton(root: AccessibilityNodeInfo, packageName: String): AccessibilityNodeInfo? {
+        SEND_TARGETS[packageName].orEmpty().forEach { id ->
+            val byId = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull()
+            byId?.firstOrNull { it.isVisibleToUser && it.isEnabled }?.let { return it }
+        }
+
+        val labelled = mutableListOf<AccessibilityNodeInfo>()
+        collectLabelled(root, 0, labelled)
+        return labelled.maxByOrNull { node ->
+            val rect = Rect()
+            node.getBoundsInScreen(rect)
+            rect.top
+        }
+    }
+
+    private fun collectLabelled(
+        node: AccessibilityNodeInfo?,
+        depth: Int,
+        into: MutableList<AccessibilityNodeInfo>,
+    ) {
+        if (node == null || depth > MAX_DEPTH) return
+        val className = node.className?.toString().orEmpty()
+        val label = node.text?.toString() ?: node.contentDescription?.toString().orEmpty()
+        if (className.contains("Button") &&
+            label.contains(SEND_LABEL) &&
+            node.isVisibleToUser &&
+            node.isEnabled &&
+            node.isClickable
+        ) {
+            into += node
+        }
+        for (index in 0 until node.childCount) {
+            collectLabelled(node.getChild(index), depth + 1, into)
+        }
+    }
+
+    private fun show(bounds: Rect) {
+        val size = (SIZE_DP * density).toInt()
+        val gap = (GAP_DP * density).toInt()
+        val target = Rect(
+            bounds.right - size,
+            (bounds.top - size - gap).coerceAtLeast(0),
+            bounds.right,
+            (bounds.top - gap).coerceAtLeast(size),
+        )
+
+        val existing = view
+        if (existing == null) {
+            create(size)
+        } else if (placed == target) {
+            return
+        }
+        placed = target
+
+        val layout = params ?: return
+        layout.width = size
+        layout.height = size
+        layout.x = target.left
+        layout.y = target.top
+        val current = view ?: return
+        if (existing == null) {
+            runCatching { windowManager?.addView(current, layout) }
+        } else {
+            runCatching { windowManager?.updateViewLayout(current, layout) }
+        }
+    }
+
+    private fun create(size: Int) {
+        val drawable = GradientDrawable().apply { cornerRadius = size * 0.32f }
+        background = drawable
+
+        val iconView = ImageView(service).apply {
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setImageResource(R.drawable.ic_ball_auto_awesome)
+            val inset = (size * 0.26f).toInt()
+            setPadding(inset, inset, inset, inset)
+        }
+        val progress = ProgressBar(service).apply {
+            isIndeterminate = true
+            visibility = View.GONE
+        }
+        val container = FrameLayout(service).apply {
+            addView(
+                iconView,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                ),
+            )
+            addView(
+                progress,
+                FrameLayout.LayoutParams(
+                    (size * 0.55f).toInt(),
+                    (size * 0.55f).toInt(),
+                    Gravity.CENTER,
+                ),
+            )
+            background = drawable
+            elevation = 6f * density
+            alpha = 0.92f
+            contentDescription = "喵喵助手"
+            setOnClickListener { activate() }
+        }
+
+        val layout = WindowManager.LayoutParams(
+            size,
+            size,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+        }
+
+        view = container
+        icon = iconView
+        spinner = progress
+        params = layout
+        applyPalette()
+    }
+
+    private fun applyPalette() {
+        val colors = FloatingPalettes.resolve(service, UiEnginePrefs.loadFloatingColor(service))
+        background?.setColor(colors.container)
+        icon?.setColorFilter(colors.onContainer, PorterDuff.Mode.SRC_IN)
+        spinner?.indeterminateTintList = android.content.res.ColorStateList.valueOf(colors.onContainer)
+    }
+
+    // ------------------------------------------------------------------ acting
+
+    private fun activate() {
+        if (busy) return
+        val action = SendAssistPrefs.action(service)
+        when (action) {
+            SendAssistAction.AiModify -> {
+                setBusy(true)
+                AiRewrite.run(service, service) { written, message ->
+                    setBusy(false)
+                    toast(message)
+                    // Only send what the model actually produced; a failed rewrite must never be
+                    // followed by pressing send.
+                    if (written && SendAssistPrefs.autoSend(service)) sendNow()
+                }
+            }
+
+            SendAssistAction.Capture -> {
+                val text = service.getCurrentWindowText()
+                if (text.isEmpty()) {
+                    toast(service.getString(R.string.ai_no_input))
+                } else {
+                    val clipboard = service.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                    clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("miao", text))
+                    toast(service.getString(R.string.floating_copied, text.length))
+                    if (SendAssistPrefs.autoSend(service)) sendNow()
+                }
+            }
+
+            SendAssistAction.DumpUi -> {
+                val saved = DebugDump.save(service, service.dumpScreen())
+                toast(if (saved) "界面元素已导出" else "导出失败")
+            }
+        }
+    }
+
+    /** Presses the app's send button. Re-found, because writing text moved the tree underneath us. */
+    private fun sendNow() {
+        val root = service.rootInActiveWindow ?: return
+        val packageName = root.packageName?.toString() ?: return
+        val send = findSendButton(root, packageName) ?: run {
+            toast("没找到发送按钮")
+            return
+        }
+        if (!send.performAction(AccessibilityNodeInfo.ACTION_CLICK)) {
+            toast("发送失败，请手动点发送")
+        }
+    }
+
+    private fun setBusy(value: Boolean) {
+        busy = value
+        icon?.visibility = if (value) View.GONE else View.VISIBLE
+        spinner?.visibility = if (value) View.VISIBLE else View.GONE
+    }
+
+    private fun toast(message: String) {
+        runCatching { Toast.makeText(service, message, Toast.LENGTH_SHORT).show() }
+    }
+
+    private companion object {
+        const val REFRESH_DELAY_MS = 250L
+        const val SIZE_DP = 40f
+        const val GAP_DP = 8f
+        const val MAX_DEPTH = 40
+    }
+}

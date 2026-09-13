@@ -33,6 +33,8 @@ import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.miuix.ThemeModeOptions
 import love.miao.yun.ui.rememberBackupActions
+import love.miao.yun.sendassist.SendAssistAction
+import love.miao.yun.sendassist.SendAssistPrefs
 import love.miao.yun.util.DebugDump
 import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 import top.yukonga.miuix.kmp.basic.Card
@@ -71,9 +73,13 @@ fun SettingsScreen(
     val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
     val engineItems = remember { UiEngine.entries.map { DropdownItem(text = it.label) } }
     val backStyleItems = remember { PredictiveBackStyle.entries.map { DropdownItem(text = it.label) } }
+    val sendActionItems = remember { SendAssistAction.entries.map { DropdownItem(text = it.label) } }
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
+    var sendAssist by remember { mutableStateOf(SendAssistPrefs.isEnabled(context)) }
+    var sendAction by remember { mutableStateOf(SendAssistPrefs.action(context)) }
+    var autoSend by remember { mutableStateOf(SendAssistPrefs.autoSend(context)) }
     var dump by remember { mutableStateOf(DebugDump.read(context)) }
     var showDump by remember { mutableStateOf(false) }
     val selectedThemeIndex = ThemeModeOptions
@@ -151,6 +157,46 @@ fun SettingsScreen(
                         summary = "接口、密钥与提示词",
                         onClick = onOpenAiConfig,
                     )
+                }
+            }
+        }
+
+        item(key = "send-assist") {
+            Column {
+                SmallTitle(text = "发送按钮助手")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    SwitchPreference(
+                        title = "显示助手按钮",
+                        summary = "在微信 / QQ 的发送按钮上方加一个按钮",
+                        checked = sendAssist,
+                        onCheckedChange = {
+                            sendAssist = it
+                            SendAssistPrefs.setEnabled(context, it)
+                        },
+                    )
+                    if (sendAssist) {
+                        WindowSpinnerPreference(
+                            title = "点它做什么",
+                            summary = "做完之后可以选择替你按下发送",
+                            items = sendActionItems,
+                            selectedIndex = SendAssistAction.entries.indexOf(sendAction).coerceAtLeast(0),
+                            onSelectedIndexChange = { index ->
+                                SendAssistAction.entries.getOrNull(index)?.let {
+                                    sendAction = it
+                                    SendAssistPrefs.setAction(context, it)
+                                }
+                            },
+                        )
+                        SwitchPreference(
+                            title = "做完自动发送",
+                            summary = "改写失败时绝不会发送",
+                            checked = autoSend,
+                            onCheckedChange = {
+                                autoSend = it
+                                SendAssistPrefs.setAutoSend(context, it)
+                            },
+                        )
+                    }
                 }
             }
         }

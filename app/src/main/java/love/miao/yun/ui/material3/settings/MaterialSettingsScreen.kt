@@ -46,6 +46,8 @@ import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.ThemeMode
 import love.miao.yun.ui.material3.material3AppBarColor
 import love.miao.yun.ui.rememberBackupActions
+import love.miao.yun.sendassist.SendAssistAction
+import love.miao.yun.sendassist.SendAssistPrefs
 import love.miao.yun.util.DebugDump
 import love.miao.yun.ui.material3.material3BlurEffect
 import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
@@ -73,6 +75,9 @@ fun MaterialSettingsScreen(
     val backup = rememberBackupActions(onNotify)
     val clipboard = LocalClipboardManager.current
     var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
+    var sendAssist by remember { mutableStateOf(SendAssistPrefs.isEnabled(context)) }
+    var sendAction by remember { mutableStateOf(SendAssistPrefs.action(context)) }
+    var autoSend by remember { mutableStateOf(SendAssistPrefs.autoSend(context)) }
     var dump by remember { mutableStateOf(DebugDump.read(context)) }
     var showDump by remember { mutableStateOf(false) }
     val engine = MiaoState.engine
@@ -187,6 +192,54 @@ fun MaterialSettingsScreen(
                             description = "接口、密钥与提示词",
                             onClick = onOpenAiConfig,
                         )
+                    }
+                }
+            }
+
+            item {
+                SegmentedColumn(title = "发送按钮助手") {
+                    item {
+                        SwitchWidget(
+                            icon = AppIcons.Floating,
+                            title = "显示助手按钮",
+                            description = "在微信 / QQ 的发送按钮上方加一个按钮",
+                            checked = sendAssist,
+                            onCheckedChange = {
+                                sendAssist = it
+                                SendAssistPrefs.setEnabled(context, it)
+                            },
+                        )
+                    }
+                    if (sendAssist) {
+                        item {
+                            DropDownMenuWidget(
+                                icon = AppIcons.Sparkle,
+                                title = "点它做什么",
+                                description = "做完之后可以选择替你按下发送",
+                                choice = SendAssistAction.entries
+                                    .indexOf(sendAction)
+                                    .coerceAtLeast(0),
+                                data = SendAssistAction.entries.map { it.label },
+                                onChoiceChange = { index ->
+                                    SendAssistAction.entries.getOrNull(index)?.let {
+                                        sendAction = it
+                                        SendAssistPrefs.setAction(context, it)
+                                    }
+                                },
+                            )
+                        }
+                        item {
+                            SwitchWidget(
+                                icon = AppIcons.Tune,
+                                title = "做完自动发送",
+                                description = "改写失败时绝不会发送",
+                                checked = autoSend,
+                                onCheckedChange = {
+                                    autoSend = it
+                                    SendAssistPrefs.setAutoSend(context, it)
+                                },
+                            )
+                        }
                     }
                 }
             }

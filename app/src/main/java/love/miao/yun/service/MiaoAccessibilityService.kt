@@ -38,8 +38,35 @@ import java.util.Locale
  */
 open class MiaoAccessibilityService : AccessibilityService() {
 
+    /**
+     * The button that sits above a chat app's send button.
+     *
+     * Created lazily: with the feature switched off, the service still does nothing at all on its
+     * own, which is the promise this app makes about an accessibility service.
+     */
+    private var sendAssist: SendAssistOverlay? = null
+
+    /**
+     * The assistant needs to know when the send button appears, moves or goes away — and nothing
+     * else. It never reads the input box here: text is captured only when the user taps a button.
+     */
+    private val sendAssistPrefs =
+        android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> syncSendAssist() }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        // Intentionally empty: nothing is ever captured without the user asking for it.
+        val assist = sendAssist ?: return
+        val packageName = event?.packageName?.toString() ?: return
+        assist.onEvent(packageName)
+    }
+
+    /** Brings the overlay in line with the preference: created when on, gone when off. */
+    private fun syncSendAssist() {
+        if (love.miao.yun.sendassist.SendAssistPrefs.isEnabled(this)) {
+            val overlay = sendAssist ?: SendAssistOverlay(this).also { sendAssist = it }
+            overlay.onEvent(rootInActiveWindow?.packageName?.toString().orEmpty())
+        } else {
+            sendAssist?.hide()
+        }
     }
 
     override fun onInterrupt() = Unit
@@ -59,9 +86,15 @@ open class MiaoAccessibilityService : AccessibilityService() {
             // to name the field we are after.
             AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS
         serviceInfo = info
+
+        love.miao.yun.sendassist.SendAssistPrefs.register(this, sendAssistPrefs)
+        syncSendAssist()
     }
 
     override fun onDestroy() {
+        sendAssist?.dispose()
+        sendAssist = null
+        runCatching { love.miao.yun.sendassist.SendAssistPrefs.unregister(this, sendAssistPrefs) }
         instance = null
         super.onDestroy()
     }
@@ -284,6 +317,21 @@ open class MiaoAccessibilityService : AccessibilityService() {
                 )
             }
             appendLine("→ 当前会选中: " + (candidates.firstOrNull()?.let { describe(it) } ?: "无"))
+            appendLine()
+            appendLine("发送按钮助手: " + if (love.miao.yun.sendassist.SendAssistPrefs.isEnabled(this)) "已开启" else "已关闭")
+            active?.packageName?.toString()?.let { pkg ->
+                val target = love.miao.yun.sendassist.SEND_TARGETS[pkg]
+                if (target != null) {
+                    val button = target.firstNotNullOfOrNull { id ->
+                        runCatching { active.findAccessibilityNodeInfosByViewId(id) }.getOrNull()
+                            ?.firstOrNull { it.isVisibleToUser && it.isEnabled }
+                    }
+                    appendLine(
+                        "  已适配的应用，按 id 找到的发送按钮: " +
+                            (button?.let { describe(it) } ?: "无（会退化为按文字「${love.miao.yun.sendassist.SEND_LABEL}」查找）"),
+                    )
+                }
+            }
             appendLine()
 
             appendLine("===== 窗口与节点 =====")

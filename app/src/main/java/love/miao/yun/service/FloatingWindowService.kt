@@ -38,12 +38,11 @@ import kotlin.math.roundToInt
 import love.miao.yun.MainActivity
 import love.miao.yun.MiaoState
 import love.miao.yun.R
-import love.miao.yun.ai.AiManager
-import love.miao.yun.ai.TokenStats
 import love.miao.yun.floating.FloatingAction
 import love.miao.yun.floating.FloatingItem
 import love.miao.yun.floating.FloatingWindowPrefs
 import love.miao.yun.ui.FloatingPalette
+import love.miao.yun.util.AiRewrite
 import love.miao.yun.util.DebugDump
 import love.miao.yun.ui.FloatingPalettes
 import love.miao.yun.ui.UiEnginePrefs
@@ -495,51 +494,11 @@ class FloatingWindowService : Service() {
             onDone()
             return
         }
-
-        val original = service.getCurrentWindowText()
-        if (original.isEmpty()) {
-            toast(getString(R.string.ai_no_input))
+        // The step itself is shared with the send-button assistant, so the two cannot drift apart.
+        AiRewrite.run(this, service) { _, message ->
+            toast(message)
             onDone()
-            return
         }
-
-        val config = AiManager.load(this)
-        if (config.apiKey.isNullOrBlank()) {
-            toast(getString(R.string.ai_need_api_key))
-            onDone()
-            return
-        }
-
-        AiManager.modifyText(
-            config,
-            original,
-            object : AiManager.Callback {
-                override fun onSuccess(modifiedText: String) {
-                    AiManager.consumeLastUsage()?.let { usage ->
-                        TokenStats.record(
-                            this@FloatingWindowService,
-                            usage.model ?: config.model,
-                            usage.promptTokens,
-                            usage.completionTokens,
-                            usage.totalTokens,
-                            usage.cachedTokens,
-                        )
-                    }
-                    val written = service.replaceInputText(modifiedText)
-                    toast(
-                        getString(
-                            if (written) R.string.ai_replaced else R.string.ai_replace_failed,
-                        ),
-                    )
-                    onDone()
-                }
-
-                override fun onError(message: String) {
-                    toast(getString(R.string.ai_failed) + "：" + message)
-                    onDone()
-                }
-            },
-        )
     }
 
     /** Copy whatever the focused input box holds onto the clipboard. */
