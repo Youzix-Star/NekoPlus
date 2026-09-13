@@ -279,6 +279,50 @@ class TextRulesTest {
     }
 
     @Test
+    fun `the three switches add and disable rules, and the list only shows replacements`() {
+        var rules = TextDefaults.starter()
+        TextSwitches.Toggle.entries.forEach { toggle ->
+            assertFalse(toggle.name, TextSwitches.isOn(rules, toggle))
+            rules = TextSwitches.set(rules, toggle, true)
+            assertTrue(toggle.name, TextSwitches.isOn(rules, toggle))
+        }
+        // Switching off disables rather than deletes, so switching back on is free.
+        rules = TextSwitches.set(rules, TextSwitches.Toggle.Suffix, false)
+        assertFalse(TextSwitches.isOn(rules, TextSwitches.Toggle.Suffix))
+        assertEquals(3, rules.rules.size)
+        rules = TextSwitches.set(rules, TextSwitches.Toggle.Suffix, true)
+        assertTrue(TextSwitches.isOn(rules, TextSwitches.Toggle.Suffix))
+        assertEquals(3, rules.rules.size)
+
+        // The paw is 1.1.8's: QQ only.
+        val paw = rules.rules.first { it.action is TextAction.Wrap }
+        assertEquals(setOf("com.tencent.mobileqq"), paw.apps)
+
+        // The page's list is the plain replacements, and writing it back leaves the switches alone.
+        assertTrue(TextSwitches.replacements(rules).isEmpty())
+        val withReplacements = TextSwitches.setReplacements(
+            rules,
+            listOf(TextSwitches.replacement("你好", "您好")),
+        )
+        assertEquals(1, TextSwitches.replacements(withReplacements).size)
+        TextSwitches.Toggle.entries.forEach { toggle ->
+            assertTrue(toggle.name, TextSwitches.isOn(withReplacements, toggle))
+        }
+    }
+
+    @Test
+    fun `custom emoticons replace the built-in list, and empty goes back to it`() {
+        val rules = TextDefaults.starter()
+        val custom = TextSwitches.setEmoticons(rules, "ฅ\n(=^･ω･^=)")
+        assertEquals("ฅ\n(=^･ω･^=)", TextSwitches.emoticons(custom))
+        val result = TextEngine(Random(1)).apply("你好", TextSwitches.set(custom, TextSwitches.Toggle.Emoticon, true))
+        assertTrue(result == "你好 ฅ" || result == "你好 (=^･ω･^=)")
+
+        val back = TextSwitches.setEmoticons(custom, "  ")
+        assertEquals("", TextSwitches.emoticons(back))
+    }
+
+    @Test
     fun `a fresh install changes nothing at all`() {
         val starter = TextDefaults.starter()
         assertTrue(starter.rules.isEmpty())
