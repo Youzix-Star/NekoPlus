@@ -41,10 +41,12 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
@@ -64,16 +66,16 @@ fun SettingsScreen(
     var autoStart by remember { mutableStateOf(false) }
     var keepAlive by remember { mutableStateOf(true) }
     val backup = rememberBackupActions(onNotify)
-    val clipboard = LocalClipboardManager.current
-    var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
-    var dump by remember { mutableStateOf(DebugDump.read(context)) }
-    var showDump by remember { mutableStateOf(false) }
 
     // One row that opens a chooser, mirroring how the reference app picks its UI engine.
     val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
     val engineItems = remember { UiEngine.entries.map { DropdownItem(text = it.label) } }
     val backStyleItems = remember { PredictiveBackStyle.entries.map { DropdownItem(text = it.label) } }
     val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
+    var dump by remember { mutableStateOf(DebugDump.read(context)) }
+    var showDump by remember { mutableStateOf(false) }
     val selectedThemeIndex = ThemeModeOptions
         .indexOfFirst { it.first == colorSchemeMode }
         .coerceAtLeast(0)

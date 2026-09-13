@@ -109,7 +109,7 @@ class MiaoAccessibilityService : AccessibilityService() {
         val found = mutableListOf<AccessibilityNodeInfo>()
         roots.forEach { root -> collectTextNodes(root, 0, found) }
         return found
-            .distinctBy { it.windowId to it.sourceNodeId }
+            .distinct()
             .sortedByDescending { score(it) }
             .take(MAX_CANDIDATES)
     }
@@ -126,7 +126,7 @@ class MiaoAccessibilityService : AccessibilityService() {
         rootInActiveWindow?.let { root ->
             if (root.packageName?.toString() != packageName) roots.add(0, root)
         }
-        return roots.distinctBy { it.windowId to it.sourceNodeId }
+        return roots.distinct()
     }
 
     /** How much this node looks like the field the user is typing in. */
