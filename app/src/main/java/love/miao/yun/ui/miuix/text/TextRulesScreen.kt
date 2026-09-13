@@ -120,8 +120,12 @@ fun TextRulesScreen(
         face = Face.List
     }
 
-    val preview = remember(rules, sample) {
-        runCatching { TextEngine().apply(sample, rules, null) }.getOrDefault("")
+    // What the trial box runs: the text being edited while the editor is open, so the result below
+    // it answers the question actually being asked. Showing the saved rules instead would mean
+    // typing a rule and watching nothing change.
+    val trialRules = if (showText) remember(draft) { TextRuleText.parse(draft).config } else rules
+    val preview = remember(trialRules, sample) {
+        runCatching { TextEngine().apply(sample, trialRules, null) }.getOrDefault("")
     }
 
     LazyColumn(
