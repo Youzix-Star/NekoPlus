@@ -24,12 +24,15 @@ import love.miao.yun.R
 import love.miao.yun.sendassist.SEND_LABEL
 import love.miao.yun.sendassist.SendAssistAction
 import love.miao.yun.sendassist.SendAssistConfig
+import love.miao.yun.sendassist.SendAssistGeometry
+import love.miao.yun.sendassist.SendAssistMetrics
 import love.miao.yun.sendassist.SendAssistPrefs
 import love.miao.yun.sendassist.sendTargetFor
 import love.miao.yun.ui.FloatingPalettes
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.util.AiRewrite
 import love.miao.yun.util.DebugDump
+import kotlin.math.abs
 
 /**
  * A button that sits just above a chat app's send button.
@@ -59,6 +62,27 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     private var busy = false
     private var placed: Rect? = null
     private var misses = 0
+
+    /**
+     * How far the window manager moves the window away from the coordinates it is given.
+     *
+     * `getBoundsInScreen` reports positions in full-screen coordinates, but a window that does not
+     * ask to be laid out in the screen is placed inside the *content* frame, which starts below the
+     * status bar. On a phone with a 30 dp status bar that put the button 30 dp lower than intended —
+     * down onto the send key it was supposed to hover above. `FLAG_LAYOUT_IN_SCREEN` asks for the
+     * coordinates we are already using, and this correction is measured rather than assumed, so it
+     * still lands correctly on a device or a ROM that insets the window anyway.
+     */
+    private var correctionX = 0
+    private var correctionY = 0
+    private var calibrationRounds = 0
+
+    /** The last measurement written per package, so the same numbers are not rewritten forever. */
+    private val measured = mutableMapOf<String, SendAssistMetrics>()
+
+    /** The send button's bounds at the last measurement, and when it was taken. */
+    private val probedBounds = mutableMapOf<String, Rect>()
+    private val probedAt = mutableMapOf<String, Long>()
 
     /** The settings of the app the button is currently drawn for; null while it is not on screen. */
     private var config: SendAssistConfig? = null
@@ -105,17 +129,104 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     private fun refreshNow() {
         val window = findTargetWindow() ?: return miss()
         val settings = SendAssistPrefs.load(service, window.first)
-        if (!settings.enabled) return hide()
 
-        val send = findSendButton(window.second, window.first) ?: return miss()
+        // An app whose own switch is off is still worth measuring once, so its preview can draw the
+        // real bar before the feature is turned on — but only once, and only by view id: a full tree
+        // walk four times a second inside an app we are not even assisting is work for nothing.
+        val measuringOnly = !settings.enabled
+        if (measuringOnly && SendAssistPrefs.loadMetrics(service, window.first) != null) {
+            return hide()
+        }
+
+        val send = findSendButton(window.second, window.first, idsOnly = measuringOnly)
+        if (send == null) {
+            if (settings.enabled) miss()
+            return
+        }
         val bounds = Rect()
         send.getBoundsInScreen(bounds)
-        if (bounds.isEmpty) return miss()
+        if (bounds.isEmpty) {
+            if (settings.enabled) miss()
+            return
+        }
+
+        captureMeasurement(window.first, bounds)
+
+        if (measuringOnly) return hide()
 
         misses = 0
         config = settings
         show(bounds, settings)
     }
+
+    // ------------------------------------------------------------------ measuring
+
+    /** The whole display, in screen coordinates: what `getBoundsInScreen` is measured against. */
+    private fun screenBounds(): Rect {
+        val fromWindowManager = runCatching {
+            val manager = service.getSystemService(WindowManager::class.java)
+            manager?.maximumWindowMetrics?.bounds
+        }.getOrNull()
+        if (fromWindowManager != null && !fromWindowManager.isEmpty) return fromWindowManager
+
+        val metrics = service.resources.displayMetrics
+        return Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
+    }
+
+    /**
+     * Writes down the input bar's real shape, so the settings preview can draw this app rather than
+     * a generic one.
+     *
+     * Measuring means a walk of the node tree to find the input box, and this runs on every event
+     * burst — so it happens only when the send button has *moved*, which is the one signal that the
+     * layout underneath changed. The keyboard animating in changes it on every frame, hence the
+     * rate limit: the last frame of the animation is the one worth keeping.
+     */
+    private fun captureMeasurement(packageName: String, sendBounds: Rect) {
+        if (probedBounds[packageName] == sendBounds) return
+        val now = System.currentTimeMillis()
+        if (now - (probedAt[packageName] ?: 0L) < PROBE_INTERVAL_MS) return
+        probedBounds[packageName] = Rect(sendBounds)
+        probedAt[packageName] = now
+
+        val input = runCatching { service.bestInputNode() }.getOrNull()
+            ?.takeIf { it.packageName?.toString() == packageName }
+            ?.let { node ->
+                Rect().also { node.getBoundsInScreen(it) }.takeIf { !it.isEmpty }
+            }
+
+        val metrics = SendAssistMetrics.of(
+            density = density,
+            screen = screenBounds(),
+            send = sendBounds,
+            input = input,
+            // Wall clock, not uptime: the settings page shows how long ago the bar was seen, and
+            // "4 小时前" has to survive the phone being rebooted in between.
+            now = now,
+        ) ?: return
+
+        if (metrics.sameAs(measured[packageName])) return
+        measured[packageName] = metrics
+        runCatching { SendAssistPrefs.saveMetrics(service, packageName, metrics) }
+    }
+
+    /** "窗口修正 无 · 实测 mm 58×36 dp" for the debug dump; "无" until something is learned. */
+    fun describe(): String = buildString {
+        if (correctionX != 0 || correctionY != 0) {
+            append("窗口修正 ${signed(correctionX)}/${signed(correctionY)} px · ")
+        } else {
+            append("窗口修正 无 · ")
+        }
+        append("实测 ")
+        append(
+            measured.entries.sortedBy { it.key }.joinToString("、") { (packageName, metrics) ->
+                packageName.substringAfterLast('.') +
+                    " ${metrics.sendWidthDp}×${metrics.sendHeightDp} dp"
+            }.ifEmpty { "无" },
+        )
+    }
+
+    private fun signed(value: Int): String = if (value > 0) "+$value" else "$value"
 
     /**
      * The window of a supported chat app, active one first.
@@ -154,8 +265,15 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
      * The known view ids are tried first; when an app renames them — WeChat's are obfuscated per
      * release — a visible, enabled button labelled [SEND_LABEL] is accepted instead, lowest on the
      * screen first, because that is where a send button lives and a header is not.
+     *
+     * [idsOnly] stops after the view ids, for the one measurement taken in an app the assistant is
+     * not switched on for: that walk is the expensive half and there is nothing to place.
      */
-    private fun findSendButton(root: AccessibilityNodeInfo, packageName: String): AccessibilityNodeInfo? {
+    private fun findSendButton(
+        root: AccessibilityNodeInfo,
+        packageName: String,
+        idsOnly: Boolean = false,
+    ): AccessibilityNodeInfo? {
         sendTargetFor(packageName)?.sendIds.orEmpty().forEach { id ->
             val byId = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull()
             // Visible is the one condition that matters: QQ keeps a second, hidden `send_btn` in
@@ -163,6 +281,7 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
             // which is exactly when the assistant should still be offering itself.
             byId?.firstOrNull { it.isVisibleToUser }?.let { return it }
         }
+        if (idsOnly) return null
 
         val labelled = mutableListOf<AccessibilityNodeInfo>()
         collectLabelled(root, 0, labelled)
@@ -195,14 +314,13 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
 
     private fun show(bounds: Rect, settings: SendAssistConfig) {
         val size = (settings.sizeDp * density).toInt()
-        val gap = (GAP_DP * density).toInt()
-        val offsetX = (settings.offsetXDp * density).toInt()
-        val offsetY = (settings.offsetYDp * density).toInt()
-        val target = Rect(
-            bounds.right - size + offsetX,
-            (bounds.top - size - gap + offsetY).coerceAtLeast(0),
-            bounds.right + offsetX,
-            (bounds.top - gap + offsetY).coerceAtLeast(size),
+        val target = SendAssistGeometry.assistantRect(
+            send = bounds,
+            size = size,
+            gap = (SendAssistGeometry.GAP_DP * density).toInt(),
+            offsetX = (settings.offsetXDp * density).toInt(),
+            offsetY = (settings.offsetYDp * density).toInt(),
+            topLimit = 0,
         )
 
         val existing = view
@@ -216,14 +334,54 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         val layout = params ?: return
         layout.width = size
         layout.height = size
-        layout.x = target.left
-        layout.y = target.top
+        layout.x = target.left + correctionX
+        layout.y = target.top + correctionY
         val current = view ?: return
         if (existing == null) {
-            runCatching { windowManager?.addView(current, layout) }
+            // Only ask where it landed if it landed at all: a view that failed to attach reports
+            // 0,0, and calibrating against that would fling the button to the corner of the screen.
+            val added = runCatching { windowManager?.addView(current, layout) }.isSuccess
+            if (added) verifyPlacement(current, target)
         } else {
             runCatching { windowManager?.updateViewLayout(current, layout) }
         }
+    }
+
+    /**
+     * Asks the window manager where the button actually ended up, and remembers the difference.
+     *
+     * The arithmetic above is only as good as the assumption that window coordinates start at the
+     * screen's top-left. `FLAG_LAYOUT_IN_SCREEN` is meant to make that true, but "meant to" is what
+     * put the button on top of the send key in the first place, so the assumption is checked
+     * against the only authority there is: `getLocationOnScreen`. A device or a ROM that insets the
+     * window anyway gets corrected instead of argued with.
+     *
+     * The check waits a moment, and refuses to believe an answer that is not plausibly an inset: a
+     * window that has not had its first traversal yet reports `0,0`, and calibrating against that
+     * would fling the button into the corner and call it a fix.
+     */
+    private fun verifyPlacement(current: View, target: Rect) {
+        if (calibrationRounds >= MAX_CALIBRATION_ROUNDS) return
+        current.postDelayed(
+            {
+                if (view !== current) return@postDelayed
+                if (calibrationRounds >= MAX_CALIBRATION_ROUNDS) return@postDelayed
+                val location = IntArray(2)
+                runCatching { current.getLocationOnScreen(location) }.getOrElse { return@postDelayed }
+                val dx = target.left - location[0]
+                val dy = target.top - location[1]
+                if (dx == 0 && dy == 0) return@postDelayed
+                if (abs(dx) > MAX_CORRECTION_PX || abs(dy) > MAX_CORRECTION_PX) return@postDelayed
+
+                calibrationRounds++
+                correctionX += dx
+                correctionY += dy
+                // The next look at the screen re-applies the position, now corrected.
+                placed = null
+                refresh()
+            },
+            VERIFY_DELAY_MS,
+        )
     }
 
     /**
@@ -302,7 +460,11 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
             size,
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                // Without this the window is placed inside the content frame, which starts below
+                // the status bar, while the send button's position comes from `getBoundsInScreen`,
+                // which does not: the button landed a status bar lower than the arithmetic says.
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -387,8 +549,18 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         /** How many consecutive looks may fail to find the send button before the overlay goes. */
         const val MISSES_BEFORE_HIDE = 2
 
-        /** The gap between the button and the send button it sits above, before any offset. */
-        const val GAP_DP = 8f
         const val MAX_DEPTH = 40
+
+        /** Two measurements of the same app are never taken closer together than this. */
+        const val PROBE_INTERVAL_MS = 800L
+
+        /** Long enough for the freshly added window to have been through a layout pass. */
+        const val VERIFY_DELAY_MS = 150L
+
+        /** A real inset is a system bar; anything bigger is a window that is not placed yet. */
+        const val MAX_CORRECTION_PX = 240
+
+        /** One correction is enough when the inset is constant; a second catches a late layout. */
+        const val MAX_CALIBRATION_ROUNDS = 2
     }
 }

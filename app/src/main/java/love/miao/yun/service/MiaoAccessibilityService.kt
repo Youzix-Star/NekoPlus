@@ -144,7 +144,7 @@ open class MiaoAccessibilityService : AccessibilityService() {
      * collected, and they are ranked — focused first, then editable, then the ones that merely
      * look like a text field or accept `ACTION_SET_TEXT`.
      */
-    private fun bestInputNode(): AccessibilityNodeInfo? = inputCandidates().firstOrNull()
+    internal fun bestInputNode(): AccessibilityNodeInfo? = inputCandidates().firstOrNull()
 
     private fun inputCandidates(): List<AccessibilityNodeInfo> {
         val foreground = rootInActiveWindow?.packageName?.toString()
@@ -350,6 +350,9 @@ open class MiaoAccessibilityService : AccessibilityService() {
                     )
                 }
             }
+            // How far the window manager moves the overlay away from the coordinates it is given:
+            // a non-zero correction means `FLAG_LAYOUT_IN_SCREEN` did not do what it says.
+            sendAssist?.let { appendLine("  助手窗口: " + it.describe()) }
             appendLine()
 
             appendLine("===== 窗口与节点 =====")

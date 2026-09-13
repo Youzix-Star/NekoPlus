@@ -7,7 +7,9 @@ package love.miao.yun.sendassist
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.graphics.Rect
 import org.json.JSONObject
+import kotlin.math.roundToInt
 
 /**
  * One chat app the assistant knows how to work with.
@@ -101,6 +103,122 @@ data class SendAssistConfig(
 }
 
 /**
+ * What the assistant last saw inside a chat app, in dp, so the preview can draw the real thing.
+ *
+ * The mock input bar in the settings page used to be a guess: a send button that is 64×40 dp on
+ * every phone, in every app. Each app's send key is its own size, and a preview drawn against the
+ * wrong one is worse than no preview, because a size that looks right there lands wrong in WeChat.
+ * So the overlay writes down what it actually found, and the preview replays it.
+ */
+data class SendAssistMetrics(
+    val sendWidthDp: Int,
+    val sendHeightDp: Int,
+    /** Distance from the screen's right edge to the send button's right edge. */
+    val sendRightInsetDp: Int,
+    /** Distance from the screen's top edge to the send button's top edge. */
+    val sendTopDp: Int,
+    val inputHeightDp: Int,
+    /** Distance from the screen's right edge to the input field's right edge. */
+    val inputRightInsetDp: Int,
+    /** The input field's top relative to the send button's top — usually slightly below zero. */
+    val inputTopVsSendDp: Int,
+    /** Whether the input field was measured, or assumed because the app exposed no editable node. */
+    val inputMeasured: Boolean,
+    /** Distance from the bar's bottom to the screen's bottom; a keyboard makes this large. */
+    val barToBottomDp: Int,
+    val screenWidthDp: Int,
+    val capturedAt: Long,
+) {
+    /** True when the input bar sits on the keyboard rather than on the screen's bottom edge. */
+    val keyboardUp: Boolean get() = barToBottomDp > KEYBOARD_THRESHOLD_DP
+
+    /** "发送键 58×36 dp · 距右 12 dp · 输入框高 44 dp · 3 分钟前" */
+    fun summary(now: Long = System.currentTimeMillis()): String = buildString {
+        append("发送键 ${sendWidthDp}×${sendHeightDp} dp")
+        append(" · 距右 ${sendRightInsetDp} dp")
+        append(if (inputMeasured) " · 输入框高 ${inputHeightDp} dp" else " · 输入框按推测画")
+        append(" · " + age(now))
+    }
+
+    /** How long ago the bar was seen, in words: the numbers are from a moment, not from forever. */
+    private fun age(now: Long): String {
+        val minutes = ((now - capturedAt).coerceAtLeast(0L) / 60_000L)
+        return when {
+            minutes < 1 -> "刚刚"
+            minutes < 60 -> "$minutes 分钟前"
+            minutes < 24 * 60 -> "${minutes / 60} 小时前"
+            else -> "${minutes / (24 * 60)} 天前"
+        }
+    }
+
+    /** Age-independent identity: two measurements differing only in age are the same measurement. */
+    fun sameAs(other: SendAssistMetrics?): Boolean =
+        other != null && copy(capturedAt = 0L) == other.copy(capturedAt = 0L)
+
+    companion object {
+        /** Below this the bar has to be on the screen's bottom edge, not on a keyboard. */
+        const val KEYBOARD_THRESHOLD_DP = 60
+
+        private const val ASSUMED_FIELD_HEIGHT_DP = 40
+        private const val ASSUMED_FIELD_GAP_DP = 8
+        private const val MIN_SCREEN_WIDTH_DP = 200
+        private const val MIN_SEND_DP = 12
+        private const val MAX_SEND_DP = 400
+
+        /**
+         * Measures [send] — and [input], when the app offers one — against the screen.
+         *
+         * Returns null for anything that cannot be a send button on a phone screen: an empty node,
+         * a 4 dp sliver, a 900 dp "button". Bad numbers are worse than no numbers, because the
+         * preview would then draw a confident lie.
+         */
+        fun of(density: Float, screen: Rect, send: Rect, input: Rect?, now: Long): SendAssistMetrics? {
+            if (density <= 0f || screen.isEmpty || send.isEmpty) return null
+            val field = input?.takeIf { !it.isEmpty }?.takeIf { it.onSameRowAs(send) }
+
+            fun toDp(px: Int): Int = (px / density).roundToInt()
+
+            val screenWidth = toDp(screen.width())
+            val sendWidth = toDp(send.width())
+            val sendHeight = toDp(send.height())
+            if (screenWidth < MIN_SCREEN_WIDTH_DP) return null
+            if (sendWidth !in MIN_SEND_DP..MAX_SEND_DP) return null
+            if (sendHeight !in MIN_SEND_DP..MAX_SEND_DP) return null
+
+            val sendRightInset = toDp(screen.right - send.right).coerceAtLeast(0)
+            return SendAssistMetrics(
+                sendWidthDp = sendWidth,
+                sendHeightDp = sendHeight,
+                sendRightInsetDp = sendRightInset,
+                sendTopDp = toDp(send.top - screen.top).coerceAtLeast(0),
+                inputHeightDp = field?.let { toDp(it.height()) } ?: ASSUMED_FIELD_HEIGHT_DP,
+                inputRightInsetDp = field?.let { toDp(screen.right - it.right) }
+                    ?: (sendRightInset + sendWidth + ASSUMED_FIELD_GAP_DP),
+                inputTopVsSendDp = field?.let { toDp(it.top - send.top) } ?: 0,
+                inputMeasured = field != null,
+                barToBottomDp = toDp(screen.bottom - maxOf(send.bottom, field?.bottom ?: send.bottom))
+                    .coerceAtLeast(0),
+                screenWidthDp = screenWidth,
+                capturedAt = now,
+            )
+        }
+
+        /**
+         * Whether an editable node is the message box rather than something else on screen.
+         *
+         * WeChat's chat list has a search field and no send button at all, and the conversation has
+         * both; but a header search field can survive into a conversation, and measuring *that* as
+         * the input bar would draw a bar at the top of the screen. The message box shares a row with
+         * the send button, so the row is the test — generously, because a taller box is normal.
+         */
+        private fun Rect.onSameRowAs(send: Rect): Boolean {
+            val slack = maxOf(send.height(), height())
+            return centerY() in (send.top - slack)..(send.bottom + slack)
+        }
+    }
+}
+
+/**
  * Settings for the send-button assistant: one record per supported app.
  *
  * Its own preference file, so the whole feature can be backed up, cleared or ignored as one thing.
@@ -119,6 +237,9 @@ object SendAssistPrefs {
     const val MAX_OFFSET_DP = 64
 
     private const val KEY_PREFIX = "config:"
+
+    /** Measurements live beside the settings but are written by the overlay, never by the user. */
+    private const val METRICS_PREFIX = "metrics:"
 
     private fun prefs(context: Context): SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -159,6 +280,54 @@ object SendAssistPrefs {
     /** Whether any app has the assistant switched on; when none has, it is never created at all. */
     fun anyEnabled(context: Context): Boolean =
         SEND_TARGETS.any { load(context, it.packageName).enabled }
+
+    /**
+     * What the overlay last measured inside [packageName], or null when it has never been opened.
+     *
+     * Loaded on the settings screen's composition, so it is validated the same way it is on the way
+     * in: a hand-edited or truncated record reads as "never measured" rather than as a broken
+     * preview. The overlay is the only writer.
+     */
+    fun loadMetrics(context: Context, packageName: String): SendAssistMetrics? {
+        val raw = prefs(context).getString(METRICS_PREFIX + packageName, null) ?: return null
+        return runCatching {
+            val json = JSONObject(raw)
+            val metrics = SendAssistMetrics(
+                sendWidthDp = json.optInt("sendWidth", 0),
+                sendHeightDp = json.optInt("sendHeight", 0),
+                sendRightInsetDp = json.optInt("sendRightInset", 0),
+                sendTopDp = json.optInt("sendTop", 0),
+                inputHeightDp = json.optInt("inputHeight", 0),
+                inputRightInsetDp = json.optInt("inputRightInset", 0),
+                inputTopVsSendDp = json.optInt("inputTopVsSend", 0),
+                inputMeasured = json.optBoolean("inputMeasured", false),
+                barToBottomDp = json.optInt("barToBottom", 0),
+                screenWidthDp = json.optInt("screenWidth", 0),
+                capturedAt = json.optLong("at", 0L),
+            )
+            if (metrics.screenWidthDp < 200) return null
+            if (metrics.sendWidthDp !in 12..400) return null
+            if (metrics.sendHeightDp !in 12..400) return null
+            metrics
+        }.getOrNull()
+    }
+
+    fun saveMetrics(context: Context, packageName: String, metrics: SendAssistMetrics) {
+        val json = JSONObject().apply {
+            put("sendWidth", metrics.sendWidthDp)
+            put("sendHeight", metrics.sendHeightDp)
+            put("sendRightInset", metrics.sendRightInsetDp)
+            put("sendTop", metrics.sendTopDp)
+            put("inputHeight", metrics.inputHeightDp)
+            put("inputRightInset", metrics.inputRightInsetDp)
+            put("inputTopVsSend", metrics.inputTopVsSendDp)
+            put("inputMeasured", metrics.inputMeasured)
+            put("barToBottom", metrics.barToBottomDp)
+            put("screenWidth", metrics.screenWidthDp)
+            put("at", metrics.capturedAt)
+        }
+        prefs(context).edit().putString(METRICS_PREFIX + packageName, json.toString()).apply()
+    }
 
     fun register(
         context: Context,
