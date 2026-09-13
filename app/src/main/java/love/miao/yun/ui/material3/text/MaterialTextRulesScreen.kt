@@ -5,7 +5,9 @@
 
 package love.miao.yun.ui.material3.text
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import love.miao.yun.text.TextDefaults
+import love.miao.yun.text.TextRule
 import love.miao.yun.text.TextEngine
 import love.miao.yun.text.TextPack
 import love.miao.yun.text.TextPrefs
@@ -80,7 +84,9 @@ fun MaterialTextRulesScreen(
     var packs by remember { mutableStateOf(TextPrefs.loadPacks(context)) }
     var hasLegacy by remember { mutableStateOf(TextPrefs.hasLegacyConfig(context)) }
 
-    // The form editor: which rule it is editing, and the form itself.
+    // The form editor's dialog: null is the rule list, -1 is a new rule, anything else is the rule
+    // at that index. One dialog with two faces, so adding a rule does not stack dialogs.
+    var showGui by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Int?>(null) }
     var form by remember { mutableStateOf(TextRuleForm.Form()) }
     var appsText by remember { mutableStateOf("") }
@@ -99,6 +105,20 @@ fun MaterialTextRulesScreen(
     fun update(next: TextRules) {
         rules = next
         TextPrefs.save(context, next)
+    }
+
+    /** Opens the form for one rule; `null` starts a new one, seeded with the suffix rule. */
+    fun edit(index: Int?) {
+        form = if (index == null) {
+            TextRuleForm.Form(
+                action = TextRuleForm.Action.Suffix,
+                first = "{" + TextDefaults.SUFFIX_NAME + "}",
+            )
+        } else {
+            TextRuleForm.form(rules.rules[index])
+        }
+        appsText = if (index == null) "" else rules.rules[index].apps.joinToString(", ")
+        editing = index ?: NEW_RULE
     }
 
     val preview = remember(rules, sample, trialKey) {
@@ -173,11 +193,10 @@ fun MaterialTextRulesScreen(
                             BaseWidget(
                                 icon = AppIcons.Rule,
                                 title = TextRuleText.render(rule).removeSuffix("  # 已停用"),
-                                description = if (rule.enabled) "点按编辑全部规则" else "已停用",
+                                description = if (rule.enabled) "点按用表单修改" else "已停用 · 点按用表单修改",
                                 onClick = {
-                                    form = TextRuleForm.form(rule)
-                                    appsText = rule.apps.joinToString(", ")
-                                    editing = index
+                                    edit(index)
+                                    showGui = true
                                 },
                                 trailingContent = { _ ->
                                     Switch(
@@ -215,15 +234,33 @@ fun MaterialTextRulesScreen(
             item {
                 SegmentedColumn(title = "编辑") {
                     item {
-                        NavigationItemWidget(
-                            icon = AppIcons.Tune,
-                            title = "编辑规则",
-                            description = "用文本编辑全部规则和变量",
-                            onClick = {
-                                draft = TextRuleText.render(rules)
-                                showEditor = true
-                            },
-                        )
+                        BaseItemContainer {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Button(
+                                    onClick = {
+                                        editing = null
+                                        showGui = true
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("表单编辑")
+                                }
+                                Button(
+                                    onClick = {
+                                        draft = TextRuleText.render(rules)
+                                        showEditor = true
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text("文本编辑")
+                                }
+                            }
+                        }
                     }
                     item {
                         NavigationItemWidget(
@@ -292,132 +329,186 @@ fun MaterialTextRulesScreen(
         }
     }
 
-    val editIndex = editing
-    if (editIndex != null && editIndex < rules.rules.size) {
-        val rule = rules.rules[editIndex]
+    if (showGui) {
         AlertDialog(
-            onDismissRequest = { editing = null },
+            onDismissRequest = {
+                showGui = false
+                editing = null
+            },
             title = { Text("编辑规则") },
             text = {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    DropDownMenuWidget(
-                        icon = AppIcons.Tune,
-                        title = "条件",
-                        choice = form.condition.ordinal,
-                        data = TextRuleForm.Condition.entries.map { it.label },
-                        onChoiceChange = { index ->
-                            form = form.copy(condition = TextRuleForm.Condition.entries[index])
-                        },
-                    )
-                    if (form.conditionWantsText) {
-                        FormField(
-                            label = "条件里的字",
-                            value = form.conditionText,
-                            singleLine = true,
-                            onValueChange = { form = form.copy(conditionText = it) },
+                    val index = editing
+                    if (index == null) {
+                        // ---- the rule list: this is what "表单编辑" opens
+                        if (rules.rules.isEmpty()) {
+                            Text(
+                                text = "还没有规则，点下面的按钮加一条。",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
+                        rules.rules.forEachIndexed { at, rule ->
+                            Column {
+                                TextButton(onClick = { edit(at) }) {
+                                    Text(
+                                        TextRuleText.render(rule).removeSuffix("  # 已停用"),
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                }
+                                TextButton(onClick = {
+                                    update(
+                                        rules.copy(
+                                            rules = rules.rules.filterIndexed { i, _ -> i != at },
+                                        ),
+                                    )
+                                }) {
+                                    Text("删除这条")
+                                }
+                            }
+                        }
+                        TextButton(onClick = { edit(null) }) { Text("添加一条规则") }
+
+                        Text(
+                            text = "变量（规则里写成 {名字}）",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(top = 8.dp),
                         )
-                    }
-                    if (form.conditionWantsNumber) {
-                        FormField(
-                            label = "数值",
-                            value = form.conditionNumber.toString(),
-                            singleLine = true,
-                            onValueChange = { text ->
-                                text.toIntOrNull()?.let { form = form.copy(conditionNumber = it) }
+                        rules.variables.forEach { (name, value) ->
+                            FormField(
+                                label = "{$name}",
+                                value = value,
+                                maxLines = 4,
+                                onValueChange = { text ->
+                                    update(rules.copy(variables = rules.variables + (name to text)))
+                                },
+                            )
+                        }
+                    } else {
+                        // ---- the form for one rule
+                        DropDownMenuWidget(
+                            icon = AppIcons.Tune,
+                            title = "条件",
+                            choice = form.condition.ordinal,
+                            data = TextRuleForm.Condition.entries.map { it.label },
+                            onChoiceChange = { at ->
+                                form = form.copy(condition = TextRuleForm.Condition.entries[at])
                             },
                         )
-                    }
-                    if (form.condition.canNegate) {
-                        SwitchWidget(
-                            icon = AppIcons.Tune,
-                            title = "反转",
-                            description = "不满足条件时才执行",
-                            checked = form.negated,
-                            onCheckedChange = { form = form.copy(negated = it) },
-                        )
-                    }
-
-                    DropDownMenuWidget(
-                        icon = AppIcons.Tune,
-                        title = "动作",
-                        choice = form.action.ordinal,
-                        data = TextRuleForm.Action.entries.map { it.label },
-                        onChoiceChange = { index ->
-                            form = form.copy(action = TextRuleForm.Action.entries[index])
-                        },
-                    )
-                    if (form.action.values >= 1) {
-                        FormField(
-                            label = FIRST_LABEL[form.action] ?: "内容",
-                            value = form.first,
-                            singleLine = true,
-                            onValueChange = { form = form.copy(first = it) },
-                        )
-                    }
-                    if (form.action.values >= 2) {
-                        FormField(
-                            label = "变成",
-                            value = form.second,
-                            singleLine = true,
-                            onValueChange = { form = form.copy(second = it) },
-                        )
-                    }
-                    if (form.action.hasSkipSpaced) {
-                        SwitchWidget(
-                            icon = AppIcons.Tune,
-                            title = "空格不加",
-                            description = "整段当成一句话，只在末尾加一次",
-                            checked = form.skipSpaced,
-                            onCheckedChange = { form = form.copy(skipSpaced = it) },
-                        )
-                    }
-                    if (form.action == TextRuleForm.Action.Replace) {
-                        SwitchWidget(
-                            icon = AppIcons.Tune,
-                            title = "只替换第一个",
-                            checked = form.firstOnly,
-                            onCheckedChange = { form = form.copy(firstOnly = it) },
-                        )
-                    }
-
-                    FormField(
-                        label = "只在这些应用生效（包名，逗号分隔，留空=全部）",
-                        value = appsText,
-                        singleLine = true,
-                        onValueChange = { appsText = it },
-                    )
-                    TextRuleForm.KNOWN_APPS.forEach { (packageName, label) ->
-                        TextButton(onClick = {
-                            val current = appsText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                            if (packageName !in current) {
-                                appsText = (current + packageName).joinToString(", ")
-                            }
-                        }) {
-                            Text("加上 $label")
+                        if (form.conditionWantsText) {
+                            FormField(
+                                label = "条件里的字",
+                                value = form.conditionText,
+                                singleLine = true,
+                                onValueChange = { form = form.copy(conditionText = it) },
+                            )
                         }
+                        if (form.conditionWantsNumber) {
+                            FormField(
+                                label = "数值",
+                                value = form.conditionNumber.toString(),
+                                singleLine = true,
+                                onValueChange = { text ->
+                                    text.toIntOrNull()?.let { form = form.copy(conditionNumber = it) }
+                                },
+                            )
+                        }
+                        if (form.condition.canNegate) {
+                            SwitchWidget(
+                                icon = AppIcons.Tune,
+                                title = "反转",
+                                description = "不满足条件时才执行",
+                                checked = form.negated,
+                                onCheckedChange = { form = form.copy(negated = it) },
+                            )
+                        }
+
+                        DropDownMenuWidget(
+                            icon = AppIcons.Tune,
+                            title = "动作",
+                            choice = form.action.ordinal,
+                            data = TextRuleForm.Action.entries.map { it.label },
+                            onChoiceChange = { at ->
+                                form = form.copy(action = TextRuleForm.Action.entries[at])
+                            },
+                        )
+                        if (form.action.values >= 1) {
+                            FormField(
+                                label = FIRST_LABEL[form.action] ?: "内容",
+                                value = form.first,
+                                singleLine = true,
+                                onValueChange = { form = form.copy(first = it) },
+                            )
+                        }
+                        if (form.action.values >= 2) {
+                            FormField(
+                                label = "变成",
+                                value = form.second,
+                                singleLine = true,
+                                onValueChange = { form = form.copy(second = it) },
+                            )
+                        }
+                        if (form.action.hasSkipSpaced) {
+                            SwitchWidget(
+                                icon = AppIcons.Tune,
+                                title = "空格不加",
+                                description = "整段当成一句话，只在末尾加一次",
+                                checked = form.skipSpaced,
+                                onCheckedChange = { form = form.copy(skipSpaced = it) },
+                            )
+                        }
+                        if (form.action == TextRuleForm.Action.Replace) {
+                            SwitchWidget(
+                                icon = AppIcons.Tune,
+                                title = "只替换第一个",
+                                checked = form.firstOnly,
+                                onCheckedChange = { form = form.copy(firstOnly = it) },
+                            )
+                        }
+
+                        FormField(
+                            label = "只在这些应用生效（包名，逗号分隔，留空=全部）",
+                            value = appsText,
+                            singleLine = true,
+                            onValueChange = { appsText = it },
+                        )
+                        TextRuleForm.KNOWN_APPS.forEach { (packageName, label) ->
+                            TextButton(onClick = {
+                                val current = appsText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                if (packageName !in current) {
+                                    appsText = (current + packageName).joinToString(", ")
+                                }
+                            }) {
+                                Text("加上 $label")
+                            }
+                        }
+
+                        TextButton(onClick = {
+                            val apps = appsText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                            val next = rules.rules.toMutableList()
+                            if (index < 0) {
+                                next += TextRule(
+                                    condition = TextRuleForm.condition(form),
+                                    action = TextRuleForm.action(form),
+                                    apps = apps,
+                                )
+                            } else {
+                                next[index] = TextRuleForm.rule(form, rules.rules[index]).copy(apps = apps)
+                            }
+                            update(rules.copy(rules = next))
+                            editing = null
+                        }) {
+                            Text(if (index < 0) "添加" else "保存")
+                        }
+                        TextButton(onClick = { editing = null }) { Text("返回列表") }
                     }
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    val apps = appsText.split(",")
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                        .toSet()
-                    val next = rules.rules.toMutableList()
-                    next[editIndex] = TextRuleForm.rule(form, rule).copy(apps = apps)
-                    update(rules.copy(rules = next))
+                    showGui = false
                     editing = null
                 }) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    update(rules.copy(rules = rules.rules.filterIndexed { at, _ -> at != editIndex }))
-                    editing = null
-                }) {
-                    Text("删除这条")
+                    Text("完成")
                 }
             },
         )
@@ -548,6 +639,9 @@ private fun SavedPackRow(
         TextButton(onClick = onDelete) { Text("删除「${pack.name}」") }
     }
 }
+
+/** The index the form uses for a rule that does not exist yet. */
+private const val NEW_RULE = -1
 
 /** What the first value of each action means, so the field says it instead of "内容". */
 private val FIRST_LABEL: Map<TextRuleForm.Action, String> = mapOf(
