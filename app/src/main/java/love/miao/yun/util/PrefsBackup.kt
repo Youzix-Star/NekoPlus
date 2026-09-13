@@ -31,6 +31,7 @@ object PrefsBackup {
         "token_stats",
         "onboarding",
         "send_assist",
+        "text_rules",
     )
 
     /** A file name that says what it is and when it was taken. */

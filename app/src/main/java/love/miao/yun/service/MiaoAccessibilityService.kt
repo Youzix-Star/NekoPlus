@@ -110,6 +110,14 @@ open class MiaoAccessibilityService : AccessibilityService() {
      *
      * @return the text, or an empty string when no field could be found.
      */
+    /**
+     * The package of the window in front, for rules limited to one app.
+     *
+     * Only the package name is read here: what the rules do with the text is decided when the user
+     * taps something, and this is answered then too.
+     */
+    fun currentPackage(): String? = rootInActiveWindow?.packageName?.toString()
+
     fun getCurrentWindowText(): String {
         val input = bestInputNode() ?: return ""
         return extractInputText(input)

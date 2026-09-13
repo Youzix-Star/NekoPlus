@@ -18,6 +18,14 @@ enum class FloatingAction(val id: String, val label: String) {
     /** Capture the focused field, have the model rewrite it, write it back. */
     AiModify("ai", "AI 修改"),
 
+    /**
+     * Run the text-replacement rules over the focused field.
+     *
+     * The step that makes the rules useful with no model involved: a suffix, a cat paw, a dozen
+     * find-and-replace rules, applied in one tap.
+     */
+    Rules("rules", "套用规则"),
+
     /** Capture the focused field and put it on the clipboard. */
     Capture("capture", "复制文本"),
 

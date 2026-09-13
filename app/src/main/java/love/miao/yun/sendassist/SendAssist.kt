@@ -73,6 +73,9 @@ enum class SendAssistAction(val id: String, val label: String) {
     /** Capture the input box, have the model rewrite it, write it back. */
     AiModify("ai", "AI 修改"),
 
+    /** Run the text-replacement rules over the input box — no model, no network, no waiting. */
+    Rules("rules", "套用规则"),
+
     /** Capture the input box and put it on the clipboard. */
     Capture("copy", "复制文本"),
 

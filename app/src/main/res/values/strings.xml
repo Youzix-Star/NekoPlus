@@ -25,4 +25,8 @@
     <string name="ai_replace_failed">已改写，但写回失败</string>
     <string name="ai_failed">AI 调用失败</string>
     <string name="floating_copied">已复制 %1$d 个字符</string>
+
+    <!-- 文本替换规则 -->
+    <string name="text_rules_applied">已套用替换规则</string>
+    <string name="text_rules_no_change">规则跑完了，文本没有变化</string>
 </resources>

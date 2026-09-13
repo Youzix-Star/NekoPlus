@@ -52,6 +52,11 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/miao-release.jks"
           echo "KEYSTORE_PATH=$RUNNER_TEMP/miao-release.jks" >> "$GITHUB_ENV"
 
+      # The rule language is a parser and an engine: the things that fail silently. Run its tests
+      # before spending a release build on the APK.
+      - name: Test the rule engine
+        run: ./gradlew --no-daemon --stacktrace testReleaseUnitTest
+
       - name: Build release APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}

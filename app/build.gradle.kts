@@ -111,4 +111,8 @@ dependencies {
     implementation(libs.androidx.activity.compose)
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // The rule language and its engine are pure Kotlin, so they are tested on the JVM in CI
+    // rather than by installing an APK and looking at it.
+    testImplementation("junit:junit:4.13.2")
 }

@@ -10,6 +10,7 @@ import love.miao.yun.R
 import love.miao.yun.ai.AiManager
 import love.miao.yun.ai.TokenStats
 import love.miao.yun.service.MiaoAccessibilityService
+import love.miao.yun.text.TextPrefs
 
 /**
  * The whole AI step, in one place: capture the input box, have the model rewrite it, write it back.
@@ -57,7 +58,15 @@ object AiRewrite {
                             usage.cachedTokens,
                         )
                     }
-                    val written = service.replaceInputText(modifiedText)
+                    // The step the whole feature exists for: the model writes, the rules finish.
+                    // One place, so the floating window and the assistant cannot disagree about
+                    // whether a rewrite is followed by the rules.
+                    val finalText = if (TextPrefs.loadAutoAfterAi(context)) {
+                        TextRewrite.apply(context, modifiedText, service.currentPackage())
+                    } else {
+                        modifiedText
+                    }
+                    val written = service.replaceInputText(finalText)
                     onResult(
                         written,
                         context.getString(

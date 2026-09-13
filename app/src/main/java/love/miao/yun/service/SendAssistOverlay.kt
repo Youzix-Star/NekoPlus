@@ -31,6 +31,7 @@ import love.miao.yun.ui.FloatingPalettes
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.util.AiRewrite
 import love.miao.yun.util.DebugDump
+import love.miao.yun.util.TextRewrite
 
 /**
  * A button that sits just above a chat app's send button.
@@ -337,6 +338,16 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
                     toast(message)
                     // Only send what the model actually produced; a failed rewrite must never be
                     // followed by pressing send.
+                    if (written && settings.autoSend) sendNow()
+                }
+            }
+
+            SendAssistAction.Rules -> {
+                setBusy(true)
+                TextRewrite.run(service, service) { written, message ->
+                    setBusy(false)
+                    toast(message)
+                    // Same rule as the model's: sending is only for text that actually changed.
                     if (written && settings.autoSend) sendNow()
                 }
             }

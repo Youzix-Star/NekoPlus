@@ -44,6 +44,7 @@ import love.miao.yun.floating.FloatingWindowPrefs
 import love.miao.yun.ui.FloatingPalette
 import love.miao.yun.util.AiRewrite
 import love.miao.yun.util.DebugDump
+import love.miao.yun.util.TextRewrite
 import love.miao.yun.ui.FloatingPalettes
 import love.miao.yun.ui.UiEnginePrefs
 
@@ -466,6 +467,20 @@ class FloatingWindowService : Service() {
     private fun perform(action: FloatingAction, button: FloatingButton, onDone: () -> Unit) {
         when (action) {
             FloatingAction.AiModify -> runAiModify(button, onDone)
+
+            FloatingAction.Rules -> {
+                val service = MiaoAccessibilityService.instance()
+                if (service == null) {
+                    toast(getString(R.string.ai_need_accessibility))
+                    onDone()
+                } else {
+                    // Shared with the send-button assistant, so the two step alike.
+                    TextRewrite.run(this, service) { _, message ->
+                        toast(message)
+                        onDone()
+                    }
+                }
+            }
             FloatingAction.Capture -> {
                 captureToClipboard()
                 onDone()
