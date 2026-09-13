@@ -214,6 +214,19 @@ class TextRulesTest {
     }
 
     @Test
+    fun `variables are substituted, and anything unknown is left alone`() {
+        val rules = TextRules(rules = emptyList(), variables = mapOf("后缀" to "喵"))
+        assertEquals("你好喵", rules.expand("你好{后缀}"))
+        assertEquals("喵喵", rules.expand("{后缀}{后缀}"))
+        // Anything the scan cannot make sense of is copied out as typed, so a typo is visible
+        // rather than silently swallowing the rest of the text.
+        assertEquals("你好{没有这个}", rules.expand("你好{没有这个}"))
+        assertEquals("你好{}", rules.expand("你好{}"))
+        assertEquals("你好{未闭合", rules.expand("你好{未闭合"))
+        assertEquals("没有变量", rules.expand("没有变量"))
+    }
+
+    @Test
     fun `the form can show every rule and hand it back unchanged`() {
         val conditions = listOf(
             TextCondition.Always,

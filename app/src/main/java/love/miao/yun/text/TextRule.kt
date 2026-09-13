@@ -118,17 +118,38 @@ data class TextRules(
     /** The value of `{name}`, or null when nothing defines it. */
     fun variable(name: String): String? = variables[name]
 
-    /** Substitutes every `{name}` in [text]; an unknown name is left alone, visibly. */
+    /**
+     * Substitutes every `{name}` in [text]; an unknown name is left alone, visibly.
+     *
+     * Scanned by hand rather than with a regular expression, and not because of style: the first
+     * version of this compiled `\{([^{}\n]+)}` into a static field, and Android's regex engine
+     * (ICU, not the Java one this was tested against on the JVM) rejects a bare `}` — so the class
+     * failed to initialise and **opening the settings page crashed instantly**. A loop has no
+     * dialect to be incompatible with.
+     */
     fun expand(text: String): String {
         if (!text.contains('{')) return text
-        return VARIABLE_PATTERN.replace(text) { match ->
-            variables[match.groupValues[1]] ?: match.value
+        val result = StringBuilder(text.length)
+        var index = 0
+        while (index < text.length) {
+            val open = text.indexOf('{', index)
+            val close = if (open < 0) -1 else text.indexOf('}', open + 1)
+            // Nothing left to substitute, or an unclosed brace: the rest is copied as written.
+            if (open < 0 || close < 0) {
+                result.append(text, index, text.length)
+                break
+            }
+            val name = text.substring(open + 1, close)
+            val value = variables[name]
+            if (value != null && name.isNotEmpty()) {
+                result.append(text, index, open).append(value)
+            } else {
+                // Unknown name, or an empty one: left alone, so the user can see what they typed.
+                result.append(text, index, close + 1)
+            }
+            index = close + 1
         }
-    }
-
-    companion object {
-        /** Matches `{名字}`; the name may not contain a brace or a newline. */
-        val VARIABLE_PATTERN = Regex("\\{([^{}\\n]+)}")
+        return result.toString()
     }
 }
 
