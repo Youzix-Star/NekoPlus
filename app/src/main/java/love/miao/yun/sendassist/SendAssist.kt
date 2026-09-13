@@ -127,10 +127,37 @@ data class SendAssistMetrics(
     /** Distance from the bar's bottom to the screen's bottom; a keyboard makes this large. */
     val barToBottomDp: Int,
     val screenWidthDp: Int,
+    /**
+     * The gap actually observed between the button's bottom and the send button's top, in dp, with
+     * the user's own offset taken back out.
+     *
+     * It is normally [SendAssistGeometry.GAP_DP]. Where it is not, the placement that came out is
+     * not the placement that was asked for — a window that is laid out in a different coordinate
+     * space than the accessibility tree reports, most likely — and the preview has to draw what the
+     * phone does rather than what the arithmetic says, or the two disagree and the settings become
+     * unusable. Measured with `getLocationOnScreen`, so it is the phone's answer, not a guess; a
+     * negative value means the button is overlapping the send key by that much.
+     */
+    val gapDp: Int,
+    /** False until the button has been placed at least once and its real landing spot read back. */
+    val gapMeasured: Boolean,
     val capturedAt: Long,
 ) {
     /** True when the input bar sits on the keyboard rather than on the screen's bottom edge. */
     val keyboardUp: Boolean get() = barToBottomDp > KEYBOARD_THRESHOLD_DP
+
+    /** The gap to place with: the measured one when there is one, the designed one otherwise. */
+    val effectiveGapDp: Float
+        get() = if (gapMeasured) gapDp.toFloat() else SendAssistGeometry.GAP_DP
+
+    /**
+     * How much lower than the design the button really lands, in dp; 0 when it lands as intended.
+     *
+     * Positive means lower — the button sitting closer to the send key than the 8 dp it was drawn
+     * for, which is the difference the preview used to hide.
+     */
+    val sinkingDp: Int
+        get() = if (!gapMeasured) 0 else (SendAssistGeometry.GAP_DP - gapDp).toInt()
 
     /** "发送键 58×36 dp · 距右 12 dp · 输入框高 44 dp · 3 分钟前" */
     fun summary(now: Long = System.currentTimeMillis()): String = buildString {
@@ -199,6 +226,10 @@ data class SendAssistMetrics(
                 barToBottomDp = toDp(screen.bottom - maxOf(send.bottom, field?.bottom ?: send.bottom))
                     .coerceAtLeast(0),
                 screenWidthDp = screenWidth,
+                // Filled in by the overlay once the button has actually been placed: the gap is a
+                // fact about where the window landed, and nothing here knows that yet.
+                gapDp = SendAssistGeometry.GAP_DP.toInt(),
+                gapMeasured = false,
                 capturedAt = now,
             )
         }
@@ -235,6 +266,15 @@ object SendAssistPrefs {
 
     /** How far the button may be nudged off its default spot, in either direction. */
     const val MAX_OFFSET_DP = 64
+
+    /**
+     * The bounds a measured landing gap has to fall inside to be believed.
+     *
+     * Wide enough for any system inset and for a button that overlaps the send key entirely, narrow
+     * enough that a window which reported `0,0` because it had not been laid out yet is rejected.
+     */
+    private const val MIN_GAP_DP = -200
+    private const val MAX_GAP_DP = 200
 
     private const val KEY_PREFIX = "config:"
 
@@ -303,11 +343,14 @@ object SendAssistPrefs {
                 inputMeasured = json.optBoolean("inputMeasured", false),
                 barToBottomDp = json.optInt("barToBottom", 0),
                 screenWidthDp = json.optInt("screenWidth", 0),
+                gapDp = json.optInt("gap", SendAssistGeometry.GAP_DP.toInt()),
+                gapMeasured = json.optBoolean("gapMeasured", false),
                 capturedAt = json.optLong("at", 0L),
             )
             if (metrics.screenWidthDp < 200) return null
             if (metrics.sendWidthDp !in 12..400) return null
             if (metrics.sendHeightDp !in 12..400) return null
+            if (metrics.gapMeasured && metrics.gapDp !in MIN_GAP_DP..MAX_GAP_DP) return null
             metrics
         }.getOrNull()
     }
@@ -324,6 +367,8 @@ object SendAssistPrefs {
             put("inputMeasured", metrics.inputMeasured)
             put("barToBottom", metrics.barToBottomDp)
             put("screenWidth", metrics.screenWidthDp)
+            put("gap", metrics.gapDp)
+            put("gapMeasured", metrics.gapMeasured)
             put("at", metrics.capturedAt)
         }
         prefs(context).edit().putString(METRICS_PREFIX + packageName, json.toString()).apply()

@@ -194,6 +194,10 @@ private class BarScene(
 private fun barScene(config: SendAssistConfig, metrics: SendAssistMetrics?): BarScene {
     val size = config.sizeDp.toFloat()
     val name = sendTargetFor(config.packageName)?.label ?: "该应用"
+    // The gap the phone actually produced, once it has been measured — not the one the geometry was
+    // written for. Where those two differ, this is the whole point of the preview: it has to show
+    // what happens, so that "0 dp" here and "0 dp" in WeChat look like the same thing.
+    val gap = metrics?.effectiveGapDp ?: SendAssistGeometry.GAP_DP
 
     val screenWidth: Float
     val send: RectF
@@ -218,7 +222,7 @@ private fun barScene(config: SendAssistConfig, metrics: SendAssistMetrics?): Bar
         keyboardUp = metrics.keyboardUp
         // Standing in for the keyboard: drawing its real 250 dp would be a page of grey.
         below = metrics.barToBottomDp.coerceIn(6, 34).toFloat()
-        caption = "$name 实测：" + metrics.summary()
+        caption = "$name 实测：" + metrics.summary() + sinkingNote(metrics.sinkingDp)
     } else {
         screenWidth = 360f
         // 600 dp down the screen, so the stand-in bar is nowhere near the top clamp. Where the bar
@@ -234,7 +238,7 @@ private fun barScene(config: SendAssistConfig, metrics: SendAssistMetrics?): Bar
     val assistant = SendAssistGeometry.assistantRect(
         send = send,
         size = size,
-        gap = SendAssistGeometry.GAP_DP,
+        gap = gap,
         offsetX = config.offsetXDp.toFloat(),
         offsetY = config.offsetYDp.toFloat(),
         topLimit = 0f,
@@ -262,4 +266,16 @@ private fun barScene(config: SendAssistConfig, metrics: SendAssistMetrics?): Bar
         keyboardUp = keyboardUp,
         caption = scaledCaption,
     )
+}
+
+/**
+ * What to say when the phone lands the button somewhere other than the geometry asks for.
+ *
+ * Said out loud rather than hidden, because a preview that silently disagrees with the phone is
+ * what made the offsets untrustworthy in the first place. Under 4 dp is rounding, not a finding.
+ */
+private fun sinkingNote(sinkingDp: Int): String = when {
+    sinkingDp >= 4 -> "（按钮实际比设定低 $sinkingDp dp，已按实际画）"
+    sinkingDp <= -4 -> "（按钮实际比设定高 ${-sinkingDp} dp，已按实际画）"
+    else -> ""
 }
