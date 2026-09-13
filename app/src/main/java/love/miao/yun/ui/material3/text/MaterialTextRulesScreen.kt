@@ -563,8 +563,8 @@ private fun PacksFace(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(text = "内置：猫化 = 1.1.8 的加喵 + 30% 颜文字。", style = MaterialTheme.typography.bodySmall)
-        BUILT_IN.forEach { (label, pack) ->
-            TextButton(onClick = { onLoad(pack) }) { Text(label) }
+        BUILT_IN.forEach { pack ->
+            TextButton(onClick = { onLoad(pack) }) { Text("载入 ${pack.name}") }
         }
         packs.forEach { pack ->
             Column {
@@ -608,7 +608,7 @@ private val FIRST_LABEL: Map<TextRuleForm.Action, String> = mapOf(
 )
 
 /** 1.1.8's behaviour, one tap away. */
-private val BUILT_IN: List<Pair<String, TextRules>> = listOf(
-    "载入 猫化" to TextDefaults.meow(),
-    "载入 猫爪" to TextDefaults.catPaw(),
+private val BUILT_IN: List<TextPack> = listOf(
+    TextPack("猫化", TextDefaults.meow()),
+    TextPack("猫爪", TextDefaults.catPaw()),
 )
