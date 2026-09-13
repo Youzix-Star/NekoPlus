@@ -57,23 +57,35 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
 
     private var busy = false
     private var placed: Rect? = null
+    private var misses = 0
 
     /** Events arrive in bursts; one look at the tree per burst is enough. */
     private val refresh = Runnable { refreshNow() }
 
-    /** Called for every accessibility event; the caller has already filtered to target apps. */
+    /**
+     * Called for every accessibility event.
+     *
+     * The event's sender decides nothing on its own: hiding whenever a foreign package speaks is
+     * what made the button flash and disappear, because two of the loudest packages on screen are
+     * our own overlay (adding the button fires an event for `love.miao.yun`) and the keyboard.
+     * Every event therefore just asks for another look at the real window state.
+     */
     fun onEvent(packageName: String) {
-        if (packageName in SEND_TARGETS) {
-            handler.removeCallbacks(refresh)
-            handler.postDelayed(refresh, REFRESH_DELAY_MS)
-        } else {
-            hide()
-        }
+        if (packageName == service.packageName) return
+        handler.removeCallbacks(refresh)
+        handler.postDelayed(refresh, REFRESH_DELAY_MS)
+    }
+
+    /** Looks at the screen right now, without waiting for an event. */
+    fun refresh() {
+        handler.removeCallbacks(refresh)
+        refreshNow()
     }
 
     /** Drops the overlay, e.g. when the feature is switched off. */
     fun hide() {
         handler.removeCallbacks(refresh)
+        misses = 0
         val current = view ?: return
         view = null
         params = null
@@ -88,16 +100,45 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     private fun refreshNow() {
         if (!SendAssistPrefs.isEnabled(service)) return hide()
 
-        val root = service.rootInActiveWindow ?: return hide()
-        val packageName = root.packageName?.toString() ?: return hide()
-        if (packageName !in SEND_TARGETS) return hide()
-
-        val send = findSendButton(root, packageName) ?: return hide()
+        val target = findTargetWindow() ?: return miss()
+        val send = findSendButton(target.second, target.first) ?: return miss()
         val bounds = Rect()
         send.getBoundsInScreen(bounds)
-        if (bounds.isEmpty) return hide()
+        if (bounds.isEmpty) return miss()
 
+        misses = 0
         show(bounds)
+    }
+
+    /**
+     * The window of a supported chat app, active one first.
+     *
+     * `rootInActiveWindow` is not always the chat app: with the keyboard up the focused window can
+     * be the input method's, and our own overlay adds another. Anything other than "the chat app
+     * is nowhere on screen" is not a reason to give up.
+     */
+    private fun findTargetWindow(): Pair<String, AccessibilityNodeInfo>? {
+        service.rootInActiveWindow?.let { root ->
+            val packageName = root.packageName?.toString()
+            if (packageName in SEND_TARGETS) return packageName!! to root
+        }
+
+        val windows = runCatching { service.windows }.getOrNull().orEmpty()
+        windows.sortedByDescending { it.isActive }.forEach { window ->
+            val root = runCatching { window.root }.getOrNull() ?: return@forEach
+            val packageName = root.packageName?.toString() ?: return@forEach
+            if (packageName in SEND_TARGETS) return packageName to root
+        }
+        return null
+    }
+
+    /**
+     * A missing send button hides the overlay, but only after it has been missing twice in a row:
+     * a single miss happens mid-layout, mid-animation, and while the keyboard is coming up, and
+     * reacting to it makes the button flicker.
+     */
+    private fun miss() {
+        if (++misses >= MISSES_BEFORE_HIDE) hide()
     }
 
     /**
@@ -110,7 +151,10 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
     private fun findSendButton(root: AccessibilityNodeInfo, packageName: String): AccessibilityNodeInfo? {
         SEND_TARGETS[packageName].orEmpty().forEach { id ->
             val byId = runCatching { root.findAccessibilityNodeInfosByViewId(id) }.getOrNull()
-            byId?.firstOrNull { it.isVisibleToUser && it.isEnabled }?.let { return it }
+            // Visible is the one condition that matters: QQ keeps a second, hidden `send_btn` in
+            // its album panel, and a chat app disables the real one while the box is empty —
+            // which is exactly when the assistant should still be offering itself.
+            byId?.firstOrNull { it.isVisibleToUser }?.let { return it }
         }
 
         val labelled = mutableListOf<AccessibilityNodeInfo>()
@@ -133,7 +177,6 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
         if (className.contains("Button") &&
             label.contains(SEND_LABEL) &&
             node.isVisibleToUser &&
-            node.isEnabled &&
             node.isClickable
         ) {
             into += node
@@ -297,6 +340,9 @@ class SendAssistOverlay(private val service: MiaoAccessibilityService) {
 
     private companion object {
         const val REFRESH_DELAY_MS = 250L
+
+        /** How many consecutive looks may fail to find the send button before the overlay goes. */
+        const val MISSES_BEFORE_HIDE = 2
         const val SIZE_DP = 40f
         const val GAP_DP = 8f
         const val MAX_DEPTH = 40

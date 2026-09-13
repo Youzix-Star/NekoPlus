@@ -56,6 +56,8 @@ open class MiaoAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val assist = sendAssist ?: return
         val packageName = event?.packageName?.toString() ?: return
+        // Every package is forwarded; the overlay decides what it means by looking at the windows,
+        // because the loudest packages while typing are the keyboard and the overlay itself.
         assist.onEvent(packageName)
     }
 
@@ -67,6 +69,9 @@ open class MiaoAccessibilityService : AccessibilityService() {
         } else {
             sendAssist?.hide()
         }
+        // Turning the switch on while the chat app is already open has to place the button now,
+        // and turning it off has to take it away now.
+        sendAssist?.refresh()
     }
 
     override fun onInterrupt() = Unit
