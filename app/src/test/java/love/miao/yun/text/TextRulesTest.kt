@@ -214,12 +214,24 @@ class TextRulesTest {
     }
 
     @Test
-    fun `the starter rules are 1_1_8's behaviour, written down`() {
+    fun `a fresh install changes nothing at all`() {
         val starter = TextDefaults.starter()
-        // The suffix, always; the emoticon is a 30% chance, so it is checked both ways round on a
-        // seeded engine rather than hoped for.
-        assertTrue(TextEngine(Random(7)).apply("你好", starter).startsWith("你好喵"))
-        assertEquals(2, starter.rules.size)
-        assertTrue(TextRuleText.render(starter).contains("末尾加"))
+        assertTrue(starter.rules.isEmpty())
+        assertEquals("你好", TextEngine(Random(7)).apply("你好", starter))
+        // The variables are still there, so the first rule the user writes can already refer to them.
+        assertEquals("喵", starter.variable(TextDefaults.SUFFIX_NAME))
+    }
+
+    @Test
+    fun `1_1_8's behaviour is a pack, and the cat paw is a value`() {
+        val meow = TextDefaults.meow()
+        assertEquals(2, meow.rules.size)
+        assertTrue(TextEngine(Random(7)).apply("你好", meow).startsWith("你好喵"))
+
+        val paw = TextDefaults.catPaw()
+        assertEquals("ฅ你好ฅ", TextEngine(Random(1)).apply("你好", paw))
+        // The whole point: the mark is a variable, so changing it changes every rule that draws one.
+        val custom = paw.copy(variables = paw.variables + (TextDefaults.CAT_PAW_NAME to "🐾"))
+        assertEquals("🐾你好🐾", TextEngine(Random(1)).apply("你好", custom))
     }
 }

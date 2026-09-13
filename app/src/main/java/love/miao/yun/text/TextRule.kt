@@ -179,8 +179,17 @@ object TextDefaults {
         EMOTICON_NAME to EMOTICONS.joinToString(EMOTICON_SEPARATOR),
     )
 
-    /** The rules a fresh install starts with: 1.1.8's behaviour, written down where it can be read. */
-    fun starter(): TextRules = TextRules(
+    /**
+     * What a fresh install starts with: the variables, and **no rules**.
+     *
+     * 1.1.8 shipped with 加喵 switched on, but this app's AI button has never appended anything, and
+     * a feature that silently starts editing text nobody asked it to edit is a feature that gets
+     * uninstalled. The behaviour is here instead, as [meow], one tap away in the editor.
+     */
+    fun starter(): TextRules = TextRules(rules = emptyList(), variables = variables)
+
+    /** 1.1.8's own behaviour, as a pack: a suffix on the end, and an emoticon 30% of the time. */
+    fun meow(): TextRules = TextRules(
         rules = listOf(
             TextRule(
                 condition = TextCondition.Always,
@@ -189,6 +198,17 @@ object TextDefaults {
             TextRule(
                 condition = TextCondition.Chance(30),
                 action = TextAction.Emoticon,
+            ),
+        ),
+        variables = variables,
+    )
+
+    /** 1.1.8's 猫爪, generalized: the same mark on both ends, and the mark is the user's to change. */
+    fun catPaw(): TextRules = TextRules(
+        rules = listOf(
+            TextRule(
+                condition = TextCondition.Always,
+                action = TextAction.Wrap("{" + CAT_PAW_NAME + "}"),
             ),
         ),
         variables = variables,
