@@ -58,6 +58,25 @@ jobs:
       - name: Test the rule engine
         run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
 
+      # A test task that found no tests is still a "successful" build, which is the one way a green
+      # CI can mean nothing at all. Count them.
+      - name: Check tests actually ran
+        run: |
+          shopt -s nullglob
+          files=(app/build/test-results/testDebugUnitTest/*.xml)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::the unit test task produced no results at all"
+            exit 1
+          fi
+          total=0
+          for f in "${files[@]}"; do
+            n=$(sed -n 's/.*tests="\([0-9]*\)".*/\1/p' "$f" | head -1)
+            echo "$(basename "$f"): ${n:-0} tests"
+            total=$((total + ${n:-0}))
+          done
+          echo "total: $total tests"
+          test "$total" -gt 0
+
       - name: Build release APK
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
