@@ -140,15 +140,23 @@ class TextEngine(private val random: Random = Random.Default) {
         if (skipSpaced) return if (text.endsWith(suffix)) text else text + suffix
 
         val result = StringBuilder()
-        var lastEnd = 0
-        for (separator in SENTENCE_SPLIT_PATTERN.findAll(text)) {
-            appendSentence(result, text.substring(lastEnd, separator.range.first), suffix)
-            result.append(separator.value)
-            lastEnd = separator.range.last + 1
+        var start = 0
+        var index = 0
+        while (index < text.length) {
+            if (!isSentenceEnd(text[index])) {
+                index++
+                continue
+            }
+            appendSentence(result, text.substring(start, index), suffix)
+            // The separators are kept exactly as they were, run or single: they are the user's text.
+            var end = index
+            while (end < text.length && isSentenceEnd(text[end])) end++
+            result.append(text, index, end)
+            index = end
+            start = index
         }
-        if (lastEnd < text.length) {
-            appendSentence(result, text.substring(lastEnd), suffix)
-        }
+        if (start < text.length) appendSentence(result, text.substring(start), suffix)
+
         val trimmed = result.toString().trim()
         return if (trimmed.isEmpty()) text + suffix else trimmed
     }
@@ -158,6 +166,19 @@ class TextEngine(private val random: Random = Random.Default) {
         if (part.isEmpty()) return
         into.append(part)
         if (containsCjk(part) && !part.endsWith(suffix)) into.append(suffix)
+    }
+
+    /**
+     * Whether a character ends a sentence.
+     *
+     * The same set 1.1.8 split on — CJK and ASCII punctuation, plus any whitespace — written as a
+     * scan rather than a pattern. Not for style: a `Regex` in a `companion object` is compiled
+     * during class initialisation, and Android's engine is ICU, which is not the one the unit tests
+     * run against. That difference is exactly what crashed the settings page once already.
+     */
+    private fun isSentenceEnd(character: Char): Boolean = when (character) {
+        '，', ',', '。', '！', '!', '？', '?' -> true
+        else -> character.isWhitespace()
     }
 
     /** Removes one punctuation mark from the end: "你好。喵" has no business keeping the 喵 apart. */
@@ -177,9 +198,6 @@ class TextEngine(private val random: Random = Random.Default) {
     }
 
     private companion object {
-        /** Sentence boundaries: punctuation and whitespace, kept as they are found. */
-        val SENTENCE_SPLIT_PATTERN = Regex("[，,。！!？?\\s]+")
-
         val PUNCTUATION = setOf(
             '。', '！', '？', '，', '、', '；', '：',
             '.', '!', '?', ',', ';', ':',

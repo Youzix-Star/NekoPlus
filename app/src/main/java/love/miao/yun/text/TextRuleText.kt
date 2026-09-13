@@ -188,7 +188,7 @@ object TextRuleText {
 
             body.startsWith("长度") -> {
                 val rest = body.removePrefix("长度").trim().normalizeSymbols()
-                val characters = NUMBER.find(rest)?.value?.toIntOrNull() ?: return null
+                val characters = firstNumber(rest) ?: return null
                 when {
                     rest.startsWith(">") -> TextCondition.LongerThan(characters)
                     rest.startsWith("<") -> TextCondition.ShorterThan(characters)
@@ -197,12 +197,12 @@ object TextRuleText {
             }
 
             body.startsWith("随机") || body.startsWith("概率") -> {
-                val percent = NUMBER.find(body)?.value?.toIntOrNull() ?: return null
+                val percent = firstNumber(body) ?: return null
                 TextCondition.Chance(percent.coerceIn(0, 100))
             }
 
             body.startsWith("每") -> {
-                val count = NUMBER.find(body)?.value?.toIntOrNull() ?: return null
+                val count = firstNumber(body) ?: return null
                 TextCondition.EveryNth(count.coerceAtLeast(1))
             }
 
@@ -441,7 +441,25 @@ object TextRuleText {
         .replace('＜', '<')
         .replace('％', '%')
 
-    private val NUMBER = Regex("\\d+")
+    /**
+     * The first run of digits in [text], or null.
+     *
+     * Scanned rather than matched, for the same reason [TextRules.expand] is: a `Regex` in a static
+     * field is compiled by Android's ICU engine, which the JVM tests do not exercise.
+     */
+    private fun firstNumber(text: String): Int? {
+        var index = 0
+        while (index < text.length) {
+            if (!text[index].isDigit()) {
+                index++
+                continue
+            }
+            var end = index
+            while (end < text.length && text[end].isDigit()) end++
+            return text.substring(index, end).toIntOrNull()
+        }
+        return null
+    }
 
     private val REPLACE_SEPARATORS = listOf("替换为", "换成", "改为", "为", "→")
 

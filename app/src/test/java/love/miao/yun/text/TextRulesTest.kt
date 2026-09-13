@@ -152,6 +152,8 @@ class TextRulesTest {
         assertEquals("你好喵，你准备好了吗喵？", apply("你好，你准备好了吗？", source))
         // 1.1.8's rule, kept: a suffix inside an emoticon is a suffix in the wrong place.
         assertEquals("ฅ^•ﻌ•^ฅ 你好喵", apply("ฅ^•ﻌ•^ฅ 你好", source))
+        // A run of separators is one boundary, and comes back exactly as it went in.
+        assertEquals("你好喵， 你好喵", apply("你好， 你好", source))
     }
 
     @Test
