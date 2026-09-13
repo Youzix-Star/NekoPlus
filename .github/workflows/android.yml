@@ -53,12 +53,10 @@ jobs:
           echo "KEYSTORE_PATH=$RUNNER_TEMP/miao-release.jks" >> "$GITHUB_ENV"
 
       # The rule language is a parser and an engine: the things that fail silently. Run its tests
-      # before spending a release build on the APK.
-      - name: List test tasks
-        run: ./gradlew --no-daemon tasks --all | grep -iE "test" | head -30 || true
-
+      # before spending a release build on the APK. AGP 9 only creates unit test tasks for
+      # debuggable variants, and these tests are pure Kotlin — the variant changes nothing.
       - name: Test the rule engine
-        run: ./gradlew --no-daemon --stacktrace testReleaseUnitTest
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest
 
       - name: Build release APK
         env:
