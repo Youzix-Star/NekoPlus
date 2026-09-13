@@ -55,29 +55,37 @@ object TextSwitches {
         rules.copy(rules = rules.rules.filterNot { isReplacement(it) } + replacements)
 
     /**
-     * What the user added, one per line — the built-in ones are not shown back to them.
+     * The emoticon list, one per line — **the whole list, defaults included**.
      *
-     * The list the engine draws from is always the built-in table plus whatever is here, so the
-     * emoticons work out of the box for everybody and typing a few of your own **adds** to them
-     * rather than replacing them. Replacing is what 1.1.8 did, and it meant one careless edit left
-     * a user with a single emoticon and no way to get the other fifty-three back.
+     * The box opens showing the table the app ships with, so nobody has to guess what is in there:
+     * adding a line adds an emoticon, deleting a line takes one away, and it is all visible. An
+     * older version of this feature showed an empty box and made typing anything replace the whole
+     * table, which lost fifty-odd emoticons to one careless edit.
      */
     fun emoticons(rules: TextRules): String {
-        val stored = rules.variable(TextDefaults.EMOTICON_NAME) ?: return ""
+        val stored = rules.variable(TextDefaults.EMOTICON_NAME) ?: return builtInEmoticons()
         return stored.split(TextDefaults.EMOTICON_SEPARATOR)
             .map { it.trim() }
-            .filter { it.isNotEmpty() && it !in TextDefaults.EMOTICONS }
+            .filter { it.isNotEmpty() }
             .joinToString("\n")
+            .ifEmpty { builtInEmoticons() }
     }
 
-    /** Sets the additions; an empty list leaves exactly the built-in table. */
+    /**
+     * Stores the list as typed.
+     *
+     * Empty is not a list: a blank box means "I deleted everything" only in the sense of a slip, and
+     * the one thing worse than a long list is an emoticon switch that silently stops working, so it
+     * falls back to the built-in table.
+     */
     fun setEmoticons(rules: TextRules, text: String): TextRules {
-        val custom = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
-        val value = (TextDefaults.EMOTICONS + custom)
-            .distinct()
-            .joinToString(TextDefaults.EMOTICON_SEPARATOR)
+        val list = text.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        val value = if (list.isEmpty()) builtInEmoticons() else list.joinToString(TextDefaults.EMOTICON_SEPARATOR)
         return rules.copy(variables = rules.variables + (TextDefaults.EMOTICON_NAME to value))
     }
+
+    private fun builtInEmoticons(): String =
+        TextDefaults.EMOTICONS.joinToString(TextDefaults.EMOTICON_SEPARATOR)
 
     /** The `A = B` line a replacement rule is written as, and back again. */
     fun replacement(from: String, to: String): TextRule =

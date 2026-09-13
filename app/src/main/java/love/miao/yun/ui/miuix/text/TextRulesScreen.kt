@@ -161,7 +161,7 @@ fun TextRulesScreen(
                 colors = miaoTextFieldColors(),
                 value = TextSwitches.emoticons(rules),
                 onValueChange = { update(TextSwitches.setEmoticons(rules, it)) },
-                label = "一行一个，留空用内置的 ${TextDefaults.EMOTICONS.size} 个",
+                label = "一行一个，可增删（默认 ${TextDefaults.EMOTICONS.size} 个）",
                 maxLines = 8,
                 modifier = Modifier.fillMaxWidth(),
             )

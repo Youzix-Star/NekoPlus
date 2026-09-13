@@ -311,22 +311,26 @@ class TextRulesTest {
     }
 
     @Test
-    fun `custom emoticons are added to the built-in list, never replacing it`() {
+    fun `the emoticon box shows the built-in table, and edits it in place`() {
         val rules = TextDefaults.starter()
-        val custom = TextSwitches.setEmoticons(rules, "🐾\n@w@")
-        // The field shows back only what the user added...
-        assertEquals("🐾\n@w@", TextSwitches.emoticons(custom))
-        // ...while the engine draws from everything, so the built-ins survive an edit.
-        val stored = custom.variable(TextDefaults.EMOTICON_NAME).orEmpty()
-            .split(TextDefaults.EMOTICON_SEPARATOR)
-        assertTrue(TextDefaults.EMOTICONS.all { it in stored })
-        assertTrue("🐾" in stored)
+        // Out of the box the box is full: nobody has to guess what the defaults are.
+        assertEquals(TextDefaults.EMOTICONS.joinToString("\n"), TextSwitches.emoticons(rules))
 
-        // Clearing the field leaves exactly the built-in table.
-        val cleared = TextSwitches.setEmoticons(custom, "  ")
-        assertEquals("", TextSwitches.emoticons(cleared))
-        assertEquals(TextDefaults.EMOTICONS, cleared.variable(TextDefaults.EMOTICON_NAME).orEmpty()
-            .split(TextDefaults.EMOTICON_SEPARATOR))
+        // Adding a line adds an emoticon; the rest are still there.
+        val added = TextSwitches.setEmoticons(rules, TextSwitches.emoticons(rules) + "\n🐾")
+        val stored = added.variable(TextDefaults.EMOTICON_NAME).orEmpty()
+            .split(TextDefaults.EMOTICON_SEPARATOR)
+        assertTrue("🐾" in stored)
+        assertTrue(TextDefaults.EMOTICONS.all { it in stored })
+
+        // Deleting a line takes that one away.
+        val removed = TextSwitches.setEmoticons(rules, TextDefaults.EMOTICONS.drop(1).joinToString("\n"))
+        assertFalse(TextDefaults.EMOTICONS.first() in
+            removed.variable(TextDefaults.EMOTICON_NAME).orEmpty())
+
+        // An empty box is a slip, not a request for no emoticons at all.
+        val cleared = TextSwitches.setEmoticons(rules, "  ")
+        assertEquals(TextDefaults.EMOTICONS.joinToString("\n"), TextSwitches.emoticons(cleared))
     }
 
     @Test

@@ -206,9 +206,30 @@ internal fun isNewer(latest: String, current: String): Boolean {
     return comparePreRelease(latestPre!!, currentPre!!) > 0
 }
 
+/**
+ * Puts the separators a version comparison needs into a version a person wrote.
+ *
+ * `2.0.2Beta1` is a perfectly normal thing to type, and without this it reads as the number 2.0.21
+ * with no pre-release at all — which is how a beta build ends up being told there is a newer
+ * version, or never told about the next one.
+ */
+private fun separateVersion(version: String): String {
+    val out = StringBuilder(version.length + 4)
+    version.forEachIndexed { index, character ->
+        if (index > 0) {
+            val previous = version[index - 1]
+            val letterAfterDigit = previous.isDigit() && character.isLetter()
+            val digitAfterLetter = previous.isLetter() && character.isDigit()
+            if (letterAfterDigit) out.append('-') else if (digitAfterLetter) out.append('.')
+        }
+        out.append(character)
+    }
+    return out.toString()
+}
+
 private fun splitVersion(version: String): Pair<List<Int>, String?> {
     // "2.0.1 Beta 1" is a version name a person would write; the comparison wants a separator.
-    val cleaned = version.trim().replace(' ', '-').removePrefix("v")
+    val cleaned = separateVersion(version.trim().replace(' ', '-').removePrefix("v"))
     val core = cleaned.substringBefore('-')
     val pre = cleaned.substringAfter('-', missingDelimiterValue = "").ifBlank { null }
     val numbers = core.split('.').map { part ->
