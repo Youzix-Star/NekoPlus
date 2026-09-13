@@ -38,7 +38,7 @@ object TextPrefs {
     fun load(context: Context): TextRules {
         val text = prefs(context).getString(KEY_CURRENT, null)
         if (text.isNullOrBlank()) return TextDefaults.starter()
-        return TextRuleText.parse(text).rules
+        return TextRuleText.parse(text).config
     }
 
     fun save(context: Context, rules: TextRules) {
@@ -64,7 +64,7 @@ object TextPrefs {
                 val item = json.optJSONObject(index) ?: return@mapNotNull null
                 val name = item.optString("name").takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 val text = item.optString("text")
-                TextPack(name, TextRuleText.parse(text).rules)
+                TextPack(name, TextRuleText.parse(text).config)
             }
         }.getOrDefault(emptyList())
     }
@@ -146,7 +146,7 @@ object TextPrefs {
         rulesText.lineSequence().forEach { line ->
             val trimmed = line.trim()
             if (trimmed.isEmpty()) return@forEach
-            TextRuleText.parse(trimmed).rules.firstOrNull()?.let { rules += it }
+            TextRuleText.parse(trimmed).config.rules.firstOrNull()?.let { rules += it }
         }
 
         val suffix = store.getString("append_text", null)?.takeIf { it.isNotBlank() }

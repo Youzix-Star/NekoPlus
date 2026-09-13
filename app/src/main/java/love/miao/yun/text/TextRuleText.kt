@@ -34,7 +34,7 @@ object TextRuleText {
     data class Problem(val line: Int, val message: String)
 
     data class Parsed(
-        val rules: TextRules,
+        val config: TextRules,
         val problems: List<Problem> = emptyList(),
     ) {
         val ok: Boolean get() = problems.isEmpty()

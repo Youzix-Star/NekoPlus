@@ -20,7 +20,7 @@ import org.junit.Test
  */
 class TextRulesTest {
 
-    private fun rules(text: String): TextRules = TextRuleText.parse(text).rules
+    private fun rules(text: String): TextRules = TextRuleText.parse(text).config
 
     private fun apply(text: String, source: String, packageName: String? = null): String =
         TextEngine(Random(1)).apply(text, rules(source), packageName)
@@ -100,7 +100,7 @@ class TextRulesTest {
             末尾加"汪"
             """.trimIndent(),
         )
-        assertEquals(2, parsed.rules.size)
+        assertEquals(2, parsed.config.rules.size)
         assertEquals(1, parsed.problems.size)
         assertEquals(2, parsed.problems.first().line)
     }
@@ -124,7 +124,7 @@ class TextRulesTest {
 
         val once = rules(source)
         val rendered = TextRuleText.render(once)
-        val twice = TextRuleText.parse(rendered).rules
+        val twice = TextRuleText.parse(rendered).config
         assertEquals(once.rules, twice.rules)
         assertEquals(once.variables, twice.variables)
         assertEquals(rendered, TextRuleText.render(twice))
