@@ -77,6 +77,7 @@ fun TextRulesScreen(
     var form by remember { mutableStateOf(TextRuleForm.Form()) }
     var appsText by remember { mutableStateOf("") }
     var packName by remember { mutableStateOf("") }
+    var addDraft by remember { mutableStateOf("") }
 
     var showText by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf("") }
@@ -149,10 +150,15 @@ fun TextRulesScreen(
             }
         }
 
-        if (rules.rules.isNotEmpty()) {
-            item(key = "rules-title") {
-                SmallTitle(text = "规则")
+        item(key = "rules-title") {
+            SmallTitle(text = "规则")
+        }
+        if (rules.rules.isEmpty()) {
+            item(key = "rules-empty") {
+                Text(text = "还没有规则，点下面的「新增规则」。", fontSize = 13.sp)
             }
+        }
+        if (rules.rules.isNotEmpty()) {
             rules.rules.forEachIndexed { at, rule ->
                 item(key = "rule-$at") {
                     Card(modifier = Modifier.fillMaxWidth()) {
@@ -181,8 +187,15 @@ fun TextRulesScreen(
 
         item(key = "edit") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { face = Face.List; showForm = true }, modifier = Modifier.weight(1f)) {
-                    Text("表单编辑")
+                Button(
+                    onClick = {
+                        addDraft = ""
+                        face = Face.Add
+                        showForm = true
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("新增规则")
                 }
                 Button(
                     onClick = {
@@ -196,14 +209,50 @@ fun TextRulesScreen(
                 }
             }
         }
+
+        // The variables are on the page, not behind a button: they are configuration in their own
+        // right — the cat paw is the thing this feature was asked to make changeable.
+        item(key = "variables-title") {
+            SmallTitle(text = "变量")
+        }
+        rules.variables.forEach { (name, value) ->
+            item(key = "var-$name") {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    TextField(
+                        colors = miaoTextFieldColors(),
+                        value = value,
+                        onValueChange = { text ->
+                            update(rules.copy(variables = rules.variables + (name to text)))
+                        },
+                        label = "{$name}",
+                        maxLines = 4,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+
+        item(key = "packs") {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                ArrowPreference(
+                    title = "规则包",
+                    summary = if (packs.isEmpty()) "整包载入、保存" else "已存 ${packs.size} 个",
+                    onClick = {
+                        face = Face.Packs
+                        showForm = true
+                    },
+                )
+            }
+        }
     }
 
     if (showForm) {
         OverlayDialog(
             show = true,
             title = when (face) {
-                Face.Rule -> if (editing < 0) "添加规则" else "修改规则"
-                else -> "编辑规则"
+                Face.Add -> "新增规则"
+                Face.Rule -> "修改规则"
+                Face.Packs -> "规则包"
             },
             onDismissRequest = { showForm = false },
         ) {
@@ -215,27 +264,46 @@ fun TextRulesScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 when (face) {
-                    Face.List -> ListFace(
-                        rules = rules,
-                        onEdit = { open(it) },
-                        onAdd = { open(null) },
-                        onDelete = { at ->
-                            update(rules.copy(rules = rules.rules.filterIndexed { i, _ -> i != at }))
-                        },
-                        onVariables = { update(rules.copy(variables = it)) },
-                        onPacks = { face = Face.Packs },
-                        onImport = {
-                            val imported = TextPrefs.importLegacy(context)
-                            if (imported == null) {
-                                onNotify("没有找到 1.1.8 的旧设置")
-                            } else {
-                                update(imported)
-                                hasLegacy = false
-                                onNotify("已导入 ${imported.rules.size} 条规则")
+                    Face.Add -> {
+                        Text(
+                            text = "一行一条，可以从别处直接粘过来；加完还能点它慢慢改。",
+                            fontSize = 12.sp,
+                            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        )
+                        TextField(
+                            colors = miaoTextFieldColors(),
+                            value = addDraft,
+                            onValueChange = { addDraft = it },
+                            label = "规则",
+                            maxLines = 8,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 120.dp),
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(
+                                onClick = { addDraft = clipboardText(context) },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("粘贴")
                             }
-                        },
-                        hasLegacy = hasLegacy,
-                    )
+                            Button(
+                                onClick = {
+                                    val parsed = TextRuleText.parse(addDraft)
+                                    if (parsed.config.rules.isEmpty()) {
+                                        onNotify("没读懂，检查一下写法")
+                                    } else {
+                                        update(rules.copy(rules = rules.rules + parsed.config.rules))
+                                        showForm = false
+                                        onNotify("已加 ${parsed.config.rules.size} 条规则")
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text("添加")
+                            }
+                        }
+                    }
 
                     Face.Rule -> {
                         RuleFace(
@@ -339,13 +407,15 @@ fun TextRulesScreen(
                 )
                 Text(text = preview.ifEmpty { "（空的）" }, fontSize = 15.sp)
 
+                // Equal width *and* equal height: three buttons whose labels are different lengths
+                // came out three different sizes, which is what "the buttons do not match" meant.
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    TEMPLATES.forEach { template ->
+                    TEMPLATES.forEach { (label, rule) ->
                         Button(
-                            onClick = { draft = draft.trimEnd() + "\n" + template },
+                            onClick = { draft = draft.trimEnd() + "\n" + rule },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text(template)
+                            Text(label, maxLines = 1)
                         }
                     }
                 }
@@ -372,53 +442,6 @@ fun TextRulesScreen(
 }
 
 // ------------------------------------------------------------------ the three faces
-
-@Composable
-private fun ListFace(
-    rules: TextRules,
-    onEdit: (Int) -> Unit,
-    onAdd: () -> Unit,
-    onDelete: (Int) -> Unit,
-    onVariables: (Map<String, String>) -> Unit,
-    onPacks: () -> Unit,
-    onImport: () -> Unit,
-    hasLegacy: Boolean,
-) {
-    if (rules.rules.isEmpty()) {
-        Text(text = "还没有规则。", fontSize = 13.sp)
-    }
-    rules.rules.forEachIndexed { at, rule ->
-        Card(modifier = Modifier.fillMaxWidth()) {
-            ArrowPreference(
-                title = TextRuleText.render(rule).removeSuffix("  # 已停用"),
-                endActions = {
-                    Button(onClick = { onDelete(at) }) { Text("删除") }
-                },
-                onClick = { onEdit(at) },
-            )
-        }
-    }
-    Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("添加一条规则") }
-
-    Card(modifier = Modifier.fillMaxWidth()) {
-        ArrowPreference(title = "规则包", onClick = onPacks)
-        if (hasLegacy) {
-            ArrowPreference(title = "从 1.1.8 导入", onClick = onImport)
-        }
-    }
-
-    SmallTitle(text = "变量（规则里写成 {名字}）")
-    rules.variables.forEach { (name, value) ->
-        TextField(
-            colors = miaoTextFieldColors(),
-            value = value,
-            onValueChange = { text -> onVariables(rules.variables + (name to text)) },
-            label = "{$name}",
-            maxLines = 4,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
 
 @Composable
 private fun RuleFace(
@@ -559,8 +582,14 @@ private fun PacksFace(
     Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("返回") }
 }
 
+/** The clipboard as text, for the paste box. Empty when there is nothing to paste. */
+private fun clipboardText(context: android.content.Context): String = runCatching {
+    val manager = context.getSystemService(android.content.ClipboardManager::class.java)
+    manager?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+}.getOrNull().orEmpty()
+
 /** Which face of the editor dialog is showing. */
-private enum class Face { List, Rule, Packs }
+private enum class Face { Add, Rule, Packs }
 
 /** The index a rule gets before it exists, so the form can tell "add" from "change". */
 private const val NEW_RULE = -1
@@ -568,11 +597,11 @@ private const val NEW_RULE = -1
 /** The sentence the trial box starts with. */
 private const val DEFAULT_SAMPLE = "今天我很好，你准备好了吗？"
 
-/** The three lines worth a button; everything else is one edit away and in the README. */
-private val TEMPLATES = listOf(
-    "末尾加\"{后缀}\"",
-    "每句末尾加\"{后缀}\"（空格不加）",
-    "首尾包裹\"{猫爪}\"",
+/** Short label and the line it inserts; equal-length labels keep the three buttons one size. */
+private val TEMPLATES: List<Pair<String, String>> = listOf(
+    "加后缀" to "末尾加\"{后缀}\"",
+    "每句加" to "每句末尾加\"{后缀}\"（空格不加）",
+    "加猫爪" to "首尾包裹\"{猫爪}\"",
 )
 
 /** What the first value of each action means, so the field says it instead of "内容". */

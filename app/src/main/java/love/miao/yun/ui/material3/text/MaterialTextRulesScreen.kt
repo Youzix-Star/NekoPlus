@@ -86,6 +86,7 @@ fun MaterialTextRulesScreen(
     var form by remember { mutableStateOf(TextRuleForm.Form()) }
     var appsText by remember { mutableStateOf("") }
     var packName by remember { mutableStateOf("") }
+    var addDraft by remember { mutableStateOf("") }
 
     var showText by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf("") }
@@ -185,9 +186,20 @@ fun MaterialTextRulesScreen(
                 }
             }
 
-            if (rules.rules.isNotEmpty()) {
-                item {
-                    SegmentedColumn(title = "规则") {
+            item {
+                SegmentedColumn(title = "规则") {
+                    if (rules.rules.isEmpty()) {
+                        item {
+                            BaseItemContainer {
+                                Text(
+                                    text = "还没有规则，点下面的「新增规则」。",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(16.dp),
+                                )
+                            }
+                        }
+                    }
+                    if (rules.rules.isNotEmpty()) {
                         rules.rules.forEachIndexed { at, rule ->
                             item {
                                 BaseWidget(
@@ -225,10 +237,14 @@ fun MaterialTextRulesScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Button(
-                            onClick = { face = Face.List; showForm = true },
+                            onClick = {
+                                addDraft = ""
+                                face = Face.Add
+                                showForm = true
+                            },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text("表单编辑")
+                            Text("新增规则")
                         }
                         Button(
                             onClick = {
@@ -243,6 +259,43 @@ fun MaterialTextRulesScreen(
                     }
                 }
             }
+
+            // The variables live on the page: the cat paw is configuration in its own right, and
+            // hiding it behind another button is what made the last version feel like a maze.
+            item {
+                SegmentedColumn(title = "变量") {
+                    rules.variables.forEach { (name, value) ->
+                        item {
+                            BaseItemContainer {
+                                FormField(
+                                    label = "{$name}",
+                                    value = value,
+                                    maxLines = 4,
+                                    onValueChange = { text ->
+                                        update(rules.copy(variables = rules.variables + (name to text)))
+                                    },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                SegmentedColumn(title = "规则包") {
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Rule,
+                            title = "规则包",
+                            description = if (packs.isEmpty()) "整包载入、保存" else "已存 ${packs.size} 个",
+                            onClick = {
+                                face = Face.Packs
+                                showForm = true
+                            },
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -252,8 +305,9 @@ fun MaterialTextRulesScreen(
             title = {
                 Text(
                     when (face) {
-                        Face.Rule -> if (editing < 0) "添加规则" else "修改规则"
-                        else -> "编辑规则"
+                        Face.Add -> "新增规则"
+                        Face.Rule -> "修改规则"
+                        Face.Packs -> "规则包"
                     },
                 )
             },
@@ -261,29 +315,45 @@ fun MaterialTextRulesScreen(
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
                     item {
                         when (face) {
-                            Face.List -> ListFace(
-                                rules = rules,
-                                onEdit = { open(it) },
-                                onAdd = { open(null) },
-                                onDelete = { at ->
-                                    update(
-                                        rules.copy(rules = rules.rules.filterIndexed { i, _ -> i != at }),
-                                    )
-                                },
-                                onVariables = { update(rules.copy(variables = it)) },
-                                onPacks = { face = Face.Packs },
-                                onImport = {
-                                    val imported = TextPrefs.importLegacy(context)
-                                    if (imported == null) {
-                                        onNotify("没有找到 1.1.8 的旧设置")
-                                    } else {
-                                        update(imported)
-                                        hasLegacy = false
-                                        onNotify("已导入 ${imported.rules.size} 条规则")
+                            Face.Add -> Column(modifier = Modifier.fillMaxWidth()) {
+                                Text(
+                                    text = "一行一条，可以从别处直接粘过来；加完还能点它慢慢改。",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                                OutlinedTextField(
+                                    value = addDraft,
+                                    onValueChange = { addDraft = it },
+                                    label = { Text("规则") },
+                                    minLines = 4,
+                                    maxLines = 8,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Button(
+                                        onClick = { addDraft = clipboardText(context) },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text("粘贴")
                                     }
-                                },
-                                hasLegacy = hasLegacy,
-                            )
+                                    Button(
+                                        onClick = {
+                                            val parsed = TextRuleText.parse(addDraft)
+                                            if (parsed.config.rules.isEmpty()) {
+                                                onNotify("没读懂，检查一下写法")
+                                            } else {
+                                                update(rules.copy(rules = rules.rules + parsed.config.rules))
+                                                showForm = false
+                                                onNotify("已加 ${parsed.config.rules.size} 条规则")
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    ) {
+                                        Text("添加")
+                                    }
+                                }
+                            }
 
                             Face.Rule -> RuleFace(
                                 form = form,
@@ -389,16 +459,18 @@ fun MaterialTextRulesScreen(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 8.dp),
                     )
+                    // Equal width and equal height: labels of different lengths used to make three
+                    // buttons of three different sizes.
                     Row(
                         modifier = Modifier.padding(top = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        TEMPLATES.forEach { template ->
-                            TextButton(
-                                onClick = { draft = draft.trimEnd() + "\n" + template },
+                        TEMPLATES.forEach { (label, rule) ->
+                            Button(
+                                onClick = { draft = draft.trimEnd() + "\n" + rule },
                                 modifier = Modifier.weight(1f),
                             ) {
-                                Text(template, style = MaterialTheme.typography.bodySmall)
+                                Text(label, maxLines = 1)
                             }
                         }
                     }
@@ -427,54 +499,6 @@ fun MaterialTextRulesScreen(
 }
 
 // ------------------------------------------------------------------ the three faces
-
-@Composable
-private fun ListFace(
-    rules: TextRules,
-    onEdit: (Int) -> Unit,
-    onAdd: () -> Unit,
-    onDelete: (Int) -> Unit,
-    onVariables: (Map<String, String>) -> Unit,
-    onPacks: () -> Unit,
-    onImport: () -> Unit,
-    hasLegacy: Boolean,
-) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        if (rules.rules.isEmpty()) {
-            Text(text = "还没有规则。", style = MaterialTheme.typography.bodySmall)
-        }
-        rules.rules.forEachIndexed { at, rule ->
-            Column {
-                TextButton(onClick = { onEdit(at) }) {
-                    Text(
-                        TextRuleText.render(rule).removeSuffix("  # 已停用"),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                TextButton(onClick = { onDelete(at) }) { Text("删除这条") }
-            }
-        }
-        TextButton(onClick = onAdd) { Text("添加一条规则") }
-        TextButton(onClick = onPacks) { Text("规则包") }
-        if (hasLegacy) {
-            TextButton(onClick = onImport) { Text("从 1.1.8 导入") }
-        }
-
-        Text(
-            text = "变量（规则里写成 {名字}）",
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        rules.variables.forEach { (name, value) ->
-            FormField(
-                label = "{$name}",
-                value = value,
-                maxLines = 4,
-                onValueChange = { text -> onVariables(rules.variables + (name to text)) },
-            )
-        }
-    }
-}
 
 @Composable
 private fun RuleFace(
@@ -588,8 +612,14 @@ private fun PacksFace(
     }
 }
 
+/** The clipboard as text, for the paste box. Empty when there is nothing to paste. */
+private fun clipboardText(context: android.content.Context): String = runCatching {
+    val manager = context.getSystemService(android.content.ClipboardManager::class.java)
+    manager?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
+}.getOrNull().orEmpty()
+
 /** Which face of the editor dialog is showing. */
-private enum class Face { List, Rule, Packs }
+private enum class Face { Add, Rule, Packs }
 
 /** The index a rule gets before it exists, so the form can tell "add" from "change". */
 private const val NEW_RULE = -1
@@ -597,8 +627,12 @@ private const val NEW_RULE = -1
 /** The sentence the trial box starts with. */
 private const val DEFAULT_SAMPLE = "今天我很好，你准备好了吗？"
 
-/** The three lines worth a button. */
-private val TEMPLATES = listOf("+喵", "+喵（空格不加）", "+猫爪")
+/** Short label and the line it inserts; equal-length labels keep the three buttons one size. */
+private val TEMPLATES: List<Pair<String, String>> = listOf(
+    "加后缀" to "末尾加\"{后缀}\"",
+    "每句加" to "每句末尾加\"{后缀}\"（空格不加）",
+    "加猫爪" to "首尾包裹\"{猫爪}\"",
+)
 
 /** What the first value of each action means. */
 private val FIRST_LABEL: Map<TextRuleForm.Action, String> = mapOf(
