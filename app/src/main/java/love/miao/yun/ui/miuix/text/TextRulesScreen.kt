@@ -27,6 +27,7 @@ import love.miao.yun.text.TextEngine
 import love.miao.yun.text.TextPack
 import love.miao.yun.text.TextPrefs
 import love.miao.yun.text.TextRuleText
+import love.miao.yun.text.TextRuleForm
 import love.miao.yun.text.TextRules
 import love.miao.yun.ui.miuix.miaoTextFieldColors
 import top.yukonga.miuix.kmp.basic.Button
@@ -39,6 +40,7 @@ import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.overlay.OverlayDialog
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
+import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
@@ -65,6 +67,11 @@ fun TextRulesScreen(
     var packs by remember { mutableStateOf(TextPrefs.loadPacks(context)) }
     var hasLegacy by remember { mutableStateOf(TextPrefs.hasLegacyConfig(context)) }
 
+    // The form editor: which rule it is editing, and the form itself. Both halves of a rule can be
+    // changed without knowing the syntax, which is the point of having it next to the text editor.
+    var editing by remember { mutableStateOf<Int?>(null) }
+    var form by remember { mutableStateOf(TextRuleForm.Form()) }
+    var appsText by remember { mutableStateOf("") }
     var showEditor by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf("") }
     var showPacks by remember { mutableStateOf(false) }
@@ -148,8 +155,9 @@ fun TextRulesScreen(
                             )
                         },
                         onClick = {
-                            draft = TextRuleText.render(rules)
-                            showEditor = true
+                            form = TextRuleForm.form(rule)
+                            appsText = rule.apps.joinToString(", ")
+                            editing = index
                         },
                     )
                 }
@@ -234,6 +242,159 @@ fun TextRulesScreen(
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("再跑一次（随机与每 N 次会变）")
+            }
+        }
+    }
+
+    val editIndex = editing
+    if (editIndex != null && editIndex < rules.rules.size) {
+        val rule = rules.rules[editIndex]
+        OverlayDialog(
+            show = true,
+            title = "编辑规则",
+            onDismissRequest = { editing = null },
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    WindowSpinnerPreference(
+                        title = "条件",
+                        items = TextRuleForm.Condition.entries.map { it.label },
+                        selectedIndex = form.condition.ordinal,
+                        onSelectedIndexChange = { index ->
+                            form = form.copy(condition = TextRuleForm.Condition.entries[index])
+                        },
+                    )
+                }
+                if (form.conditionWantsText) {
+                    TextField(
+                        colors = miaoTextFieldColors(),
+                        value = form.conditionText,
+                        onValueChange = { form = form.copy(conditionText = it) },
+                        label = "条件里的字",
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (form.conditionWantsNumber) {
+                    TextField(
+                        colors = miaoTextFieldColors(),
+                        value = form.conditionNumber.toString(),
+                        onValueChange = { text ->
+                            text.toIntOrNull()?.let { form = form.copy(conditionNumber = it) }
+                        },
+                        label = "数值",
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (form.condition.canNegate) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        SwitchPreference(
+                            title = "反转",
+                            summary = "不满足条件时才执行",
+                            checked = form.negated,
+                            onCheckedChange = { form = form.copy(negated = it) },
+                        )
+                    }
+                }
+
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    WindowSpinnerPreference(
+                        title = "动作",
+                        items = TextRuleForm.Action.entries.map { it.label },
+                        selectedIndex = form.action.ordinal,
+                        onSelectedIndexChange = { index ->
+                            form = form.copy(action = TextRuleForm.Action.entries[index])
+                        },
+                    )
+                }
+                if (form.action.values >= 1) {
+                    TextField(
+                        colors = miaoTextFieldColors(),
+                        value = form.first,
+                        onValueChange = { form = form.copy(first = it) },
+                        label = FIRST_LABEL[form.action] ?: "内容",
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (form.action.values >= 2) {
+                    TextField(
+                        colors = miaoTextFieldColors(),
+                        value = form.second,
+                        onValueChange = { form = form.copy(second = it) },
+                        label = "变成",
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (form.action.hasSkipSpaced || form.action == TextRuleForm.Action.Replace) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        if (form.action.hasSkipSpaced) {
+                            SwitchPreference(
+                                title = "空格不加",
+                                summary = "整段当成一句话，只在末尾加一次",
+                                checked = form.skipSpaced,
+                                onCheckedChange = { form = form.copy(skipSpaced = it) },
+                            )
+                        }
+                        if (form.action == TextRuleForm.Action.Replace) {
+                            SwitchPreference(
+                                title = "只替换第一个",
+                                checked = form.firstOnly,
+                                onCheckedChange = { form = form.copy(firstOnly = it) },
+                            )
+                        }
+                    }
+                }
+
+                Text(text = "生效范围（留空是全部应用）", fontSize = 13.sp)
+                TextField(
+                    colors = miaoTextFieldColors(),
+                    value = appsText,
+                    onValueChange = { appsText = it },
+                    label = "包名，逗号分隔",
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                TextRuleForm.KNOWN_APPS.forEach { (packageName, label) ->
+                    Button(
+                        onClick = {
+                            val current = appsText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                            if (packageName !in current) {
+                                appsText = (current + packageName).joinToString(", ")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("加上 $label")
+                    }
+                }
+
+                Button(
+                    onClick = {
+                        val apps = appsText.split(",")
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                            .toSet()
+                        val next = rules.rules.toMutableList()
+                        next[editIndex] = TextRuleForm.rule(form, rule).copy(apps = apps)
+                        update(rules.copy(rules = next))
+                        editing = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("保存")
+                }
+                Button(
+                    onClick = {
+                        update(rules.copy(rules = rules.rules.filterIndexed { at, _ -> at != editIndex }))
+                        editing = null
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("删除这条规则")
+                }
             }
         }
     }
@@ -377,6 +538,17 @@ private fun SavedPackRow(
         }
     }
 }
+
+/** What the first value of each action means, so the field says it instead of "内容". */
+private val FIRST_LABEL: Map<TextRuleForm.Action, String> = mapOf(
+    TextRuleForm.Action.Replace to "把",
+    TextRuleForm.Action.Delete to "删掉",
+    TextRuleForm.Action.Prefix to "加在开头",
+    TextRuleForm.Action.Suffix to "加在末尾",
+    TextRuleForm.Action.PerSentence to "每句末尾加",
+    TextRuleForm.Action.Wrap to "首尾都加",
+    TextRuleForm.Action.Regex to "正则",
+)
 
 /** The lines a user is most likely to want, so the syntax does not have to be learned first. */
 private val TEMPLATES = listOf(

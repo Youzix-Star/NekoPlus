@@ -214,6 +214,56 @@ class TextRulesTest {
     }
 
     @Test
+    fun `the form can show every rule and hand it back unchanged`() {
+        val conditions = listOf(
+            TextCondition.Always,
+            TextCondition.Contains("x"),
+            TextCondition.StartsWith("y"),
+            TextCondition.EndsWith("z"),
+            TextCondition.Equals("q"),
+            TextCondition.Matches("\\d+"),
+            TextCondition.LongerThan(3),
+            TextCondition.ShorterThan(9),
+            TextCondition.Chance(40),
+            TextCondition.EveryNth(2),
+            TextCondition.Not(TextCondition.Contains("no")),
+            TextCondition.Not(TextCondition.StartsWith("a")),
+        )
+        conditions.forEach { condition ->
+            assertEquals(condition, TextRuleForm.condition(TextRuleForm.form(condition)))
+        }
+
+        val actions = listOf(
+            TextAction.Replace("a", "b"),
+            TextAction.Replace("a", ""),
+            TextAction.Replace("a", "b", firstOnly = true),
+            TextAction.ReplaceRegex("\\d+", "n"),
+            TextAction.Prefix("["),
+            TextAction.Suffix("喵"),
+            TextAction.Wrap("ฅ"),
+            TextAction.SuffixPerSentence("喵", skipSpaced = true),
+            TextAction.TrimTrailingPunctuation,
+            TextAction.Emoticon,
+        )
+        actions.forEach { action ->
+            assertEquals(action, TextRuleForm.action(TextRuleForm.form(action)))
+        }
+    }
+
+    @Test
+    fun `a rule written as text survives a trip through the form`() {
+        val rule = first("当 含\"？\" 则 每句末尾加\"{后缀}\"（空格不加） @com.tencent.mm")
+        val form = TextRuleForm.form(rule)
+        assertEquals(TextRuleForm.Condition.Contains, form.condition)
+        assertEquals("？", form.conditionText)
+        assertEquals(TextRuleForm.Action.PerSentence, form.action)
+        assertEquals("{后缀}", form.first)
+        assertTrue(form.skipSpaced)
+        // The form does not touch the app scope, so the rule comes back whole.
+        assertEquals(rule, TextRuleForm.rule(form, rule))
+    }
+
+    @Test
     fun `a fresh install changes nothing at all`() {
         val starter = TextDefaults.starter()
         assertTrue(starter.rules.isEmpty())
