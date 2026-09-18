@@ -6,14 +6,18 @@
 package love.miao.yun.util
 
 import android.content.Context
+import android.content.Intent
 import android.os.Build
+import android.os.Process
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.system.exitProcess
 import love.miao.yun.BuildConfig
+import love.miao.yun.ui.crash.CrashReportActivity
 
 /**
  * Records the last crash to a file the user can actually get at, together with where the app was.
@@ -40,14 +44,22 @@ object CrashHandler {
         }
     }
 
-    /** Installs the handler. Call once, from [love.miao.yun.MiaoApp]. */
+    /**
+     * Installs the handler. Call once, from [love.miao.yun.MiaoApp], and only in the main process:
+     * the crash screen runs in its own, and it must not install a handler that could put a second
+     * crash screen on top of the first.
+     */
     fun install(context: Context) {
         val app = context.applicationContext
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             runCatching { write(app, thread, error) }
-            // Still hand over: the system's own crash dialog and its own logging stay intact.
-            previous?.uncaughtException(thread, error)
+            // The screen lives in another process, so it survives the kill below; the report is
+            // already on disk, so it has something to show even if the launch itself fails.
+            runCatching { app.startActivity(Intent(app, CrashReportActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            // Deliberately not handed to the platform handler: that is what puts up the "app has
+            // stopped" dialog over this screen. The stack still reaches logcat either way.
+            Process.killProcess(Process.myPid())
+            exitProcess(10)
         }
     }
 

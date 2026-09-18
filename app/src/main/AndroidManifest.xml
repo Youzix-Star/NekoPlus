@@ -19,6 +19,18 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.MiaoAssistant">
 
+        <!--
+          The crash report screen. `:crash` matters: the main process is dying when this opens, and
+          the report has to outlive it. It draws itself with plain views and no theme resources, so
+          it cannot fail the way the app just did.
+        -->
+        <activity
+            android:name=".ui.crash.CrashReportActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:process=":crash"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

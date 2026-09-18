@@ -18,27 +18,26 @@ concurrency:
 jobs:
   build:
     name: Build release APK
-    runs-on: ubuntu-latest
+    # Pinned on purpose: `ubuntu-latest` migrates to Ubuntu 26 on 2026-10-19, and an
+    # unpinned build is not a build you can reproduce. Bump this deliberately.
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # AGP 9 and the Kotlin 2.4 toolchain both target JDK 21.
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
-      # This action only has to fetch cmdline-tools and export ANDROID_HOME. Its default
-      # `packages: tools platform-tools` is not usable any more: the SDK repository no longer
-      # carries the legacy `tools` package, and `sdkmanager` exits 1 on it ("Failed to find
-      # package 'tools'"), which failed the whole job before anything was even built. The next
-      # step installs exactly what the build needs.
+      # This action only has to fetch cmdline-tools and export ANDROID_HOME; the next step installs
+      # exactly what the build needs. It used to default to `packages: tools platform-tools`, and the
+      # SDK repository no longer carries the legacy `tools` package — `sdkmanager` exited 1 on it and
+      # failed the job before anything was built. v4 defaults to platform-tools, so no override.
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: ''
+        uses: android-actions/setup-android@v4
 
       - name: Install SDK packages
         run: |
@@ -46,7 +45,7 @@ jobs:
           sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       # The guide's fan.miuix:* dependencies come from HyperCeiler's GitHub Packages, which needs a
       # token even though those packages are public. PACKAGES_TOKEN is a PAT with read:packages;
@@ -124,7 +123,7 @@ jobs:
           ls -l dist/
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MiaoAssistant-release-apk
           path: dist/*.apk
@@ -134,16 +133,18 @@ jobs:
     name: Publish GitHub Release
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
+    # Pinned on purpose: `ubuntu-latest` migrates to Ubuntu 26 on 2026-10-19, and an
+    # unpinned build is not a build you can reproduce. Bump this deliberately.
+    runs-on: ubuntu-24.04
     steps:
       - name: Download APK
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: MiaoAssistant-release-apk
           path: apk
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: apk/*.apk
           generate_release_notes: true
