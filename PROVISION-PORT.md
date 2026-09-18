@@ -169,12 +169,19 @@
 
 - **本地没有 Android SDK，一次都没构建过**；唯一的构建/验证路径是 GitHub Actions。
 - CI：`./gradlew testDebugUnitTest`（规则引擎的 JVM 测试）+ `assembleRelease`（R8 + 资源压缩）
-  全部通过；run URL 与 APK 见下。
+  全部通过。
+  - run（最后一个绿色）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35373086630
+  - 产物：artifact `MiaoAssistant-release-apk`，解出来是
+    `MiaoAssistant-1-merge.apk`，5 103 663 字节，
+    `sha256 6d24c02a5e2bf5e5316ea95674d51348843ce84e4ed875aad351ffcc9dfb3ef0`
+    （artifact id 10559037216；本地在 `~/apk-final/MiaoAssistant-1-merge.apk`）。这个 PR 的
+    APK 是**有签名**的（CI 恢复了 keystore）。
 - 对 APK 做过静态核对（`MiaoAssistant-1-merge.apk`）：三个引导 Activity 与动画服务都在
   AndroidManifest 里；`resources.arsc` 里有 `provision_*` 布局/drawable/`glow`/`ProvisionTheme`
   以及"无障碍服务 / 悬浮窗权限 / 权限设置 / 设置完毕"（中文来自 `values-zh-rCN`）；
   dex 里能找到极光的 uniform 名（`uTime`/`uColorBlack`/`uCircleFinalRadius`）、状态机字符串
   （`com.android.provision.STATE_`、`pref_oobe_state`）和 `ProvisionAnimService`。
+  （release 的资源文件名被 AGP 缩短成 `res/0F.xml` 这种，所以只能从 `resources.arsc` 里认名字。）
 
 ## 9. 只有真机才能验的部分（请重点看这些）
 
