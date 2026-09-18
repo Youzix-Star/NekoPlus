@@ -5,3 +5,18 @@
 #
 # The floating window service is declared in the manifest and instantiated by the system.
 -keep class love.miao.yun.service.FloatingWindowService { *; }
+
+# --- The ported first-run guide (HyperCeiler's library/provision, AGPL-3.0-only) ---
+#
+# The guide is written against Xiaomi's MIUI/Miuix framework jars (fan.miuix:*), and those jars
+# reference framework internals that are not in android.jar: R8 refuses to finish a release build
+# while they are unresolved. These two -dontwarn lines are copied verbatim from the ones HyperCeiler
+# itself uses for the same jars (library/core/src/main/keepRules/rules.keep), and the two -keep
+# lines from the provisioning module's own keep rules (library/provision/src/main/keepRules).
+# The classes do exist at runtime on MIUI/HyperOS; elsewhere the guide's blur and haptics paths are
+# already guarded by the miuix library's own feature checks.
+-dontwarn miui.**
+-dontwarn com.android.internal.view.menu.MenuBuilder
+
+-keep class com.sevtinge.hyperceiler.provision.activity.** { *; }
+-keep class com.sevtinge.hyperceiler.provision.fragment.** { *; }
