@@ -181,6 +181,46 @@ Java 里 `mLogoImage`/`mTextLogoImage` 由 `ImageView` 变成 `TextView`，对�
   `provision_get_md_failed`（Markdown 文本里的 `hyperceiler://refresh` 协议名）。两条都没有任何
   布局/代码引用，release 里会被资源压缩删掉，留着只为保持"原样搬进来"的完整性。
 
+### 2.3 AI 页那次真机崩溃（Preview 3 → Preview 4）
+
+现象（用户真机，Xiaomi 2510DRK44C / Android 17 SDK 37）：
+
+```
+BasicSettingsFragment.onCreatePreferences
+  → PreferenceFragmentCompat.setPreferencesFromResource
+  → NPE: Attempt to invoke virtual method 'java.lang.String java.lang.Package.getName()' on a null object reference
+```
+
+**真因（两层都验过）**：
+
+1. `androidx.preference.PreferenceInflater.init()` 用类自己的包名当"默认包前缀"：
+   ```java
+   setDefaultPackages(new String[]{
+       Preference.class.getPackage().getName() + ".",
+       SwitchPreference.class.getPackage().getName() + "."});
+   ```
+   这是 **androidx 上游 1.2.1 的原文**（已取 `preference-1.2.1-sources.jar` 核对，不是 miuix 改的）；
+   `fan.miuix:preference` 里 `PreferenceInflater` 的 dex 也正好是
+   `Class.getPackage()` → `Package.getName()` 这条链（反汇编 `init` 看到调用点就在
+   `setDefaultPackages` 之前）。它拿到前缀后再按名字去加载 XML 里写的 preference 类。
+2. 我们的 release 走 AGP 的 `proguard-android-optimize` 默认，R8 会把混淆后的类**重打包进无名包**
+   ——上一个 APK 里 4257 个类有 4118 个是 `La0;` 这种没有包的短名（`gu1`/`pu1` 就是栈里那两个），
+   `androidx.preference.Preference` 也在其中 ⇒ `Class.getPackage()` 返回 **null** ⇒ `getName()` 崩。
+
+**修法：照抄 HyperCeiler 自己的规则**（它 app 的 keepRules 里就有 `-repackageclasses`，
+同样会把类丢进无名包，所以它必须保这个包）：
+
+```
+-keep class androidx.preference.** { *; }        # library/core/src/main/keepRules/rules.keep:14
+```
+
+我当初只抄了同一个文件里的两条 `-dontwarn`，漏了这条。**整包保名而不是只保 `Preference`**：
+它推出来的前缀还要用来按名字加载其它 preference 类（我们的 XML 里就是全限定的
+`androidx.preference.EditTextPreference`）。
+Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 个），
+`Preference` / `PreferenceInflater.init` / `PreferenceFragmentCompat` / `EditTextPreference` 都在，
+`Preference.getPackage()` 因此非 null。页面本身**一行代码没动**，外观仍是它的 preference 行。
+
 ## 3. 主题：占位值删了，真值来自 `fan.miuix:*`
 
 之前 `res/values/provision_miuix_stubs.xml` 里五个手猜的 stand-in 已**整个删除**。
