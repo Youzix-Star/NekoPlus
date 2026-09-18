@@ -214,12 +214,21 @@ SharedPreferences），**每个按钮各自独立**：
   暗色主题下整体压暗（`DARK_DIM`），否则白字压在亮极光上没法看；
 - 开场那道**环带**就是同一个着色器的 `uShowCircle`，只在第一页打开；
 - 页头 56 dp（左返回、右跳过）、标题 + 副标题、圆角 16 dp 的条目行、底部 336×50 dp 的动作按钮，
-  都是照着它的 `provision_*_layout.xml` 的尺寸来的。
+  都是照着它的 `provision_*_layout.xml` 的尺寸来的；
+- **入场动画**照它的动画参数（`AnimHelper`/Folme）：文字块上浮 90 dp 并淡入约 1.4 s，
+  圆形按钮延后 0.9 s 再淡入 + 0.9→1.0 放大，与开场环带扫过的时间对得上；
+- 开场环带的圆心**对准文字标记**，不是屏幕正中 —— 上游用 `setCircleYOffsetWithView()` 干这件事，
+  这里用 `onGloballyPositioned` 取标记的中线再换算成着色器要的偏移。
 
-一处**有意的不同**：上游把着色器画在 20 % 尺寸的 View 上再放大 5×（省算力 + 柔化噪点），
-这里改成整屏直画 —— Compose 没有 shader 版的 `RenderEffect` 工厂，而在 Compose 里塞一个被缩放的
-平台 View 要受互操作层裁剪的摆布；代价用**帧率**补回来：时钟按 30 fps 走，极光本来就是两分钟
-一循环，看不出来。
+两处**有意的不同**（都记在文件头里，免得以后当成漏做）：
+
+1. 上游把着色器画在 20 % 尺寸的 View 上再放大 5×（省算力 + 柔化噪点），这里改成整屏直画 ——
+   Compose 没有 shader 版的 `RenderEffect` 工厂（`ui-graphics` 里只有 `BlurEffect`/`OffsetEffect`），
+   而在 Compose 里塞一个被缩放的平台 View 要受互操作层裁剪的摆布；代价用**帧率**补回来：
+   时钟按 30 fps 走，极光本来就是两分钟一循环，看不出来；
+2. 上一步/下一步之间走的是 pager 自己的滑动（所以**可以左右滑**），不是它那条定长 350 ms 的
+   slide 转场；它那个「圆形截图放大」的共享元素转场（跨 Activity 的 PixelCopy）没有搬，
+   单 Activity 的 Compose 里要换 `SharedTransitionLayout`，等有人真的想要再说。
 
 「跳过」「继续」和「开始使用」都会把 `onboarding` 这个 SharedPreferences 标记为已看过，
 所以引导只在自己会出来的时候出现一次；想再看就去 **关于 → 新手引导**，那只是把

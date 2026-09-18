@@ -106,5 +106,12 @@ internal val GuidePages: List<GuidePage> = listOf(
         step = GuideStep.Done,
         title = "设置完毕",
         subtitle = "Ciallo～(∠・ω c)⌒★",
+        rows = listOf(
+            GuideRow(
+                icon = AppIcons.Tune,
+                title = "想换一套界面",
+                detail = "设置 → 外观，miuix 与 Material 3 随时切换",
+            ),
+        ),
     ),
 )

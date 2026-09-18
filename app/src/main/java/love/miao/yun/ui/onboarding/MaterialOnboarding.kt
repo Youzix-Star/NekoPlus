@@ -3,13 +3,16 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  *
  * The shape of this guide — the full-screen glow, the title block, the row list, the bottom action
- * button — follows HyperCeiler's provisioning flow (library/provision, AGPL-3.0-only). The words,
- * the steps and the permission rows are this app's.
+ * button, the entrance animation — follows HyperCeiler's provisioning flow (library/provision,
+ * AGPL-3.0-only). The words, the steps and the permission rows are this app's.
  */
 
 package love.miao.yun.ui.onboarding
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,13 +38,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -73,14 +81,37 @@ fun MaterialOnboarding(
     val dark = scheme.surface.luminance() < 0.5f
     val palette = glowPaletteOf(scheme.primary, scheme.secondary, scheme.tertiary, scheme.surface)
 
+    // Where the opening ring should be centred. Upstream points it at its logo rather than at the
+    // middle of the screen, which is what makes the sweep feel like it belongs to the mark.
+    val containerTop = remember { mutableFloatStateOf(0f) }
+    val containerHeight = remember { mutableFloatStateOf(0f) }
+    val markCentre = remember { mutableFloatStateOf(0f) }
+    val circleYOffset = if (containerHeight.floatValue > 0f && markCentre.floatValue > 0f) {
+        val middle = containerHeight.floatValue / 2f
+        (middle - (markCentre.floatValue - containerTop.floatValue)) / containerHeight.floatValue
+    } else {
+        0f
+    }
+
     fun goTo(index: Int) = scope.launch { pagerState.animateScrollToPage(index) }
 
     BackHandler { onFinish() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                containerTop.floatValue = coordinates.positionInWindow().y
+                containerHeight.floatValue = coordinates.size.height.toFloat()
+            },
+    ) {
         // The ring only plays on the page the guide opens with: it belongs to the start of the
         // shader's clock, and on any later page it would look like a bug.
-        GlowBackground(palette = palette, circleVisible = current.step == GuideStep.Welcome)
+        GlowBackground(
+            palette = palette,
+            circleVisible = current.step == GuideStep.Welcome,
+            circleYOffset = circleYOffset,
+        )
 
         Column(
             modifier = Modifier
@@ -103,6 +134,7 @@ fun MaterialOnboarding(
                     GuideStep.Welcome -> WelcomeStep(
                         page = pages[index],
                         onStart = { goTo(pagerState.currentPage + 1) },
+                        onMarkPositioned = { markCentre.floatValue = it },
                     )
 
                     GuideStep.Permissions -> PermissionsStep(
@@ -114,7 +146,12 @@ fun MaterialOnboarding(
                         dark = dark,
                     )
 
-                    GuideStep.Done -> DoneStep(pages[index])
+                    GuideStep.Done -> DoneStep(
+                        page = pages[index],
+                        onMarkPositioned = { markCentre.floatValue = it },
+                        dark = dark,
+                    )
+
                     else -> RowsStep(pages[index], dark)
                 }
             }
@@ -134,6 +171,28 @@ fun MaterialOnboarding(
             }
         }
     }
+}
+
+/**
+ * Upstream's entrance: the block rises and fades in, and the button arrives a beat later.
+ *
+ * The numbers follow its own animation helper: the text takes a beat to settle, and the button waits
+ * until the opening ring has swept past before it shows up.
+ */
+@Composable
+private fun enterProgress(delayMillis: Int = 0, durationMillis: Int = 1400): Float {
+    val progress = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        progress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = durationMillis,
+                delayMillis = delayMillis,
+                easing = CubicBezierEasing(0.2f, 0f, 0f, 1f),
+            ),
+        )
+    }
+    return progress.value
 }
 
 /** Back on the left, skip on the right — the one bar every step shares. */
@@ -165,7 +224,7 @@ private fun GuideActionBar(canGoBack: Boolean, onBack: () -> Unit, onSkip: () ->
         Spacer(modifier = Modifier.weight(1f))
         Text(
             text = "跳过",
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
@@ -177,42 +236,75 @@ private fun GuideActionBar(canGoBack: Boolean, onBack: () -> Unit, onSkip: () ->
 
 /** The opening step: the mark, the name, and one line about what this is. */
 @Composable
-private fun WelcomeStep(page: GuidePage, onStart: () -> Unit) {
+private fun WelcomeStep(page: GuidePage, onStart: () -> Unit, onMarkPositioned: (Float) -> Unit) {
+    val rise = enterProgress()
+    val button = enterProgress(delayMillis = 900, durationMillis = 450)
+
     Column(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(modifier = Modifier.weight(30f))
-        AppMark()
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = page.title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = page.subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-        )
+
+        Column(
+            modifier = Modifier.graphicsLayer {
+                alpha = rise
+                translationY = (1f - rise) * 90f
+            },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            AppMark(onPositioned = onMarkPositioned)
+            Spacer(modifier = Modifier.height(20.dp))
+            Text(
+                text = page.title,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = page.subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+        }
+
         Spacer(modifier = Modifier.weight(40f))
-        RoundStartButton(onClick = onStart)
+
+        Box(
+            modifier = Modifier.graphicsLayer {
+                alpha = button
+                scaleX = 0.9f + 0.1f * button
+                scaleY = 0.9f + 0.1f * button
+            },
+        ) {
+            RoundStartButton(onClick = onStart)
+        }
+
         Spacer(modifier = Modifier.weight(20f))
     }
 }
 
-/** The closing step: the same mark, one line, and the button the outer column places below it. */
+/** The closing step: the same mark, one line, one last hint, and the button below it. */
 @Composable
-private fun DoneStep(page: GuidePage) {
+private fun DoneStep(page: GuidePage, onMarkPositioned: (Float) -> Unit, dark: Boolean) {
+    val rise = enterProgress()
+
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .graphicsLayer {
+                alpha = rise
+                translationY = (1f - rise) * 40f
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Spacer(modifier = Modifier.weight(24f))
-        AppMark()
+        // No `weight` spacers here: this column scrolls, and a weight in a scrollable column has no
+        // space to divide.
+        Spacer(modifier = Modifier.height(88.dp))
+        AppMark(onPositioned = onMarkPositioned)
         Spacer(modifier = Modifier.height(28.dp))
         Text(
             text = page.title,
@@ -225,17 +317,37 @@ private fun DoneStep(page: GuidePage) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        Spacer(modifier = Modifier.weight(30f))
+        Spacer(modifier = Modifier.height(44.dp))
+        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+            page.rows.forEach { row ->
+                GuideRowView(
+                    icon = row.icon,
+                    title = row.title,
+                    detail = row.detail,
+                    trailing = null,
+                    dark = dark,
+                    onClick = null,
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 
 /** A step that is only a title, a subtitle and a list of rows. */
 @Composable
 private fun RowsStep(page: GuidePage, dark: Boolean) {
+    val rise = enterProgress()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .graphicsLayer {
+                alpha = rise
+                translationY = (1f - rise) * 40f
+            }
             .padding(horizontal = 20.dp),
     ) {
         Spacer(modifier = Modifier.height(36.dp))
@@ -266,10 +378,16 @@ private fun PermissionsStep(
     onRequestOverlay: () -> Unit,
     dark: Boolean,
 ) {
+    val rise = enterProgress()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
+            .graphicsLayer {
+                alpha = rise
+                translationY = (1f - rise) * 40f
+            }
             .padding(horizontal = 20.dp),
     ) {
         Spacer(modifier = Modifier.height(36.dp))
@@ -307,7 +425,7 @@ private fun StepTitle(page: GuidePage) {
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = page.subtitle,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
@@ -412,13 +530,21 @@ private fun GuideActionButton(text: String, onClick: () -> Unit) {
     }
 }
 
-/** The app's mark: text, because the launcher icon is an adaptive icon `painterResource` cannot load. */
+/**
+ * The app's mark: text, because the launcher icon is an adaptive icon `painterResource` cannot load.
+ *
+ * [onPositioned] reports the mark's vertical centre in window coordinates, which is what the opening
+ * ring is aimed at.
+ */
 @Composable
-private fun AppMark() {
+private fun AppMark(onPositioned: (Float) -> Unit) {
     Text(
         text = AppIconText,
         fontSize = 52.sp,
         color = MaterialTheme.colorScheme.onSurface,
         textAlign = TextAlign.Center,
+        modifier = Modifier.onGloballyPositioned { coordinates ->
+            onPositioned(coordinates.positionInWindow().y + coordinates.size.height / 2f)
+        },
     )
 }
