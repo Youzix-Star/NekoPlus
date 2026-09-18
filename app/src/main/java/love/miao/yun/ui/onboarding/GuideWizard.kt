@@ -160,7 +160,8 @@ internal fun GuideWizard(
 
     fun move(forward: Boolean, fromIndex: Int) {
         if (busy) return
-        val target = if (forward) flow.forward(fromIndex) else flow.backward(fromIndex) ?: return
+        // The elvis has to wrap the whole `if`, or only the backward branch is nullable-checked.
+        val target = (if (forward) flow.forward(fromIndex) else flow.backward(fromIndex)) ?: return
         val circle = startCircle
 
         // Leaving the first page is the one transition upstream animates as a scale-up of the round
