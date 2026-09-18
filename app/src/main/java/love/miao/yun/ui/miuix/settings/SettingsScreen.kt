@@ -162,7 +162,7 @@ fun SettingsScreen(
                 Card(modifier = Modifier.fillMaxWidth()) {
                     ArrowPreference(
                         title = "替换规则",
-                        summary = "后缀、颜文字、按条件的替换；1.1.8 的功能都在这里",
+                        summary = "后缀、颜文字、按条件替换",
                         onClick = onOpenTextRules,
                     )
                 }
