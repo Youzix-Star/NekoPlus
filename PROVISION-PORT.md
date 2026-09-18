@@ -118,12 +118,16 @@
 
 **只有"行是什么"换了**，四行、一行一句、没有段落：
 
-| 行 | key | 图标（都来自它搬进来的 drawable，没有新画） | 行为 |
-|---|---|---|---|
-| API 接口地址 | `base_url` | `provision_service_state` | 点开 miuix 编辑框（`TYPE_TEXT_VARIATION_URI`），摘要显示当前值 |
-| API Key | `api_key` | `provision_terms` | 点开编辑框（密码输入类型），摘要只显示末 4 位 / "未设置" |
-| 模型名 | `model` | `provision_basic_settings` | 点开编辑框，摘要显示当前值 |
-| 连接测试 | `connection_test` | `provision_picker_btn_radio` | 调 `AiManager.listModels()`（就是应用"获取模型列表"那次请求），摘要变成"连通，N 个模型"/"失败：…" |
+| 行 | key | 行为 |
+|---|---|---|
+| API 接口地址 | `base_url` | 点开 miuix 编辑框（`TYPE_TEXT_VARIATION_URI`），摘要显示当前值 |
+| API Key | `api_key` | 点开编辑框（密码输入类型），摘要只显示末 4 位 / 「未设置」 |
+| 模型 | `model` | 它的 `DropDownPreference`（与它语言/图标两行同一个类）：进页面就用应用自己的 `GET {base}/models` 拉一次列表，拿到的 id 同时当 entries 与 entryValues；摘要「拉取中…」→ 当前模型（或「当前 xxx 不在列表里」）/「拉取失败：HTTP 401 …」 |
+
+（行图标：最后一轮按用户要求去掉了，和我们的设置页一致。）
+
+**「拉列表」就是连接测试**：没有单独的测试行——`AiManager.listModels` 是应用 AI 页"获取模型列表"
+用的同一次请求、同一份解析，失败信息就是连接诊断（HTTP 状态码、超时、空列表）。
 
 分类标题两个：「接口」「连接」，与应用里 Compose 版 AI 页的小标题一致；页面标题「AI 配置」
 （`R.string.provision_ai_settings_title`，是本轮新加的串，不是改它原来的
@@ -220,6 +224,47 @@ BasicSettingsFragment.onCreatePreferences
 Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 个），
 `Preference` / `PreferenceInflater.init` / `PreferenceFragmentCompat` / `EditTextPreference` 都在，
 `Preference.getPackage()` 因此非 null。页面本身**一行代码没动**，外观仍是它的 preference 行。
+
+### 2.4 开场页那行副标题的颜色
+
+`#FFE8E4FF` 在真机上就是白（用户反馈"还是白色"），换成 **中深板岩紫 `#FF3E3670`**，
+阴影由深改浅：`#99FFFFFF`、半径 10px、无偏移。理由：
+
+- 这行压在极光中段（亮粉彩）上：`#FF3E3670` 相对亮度 ≈0.045，对亮粉彩（≈0.72）约 **8:1**，
+  对极光中调（≈0.42）约 **5:1** —— 明显不是白，且清楚；
+- 中深色唯一吃亏的地方是极光的**暗饱和谷**（≈0.13，约 1.9:1），那里靠浅色光晕把字缘托起来，
+  所以阴影用浅色、无偏移（不是投影，是光晕）；深色阴影只会把中深色字糊成一团；
+- 名字那行（`NekoPlus`，白）没动。
+
+### 2.5 四个步骤的尺寸审计（结论 + 建议数值，**尚未改动，等用户定**）
+
+用户反馈「感觉跟新手引导各个界面还是有点不协调，大小不合适」。下面所有数字都来自
+上游自己的 dimens、miuix preference 包的 dimens（`~/miuix-aar2`）或我们页面里实际引用到的值。
+
+**外壳（三个内容页完全一致，都是上游的，没变）**：actionbar `marginTop 50dp` + `minHeight 56dp`
+= 106dp；预览图标 `provision_preview_image_size 70dp` + 10/8dp 边距 = 88dp；标题 32sp（minHeight 42dp）
++ `provision_title_padding_bottom 30dp` ≈ 72dp ⇒ **内容开始前约 266dp**。底部按钮 50dp +
+`group_buttons_layout_extra_padding_bottom 16dp`。1080×2400@420dpi 上内容区约 **558dp**。
+
+**每步的内容高度**：② 权限 = 2×`provision_list_item_height 56dp` + 说明行(13sp+16/8dp≈42dp) ≈ **154dp**；
+③ AI = miuix 行(14+14dp 内边距 + 17sp 标题 + 14sp 摘要 ≈ 70dp)×3 + 分类头(8+14sp+8dp≈35dp) +
+列表内边距(`miuix_preference_rv_padding_top/bottom` 7.27/32dp) ≈ **284dp**；
+（对照上游：它的权限页 4 行≈266dp，它的基础设置页 5 行 + 2 个分类≈370-400dp。）
+
+**结论**：不是"某个控件尺寸写错了"，而是**我们的内容比上游短** ⇒ 空白全堆在按钮上方：
+② 空 ≈404dp（上游 292dp），③ 空 ≈274dp（上游 ≈168dp）。另有两条可证的"相邻两步不一致"：
+
+| # | 现象 | 数字 | 建议（择一，供决定） |
+|---|---|---|---|
+| M1 | ③ 的第一行比 ② 的第一行低一截 | ③ 列表上方有 `miuix_preference_rv_padding_top` 7.27dp **+ 分类头 35dp ≈ 42dp**；② 的 ScrollView 只有左右内边距，第一行从 0 开始 | 给 `provision_permission_layout.xml` 的 ScrollView 加同样的上边距（42dp），或去掉 ③ 的分类头（那 35dp） |
+| M2 | ② 行高 56dp（17sp、无摘要） vs ③ 行高 ≈70dp（17sp + 14sp 摘要） | 56 vs 70dp | 上游本来也是这两种行，所以是"忠实"的；若要完全统一，只能两边都有摘要或都没有——建议保留现状（③ 的摘要就是拉列表的反馈） |
+| M3 | 两个极光页"名字下面那行"的间距差 7 倍 | ① 用 `provision_subtitle_margin_top` **4dp**（上游这个 dimen 是给"页副标题"的）；④ 的 `system_state_text` 是 **30dp** | ① 改成 **16dp**（两句都是品牌/落款行，取 4 与 30 之间） |
+
+若想真正把空白消化掉，最省事的一条：**让内容在容器里居中**——
+② 给 ScrollView 加 `android:layout_gravity="center_vertical"`（上游的 `CustomDispatchFrameLayout`
+认 child gravity）；③ 覆盖它自己的钩子 `getListViewPaddingTop()`（**protected，子类可覆盖**，已核对 AAR）
+返回 `7.27dp + 96dp`：③ 的 274dp 空白一半在 137dp，96dp 是保守起点。
+这属于"改它布局的排布"，所以我没动，等用户点头。
 
 ## 3. 主题：占位值删了，真值来自 `fan.miuix:*`
 
