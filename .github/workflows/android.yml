@@ -30,8 +30,15 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # This action only has to fetch cmdline-tools and export ANDROID_HOME. Its default
+      # `packages: tools platform-tools` is not usable any more: the SDK repository no longer
+      # carries the legacy `tools` package, and `sdkmanager` exits 1 on it ("Failed to find
+      # package 'tools'"), which failed the whole job before anything was even built. The next
+      # step installs exactly what the build needs.
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: ''
 
       - name: Install SDK packages
         run: |
