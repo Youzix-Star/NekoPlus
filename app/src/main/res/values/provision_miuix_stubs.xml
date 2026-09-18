@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ The five things HyperCeiler's provisioning layouts ask for that live in Xiaomi's closed-source
+  ~ miuix libraries (fan.miuix:* — a private GitHub Packages repository, so nobody outside can
+  ~ install them, let alone read the values). Everything else in those layouts is theirs, unchanged.
+  ~
+  ~ Values are picked to look like MIUI's list rows: a 16 dp corner, 12 dp of horizontal padding, the
+  ~ standard 16/12 dp item paddings and a plain white low surface. Nothing here is copied, because
+  ~ nothing here was available to copy.
+-->
+<resources>
+    <dimen name="miuix_theme_radius_common">16dp</dimen>
+    <dimen name="miuix_theme_content_padding_horizontal_common">16dp</dimen>
+    <dimen name="miuix_theme_padding_horizontal_common">12dp</dimen>
+    <color name="miuix_default_color_surface_low_light">#FFFFFFFF</color>
+
+    <attr name="preferenceItemPaddingStart" format="dimension" />
+    <attr name="preferenceItemPaddingEnd" format="dimension" />
+    <dimen name="miuix_preference_item_padding_start">16dp</dimen>
+    <dimen name="miuix_preference_item_padding_end">16dp</dimen>
+</resources>
