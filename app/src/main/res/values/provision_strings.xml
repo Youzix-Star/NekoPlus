@@ -11,15 +11,17 @@
     <string name="provision_agree_and_next">Agree</string>
     <string name="provision_agree_terms">I\'ve read and agree to the User Agreement and Privacy Policy.</string>
     <string name="provision_terms_of_use">Terms and conditions</string>
-    <string name="provision_terms_of_use_label_use_network_china">In order to provide you with better services, you must read and agree to our <annotation key="user_agreement">User Agreement</annotation> and <annotation key="privacy_policy">Privacy Policy</annotation> before you can continue using HyperCeiler. We shall protect your personal information in accordance with the relevant laws, regulations, and privacy policies.</string>
+    <string name="provision_terms_of_use_label_use_network_china">In order to provide you with better services, you must read and agree to our <annotation key="user_agreement">User Agreement</annotation> and <annotation key="privacy_policy">Privacy Policy</annotation> before you can continue using 喵喵助手. We shall protect your personal information in accordance with the relevant laws, regulations, and privacy policies.</string>
     <string name="provision_terms_of_label_period"></string>
     <string name="provision_protect_persoanl_info_statement">We shall protect your personal information in accordance with the relevant laws, regulations, and privacy policies.</string>
     <string name="provision_service_agreement">I\'ve read and agreed to the terms and conditions.</string>
     <string name="provision_service_name_download">Downloads</string>
     <string name="provision_service_policy_download"><Data>Read and agree to the <a href="%1$s">Thunder Privacy Policy</a> and <a href="%2$s">Thunder Company Network Service Usage Agreement</a></Data></string>
     <string name="provision_congratulation_title">Setup complete</string>
-    <!-- 品牌：这两条上游写的是它的名字，现在是我们的；引导页上可见的就是这两条 -->
-    <string name="provision_congratulation_label">欢迎使用喵喵助手</string>
+    <!-- 品牌：上游这两条写的是它的名字。完成页那句是本应用自己的落款（应用名 + 一行口号）；
+         实际上上游的完成页布局从来没用过 provision_congratulation_label（我们的也一样没用），
+         留着是为了把它从"别人的名字"变成我们的。 -->
+    <string name="provision_congratulation_label">喵喵助手 · 把输入框里的字改好</string>
     <string name="provision_complete_text">开始使用</string>
 
     <string name="provision_set_permission_later">You can set these necessary permissions later</string>

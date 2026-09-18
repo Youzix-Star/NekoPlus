@@ -25,13 +25,13 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import love.miao.yun.R;
+import love.miao.yun.ui.AppIconsKt;
 import love.miao.yun.ui.provision.ProvisionGuide;
 import com.sevtinge.hyperceiler.provision.renderengine.GlowController;
 import com.sevtinge.hyperceiler.provision.renderengine.RenderViewLayout;
@@ -65,7 +65,8 @@ public class CongratulationFragment extends BaseFragment implements IOnFocusList
 
     private View mGlowEffectView;
     private View mContentView;
-    private ImageView mLogoImage;
+    // 90dp 标记位现在是文字（常量 AppIconText），不再是它的 logo vector。
+    private TextView mLogoImage;
     // 字标槽位现在是文字（应用名），不再是它的字标 vector。
     private TextView mTextLogoImage;
     private View mLogoImageWrapper;
@@ -99,6 +100,8 @@ public class CongratulationFragment extends BaseFragment implements IOnFocusList
         mContentView = view.findViewById(R.id.content_view);
         mLogoImageWrapper = view.findViewById(R.id.logo_image_wrapper);
         mLogoImage = view.findViewById(R.id.logo_image);
+        // 品牌：本应用的文字标记，与 About 页同一个常量（launcher 图标里烤的也是这一串）。
+        mLogoImage.setText(AppIconsKt.AppIconText);
         mTextLogoImage = view.findViewById(R.id.text_logo_image);
         mSystemStateText = view.findViewById(R.id.system_state_text);
         mNextView = view.findViewById(R.id.next);

@@ -19,6 +19,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import com.sevtinge.hyperceiler.common.log.AndroidLog;
 import love.miao.yun.R;
+import love.miao.yun.ui.AppIconsKt;
 import com.sevtinge.hyperceiler.provision.activity.DefaultActivity;
 import com.sevtinge.hyperceiler.provision.renderengine.GlowController;
 import com.sevtinge.hyperceiler.provision.renderengine.RenderViewLayout;
@@ -68,7 +69,8 @@ public class StartupFragment extends BaseFragment implements IOnFocusListener {
     private View mGlowEffectView;
     private RenderViewLayout mRenderViewLayout;
 
-    private ImageView mLogoImage;
+    // 90dp 标记位现在是文字（常量 AppIconText），不再是它的 logo vector。
+    private TextView mLogoImage;
 
     // 字标槽位现在是文字（应用名），不再是它的字标 vector。
     private TextView mTextLogoImage;
@@ -147,6 +149,8 @@ public class StartupFragment extends BaseFragment implements IOnFocusListener {
 
 
         mLogoImage = view.findViewById(R.id.logo_image);
+        // 品牌：本应用的文字标记，与 About 页同一个常量（launcher 图标里烤的也是这一串）。
+        mLogoImage.setText(AppIconsKt.AppIconText);
 
         mTextLogoImage = view.findViewById(R.id.text_logo_image);
         mLogoImageWrapper = view.findViewById(R.id.logo_image_wrapper);
