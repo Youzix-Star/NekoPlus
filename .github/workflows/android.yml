@@ -110,6 +110,15 @@ jobs:
           path: dist/*.apk
           if-no-files-found: error
 
+      # The R8 mapping, so a stack trace in a user's crash report can be turned back into real class
+      # and method names. Without it an obfuscated trace is a puzzle; with it, it is a lookup.
+      - name: Upload the R8 mapping
+        uses: actions/upload-artifact@v7
+        with:
+          name: r8-mapping
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn
+
   release:
     name: Publish GitHub Release
     needs: build
