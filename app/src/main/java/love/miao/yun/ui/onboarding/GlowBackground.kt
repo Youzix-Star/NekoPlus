@@ -16,8 +16,6 @@
 package love.miao.yun.ui.onboarding
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
@@ -34,48 +32,40 @@ import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 private const val FRAME_NANOS = 33_000_000L
 
 /**
- * The guide's background: a slow, enormous gradient that never quite repeats.
+ * A compiled glow and its clock.
  *
- * [animate] off gives a still frame of the same shader, and a device whose driver refuses to compile
- * it gets a plain three-colour gradient instead — a guide with a flat background beats a guide with
- * no background at all.
- *
- * [circleVisible] is upstream's opening ring, which only plays once at the start of the clock, so it
- * belongs on the page the guide opens with and nowhere else.
+ * The handle exists because the opening transition needs the *same* instant of the *same* aurora
+ * drawn twice: once behind the page that is leaving, and once more inside the circle that opens.
+ * Upstream gets that for free by cropping the screen (`captureRoundedBitmap`); here it is the shader
+ * again, with the same uniforms, so the two agree pixel for pixel.
+ */
+internal class GlowHandle(
+    internal val painter: GlowPainter?,
+    internal val brush: ShaderBrush?,
+    internal val time: () -> Float,
+    internal val palette: GlowPalette,
+)
+
+/**
+ * Compiles the shader once and drives its clock — 30 times a second, because the aurora drifts over
+ * two minutes and nobody can tell, while a full-screen noise shader at 60 fps is real battery.
  */
 @Composable
-internal fun GlowBackground(
-    palette: GlowPalette,
-    modifier: Modifier = Modifier.fillMaxSize(),
-    animate: Boolean = true,
-    circleVisible: Boolean = false,
-    circleYOffset: Float = 0f,
-) {
+internal fun rememberGlow(palette: GlowPalette, animate: Boolean = true): GlowHandle {
     val context = LocalContext.current
     // Compiling AGSL is not cheap, so the shader outlives recomposition and is rebuilt only when the
     // palette changes.
     val painter = remember(palette) {
         if (isRuntimeShaderSupported()) GlowPainter.create(context, palette) else null
     }
-
-    if (painter == null) {
-        Box(
-            modifier = modifier.background(
-                Brush.linearGradient(listOf(palette.start, palette.mid, palette.end)),
-            ),
-        )
-        return
-    }
-
     // `ShaderBrush` takes any platform `Shader`, and an AGSL `RuntimeShader` is one.
-    val brush = remember(painter) { ShaderBrush(painter.runtimeShader) }
+    val brush = remember(painter) { painter?.let { ShaderBrush(it.runtimeShader) } }
     val clock = remember { GlowClock() }
 
-    // Read inside the draw block only: the clock ticks 30 times a second and nothing but the
-    // background has any reason to know that.
+    // Read inside the draw block only: nothing but the background has any reason to know the time.
     val time = remember { mutableFloatStateOf(0f) }
 
-    if (animate) {
+    if (painter != null && animate) {
         LaunchedEffect(painter) {
             var lastUpdate = 0L
             while (true) {
@@ -89,18 +79,31 @@ internal fun GlowBackground(
         }
     }
 
-    Box(
-        // The flat gradient sits *behind* the shader as well: the shader's output is opaque, so it
-        // covers it — but if a driver ever refuses the shader at draw time rather than at compile
-        // time, the guide still gets a background instead of the app showing through.
-        modifier = modifier
-            .background(Brush.linearGradient(listOf(palette.start, palette.mid, palette.end)))
-            .drawBehind {
-                painter.setTime(time.floatValue)
-                painter.setResolution(size.width, size.height)
-                painter.setCircleVisible(circleVisible)
-                painter.setCircleYOffset(circleYOffset)
-                drawRect(brush)
-            },
-    )
+    return remember(painter, brush) { GlowHandle(painter, brush, { time.floatValue }, palette) }
 }
+
+/**
+ * Draws the glow across the space this modifier is given.
+ *
+ * A flat three-colour gradient goes underneath as well: the shader's output is opaque and covers it,
+ * but if a driver ever refuses the shader at draw time rather than at compile time, the guide still
+ * has a background instead of the app showing through.
+ *
+ * [circleVisible] is upstream's opening ring, which only plays once at the start of the clock, so it
+ * belongs on the page the guide opens with and nowhere else.
+ */
+internal fun Modifier.glow(
+    handle: GlowHandle,
+    circleVisible: Boolean = false,
+    circleYOffset: Float = 0f,
+): Modifier = this
+    .background(Brush.linearGradient(listOf(handle.palette.start, handle.palette.mid, handle.palette.end)))
+    .drawBehind {
+        val painter = handle.painter ?: return@drawBehind
+        val brush = handle.brush ?: return@drawBehind
+        painter.setTime(handle.time())
+        painter.setResolution(size.width, size.height)
+        painter.setCircleVisible(circleVisible)
+        painter.setCircleYOffset(circleYOffset)
+        drawRect(brush)
+    }

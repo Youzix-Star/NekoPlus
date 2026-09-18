@@ -203,8 +203,10 @@ private fun GuideActionBar(canGoBack: Boolean, onBack: () -> Unit, onSkip: () ->
 /** The opening step: the mark, the name, and the round button that opens the next page. */
 @Composable
 private fun WelcomeStep(nav: GuideNav) {
-    val rise = enterProgress()
-    val button = enterProgress(delayMillis = 900, durationMillis = 450)
+    // A page on its way out is drawn settled: upstream slides the whole window away, it does not
+    // replay the entrance on the way.
+    val rise = if (nav.leaving) 1f else enterProgress()
+    val button = if (nav.leaving) 1f else enterProgress(delayMillis = 900, durationMillis = 450)
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -262,7 +264,7 @@ private fun WelcomeStep(nav: GuideNav) {
 /** The closing step: the same mark, one line, one last hint, and the button below it. */
 @Composable
 private fun DoneStep(nav: GuideNav, dark: Boolean) {
-    val rise = enterProgress()
+    val rise = if (nav.leaving) 1f else enterProgress()
 
     Column(
         modifier = Modifier
@@ -311,7 +313,7 @@ private fun DoneStep(nav: GuideNav, dark: Boolean) {
 /** A step that is only a title, a subtitle and a list of rows. */
 @Composable
 private fun RowsStep(nav: GuideNav, dark: Boolean) {
-    val rise = enterProgress()
+    val rise = if (nav.leaving) 1f else enterProgress()
 
     Column(
         modifier = Modifier
@@ -351,7 +353,7 @@ private fun PermissionsStep(
     onRequestOverlay: () -> Unit,
     dark: Boolean,
 ) {
-    val rise = enterProgress()
+    val rise = if (nav.leaving) 1f else enterProgress()
 
     Column(
         modifier = Modifier

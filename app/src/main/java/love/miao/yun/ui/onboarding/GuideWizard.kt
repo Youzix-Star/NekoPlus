@@ -153,6 +153,8 @@ internal fun GuideWizard(
     var containerTop by remember { mutableStateOf(0f) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
+    val glow = rememberGlow(palette)
+
     val progress = remember { Animatable(1f) }
 
     // Set before the coroutine runs, so two taps in the same frame cannot start two transitions.
@@ -252,10 +254,12 @@ internal fun GuideWizard(
                 containerTop = it.positionInRoot().y
             },
     ) {
-        GlowBackground(
-            palette = palette,
-            circleVisible = index == 0 && outgoing == null,
-            circleYOffset = circleYOffset,
+        val ringVisible = index == 0 && outgoing == null
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .glow(glow, circleVisible = ringVisible, circleYOffset = circleYOffset),
         )
 
         // The page on its way out. Upstream slides it a whole width away and leaves it there; the
@@ -269,7 +273,8 @@ internal fun GuideWizard(
                             is Transition.Slide ->
                                 translationX = (if (current.forward) -1f else 1f) * progress.value * size.width.toFloat()
 
-                            else -> Unit
+                            // A reveal leaves the page underneath exactly where it was.
+                            else -> translationX = 0f
                         }
                     },
             ) {
@@ -282,10 +287,25 @@ internal fun GuideWizard(
         }
 
         if (current is Transition.Reveal) {
+            // `colors.xml: anim_foreground_color` — everything outside the circle goes dark.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(RevealForeground),
+            )
+
+            // Inside the circle the screen is *not* dimmed: upstream's thumbnail is a crop of the
+            // screen around the button, so the hole shows the real background, not the darkening.
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        val radius = current.from.radius +
+                            (current.toRadius - current.from.radius) * progress.value
+                        shape = CircleClip(current.from.centre, radius)
+                        clip = true
+                    }
+                    .glow(glow, circleVisible = ringVisible, circleYOffset = circleYOffset),
             )
         }
 
@@ -304,7 +324,11 @@ internal fun GuideWizard(
                             clip = true
                         }
 
-                        null -> Unit
+                        // Cleared explicitly: Compose re-runs this block, it does not reset the layer.
+                        null -> {
+                            translationX = 0f
+                            clip = false
+                        }
                     }
                 },
         ) {
