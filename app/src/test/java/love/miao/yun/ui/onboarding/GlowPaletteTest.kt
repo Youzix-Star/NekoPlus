@@ -110,8 +110,18 @@ class GlowPaletteTest {
         val light = GlowPalette.fromTheme(primary, secondary, tertiary, dark = false)
         val dark = GlowPalette.fromTheme(primary, secondary, tertiary, dark = true)
 
-        assertEquals(highestOf(light.start) * 0.55f, highestOf(dark.start), 1e-3f)
-        assertEquals(highestOf(light.mid) * 0.55f, highestOf(dark.mid), 1e-3f)
+        // Relational, not an exact factor: `Color` stores its channels as half floats, so asking
+        // for `light * 0.55` to the third decimal is asking the wrong question.
+        val lightStart = highestOf(light.start)
+        val darkStart = highestOf(dark.start)
+        val lightMid = highestOf(light.mid)
+        val darkMid = highestOf(dark.mid)
+
+        assertTrue("dark=$darkStart should be below light=$lightStart", darkStart < lightStart)
+        assertTrue("dark=$darkMid should be below light=$lightMid", darkMid < lightMid)
+        assertTrue("dark=$darkStart is crushed, light=$lightStart", darkStart > lightStart * 0.4f)
+        assertTrue("dark=$darkMid is crushed, light=$lightMid", darkMid > lightMid * 0.4f)
+
         // Dimming must not shuffle which colour plays which part, nor turn one hue into another.
         assertTrue(dominantChannel(light.start) == dominantChannel(dark.start))
         assertTrue(dominantChannel(light.mid) == dominantChannel(dark.mid))

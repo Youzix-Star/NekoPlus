@@ -116,3 +116,15 @@ dependencies {
     // rather than by installing an APK and looking at it.
     testImplementation("junit:junit:4.13.2")
 }
+
+// CI is the only place these tests ever run. Gradle's default report for a failure is one line —
+// "AssertionError at FooTest.kt:12" — which costs a full round trip through GitHub Actions to
+// explain; the message itself is the whole diagnosis.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showCauses = true
+        showStackTraces = true
+    }
+}
