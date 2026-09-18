@@ -18,47 +18,32 @@
  */
 package com.sevtinge.hyperceiler.provision.fragment;
 
-import static com.sevtinge.hyperceiler.provision.utils.NetworkManager.isInternetAvailable;
-import static com.sevtinge.hyperceiler.provision.utils.NetworkManager.isNetworkConnected;
-
-import android.content.Context;
-import android.net.ConnectivityManager;
-import android.net.Network;
-import android.net.NetworkCapabilities;
-import android.net.NetworkRequest;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.sevtinge.hyperceiler.common.utils.PermissionUtils;
 import love.miao.yun.R;
+import love.miao.yun.service.MiaoAccessibilityService;
 import com.sevtinge.hyperceiler.provision.widget.PermissionItemView;
 
-import java.io.File;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import fan.provision.OobeUtils;
-
+/**
+ * The permission step of the guide.
+ *
+ * HyperCeiler's version of this page checks four things it needs (network, root, installed apps,
+ * LSPosed). This port keeps the page itself — its layout, its rows and how a row reports state —
+ * but the rows are the two permissions this app actually asks for: the accessibility service and
+ * the overlay permission. Both are granted in system settings, so the state can only change while
+ * the guide is in the background; {@link #onResume()} is where it is re-read.
+ */
 public class PermissionSettingsFragment extends BaseFragment {
-    private static final int REQUEST_GET_INSTALLED_APPS = 1101;
 
-    private View mNextView;
-
-    PermissionItemView mRootPermissionItem;
-    PermissionItemView mNetworkPermissionItem;
-    PermissionItemView mLspPermissionItem;
-    PermissionItemView mInstalledAppsPermissionItem;
-
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-
-    private ConnectivityManager connectivityManager;
-    private ConnectivityManager.NetworkCallback networkCallback;
-    private long lastNetworkCheck = 0;
-
-    public static boolean isModuleActive = false;
+    PermissionItemView mAccessibilityPermissionItem;
+    PermissionItemView mOverlayPermissionItem;
 
     @Override
     protected int getLayoutId() {
@@ -68,215 +53,50 @@ public class PermissionSettingsFragment extends BaseFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        mRootPermissionItem = view.findViewById(R.id.root);
-        mNetworkPermissionItem = view.findViewById(R.id.network);
-        mLspPermissionItem = view.findViewById(R.id.lsp);
-        mInstalledAppsPermissionItem = view.findViewById(R.id.installed_apps);
+        mAccessibilityPermissionItem = view.findViewById(R.id.accessibility);
+        mOverlayPermissionItem = view.findViewById(R.id.overlay);
 
-        mRootPermissionItem.setItemTitle(R.string.provision_permission_root);
-        mNetworkPermissionItem.setItemTitle(R.string.provision_permission_internet);
-        mLspPermissionItem.setItemTitle(R.string.provision_permission_lsp);
-        mInstalledAppsPermissionItem.setItemTitle(R.string.provision_permission_installed_apps);
+        mAccessibilityPermissionItem.setItemTitle(R.string.provision_permission_accessibility);
+        mOverlayPermissionItem.setItemTitle(R.string.provision_permission_overlay);
 
-        mNetworkPermissionItem.setEnabled(false);
-        mRootPermissionItem.setEnabled(false);
-        mLspPermissionItem.setEnabled(false);
-        mInstalledAppsPermissionItem.setOnClickListener(v -> requestInstalledAppsPermission());
+        mAccessibilityPermissionItem.setOnClickListener(v -> openAccessibilitySettings());
+        mOverlayPermissionItem.setOnClickListener(v -> requestOverlayPermission());
 
-        checkNetwork();
-        checkRooted();
-        checkLsp();
-        checkInstalledAppsPermission();
-        registerNetworkCallback();
+        checkAccessibility();
+        checkOverlay();
     }
-
-    private void checkRooted() {
-        executor.execute(() -> {
-            if (!isAdded()) return;
-
-            requireActivity().runOnUiThread(() -> {
-                if (mRootPermissionItem != null) {
-                    mRootPermissionItem.setChecked(isDeviceRooted());
-                }
-            });
-        });
-    }
-
-    private void checkLsp() {
-        executor.execute(() -> {
-            if (!isAdded()) return;
-
-            requireActivity().runOnUiThread(() -> {
-                if (mLspPermissionItem != null) {
-                    mLspPermissionItem.setChecked(isModuleActive);
-                }
-            });
-        });
-    }
-
-    private void checkNetwork() {
-        executor.execute(() -> {
-            boolean connected = isNetworkConnected(requireContext());
-            boolean internet = connected && isInternetAvailable();
-
-            if (!isAdded()) return;
-
-            requireActivity().runOnUiThread(() -> {
-                mNetworkPermissionItem.setChecked(internet);
-                setAllowNext(internet);
-            });
-        });
-    }
-
-    private void updateNetworkState(boolean state) {
-        if (!isAdded()) return;
-
-        requireActivity().runOnUiThread(() -> {
-            mNetworkPermissionItem.setChecked(state);
-            setAllowNext(state);
-        });
-    }
-
-    private void setAllowNext(boolean allowNext) {
-        if (!isAdded()) return;
-
-        requireActivity().runOnUiThread(() -> {
-            mNextView = OobeUtils.getNextView(getActivity());
-            mNextView.setEnabled(allowNext);
-            mNextView.setAlpha(allowNext ? OobeUtils.NO_ALPHA : OobeUtils.HALF_ALPHA);
-        });
-    }
-
 
     @Override
     public void onResume() {
         super.onResume();
-        checkNetwork();
-        checkRooted();
-        checkLsp();
-        checkInstalledAppsPermission();
+        checkAccessibility();
+        checkOverlay();
     }
 
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        unregisterNetworkCallback();
-        executor.shutdownNow();
+    private void checkAccessibility() {
+        if (mAccessibilityPermissionItem == null) return;
+        mAccessibilityPermissionItem.setChecked(MiaoAccessibilityService.Companion.isEnabled(requireContext()));
     }
 
-    private void registerNetworkCallback() {
-        connectivityManager = (ConnectivityManager)
-            requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-
-        if (connectivityManager == null) return;
-
-        networkCallback = new ConnectivityManager.NetworkCallback() {
-            @Override
-            public void onAvailable(@NonNull Network network) {
-                checkNetworkDebounced();
-            }
-
-            @Override
-            public void onLost(@NonNull Network network) {
-                updateNetworkState(false);
-            }
-
-            @Override
-            public void onCapabilitiesChanged(@NonNull Network network, @NonNull NetworkCapabilities caps) {
-                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-                    updateNetworkState(false);
-                } else {
-                    checkNetworkDebounced();
-                }
-            }
-        };
-
-        NetworkRequest request = new NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build();
-
-        connectivityManager.registerNetworkCallback(request, networkCallback);
+    private void checkOverlay() {
+        if (mOverlayPermissionItem == null) return;
+        mOverlayPermissionItem.setChecked(Settings.canDrawOverlays(requireContext()));
     }
 
-    private void unregisterNetworkCallback() {
-        if (connectivityManager != null && networkCallback != null) {
-            try {
-                connectivityManager.unregisterNetworkCallback(networkCallback);
-            } catch (Exception ignored) {}
-        }
-    }
-
-    private void checkNetworkDebounced() {
-        long now = System.currentTimeMillis();
-        if (now - lastNetworkCheck < 1500) return;
-        lastNetworkCheck = now;
-        checkNetwork();
-    }
-
-    private boolean isDeviceRooted() {
-        String[] paths = {
-            "/system/bin/su",
-            "/system/xbin/su",
-            "/sbin/su",
-            "/system/sd/xbin/su",
-            "/system/bin/failsafe/su",
-            "/data/local/xbin/su",
-            "/data/local/bin/su",
-            "/data/local/su"
-        };
-
-        for (String path : paths) {
-            if (new File(path).exists()) {
-                return true;
-            }
-        }
-
+    private void openAccessibilitySettings() {
         try {
-            Process process = Runtime.getRuntime().exec(new String[]{ "su", "-c", "id" });
-            int exitCode = process.waitFor();
-            return exitCode == 0;
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
         } catch (Exception ignored) {
         }
-
-        return false;
     }
 
-    private void checkInstalledAppsPermission() {
-        if (!isAdded() || mInstalledAppsPermissionItem == null) {
-            return;
+    private void requestOverlayPermission() {
+        try {
+            startActivity(new Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + requireContext().getPackageName())
+            ));
+        } catch (Exception ignored) {
         }
-        mInstalledAppsPermissionItem.setChecked(
-            PermissionUtils.hasInstalledAppsPermission(requireContext())
-        );
     }
-
-    private void requestInstalledAppsPermission() {
-        if (!isAdded()) {
-            return;
-        }
-        if (PermissionUtils.hasInstalledAppsPermission(requireContext())) {
-            checkInstalledAppsPermission();
-            return;
-        }
-        requestPermissions(
-            new String[]{PermissionUtils.PERMISSION_GET_INSTALLED_APPS},
-            REQUEST_GET_INSTALLED_APPS
-        );
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode != REQUEST_GET_INSTALLED_APPS) {
-            return;
-        }
-
-        if (PermissionUtils.isInstalledAppsPermissionGranted(permissions, grantResults)
-            || PermissionUtils.hasInstalledAppsPermission(requireContext())) {
-            checkInstalledAppsPermission();
-            return;
-        }
-        checkInstalledAppsPermission();
-    }
-
 }

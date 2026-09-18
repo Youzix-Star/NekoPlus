@@ -80,6 +80,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // The guide's next/back animation chain is an AIDL service inside the provisioning module
+        // (fan.provision.ProvisionAnimHelper binds it), and upstream builds that module with
+        // `aidl = true` for exactly that reason.
+        aidl = true
     }
 
     packaging {
@@ -117,6 +121,8 @@ dependencies {
     implementation(libs.miuix.legacy.pickerwidget)
     implementation(libs.miuix.legacy.preference)
     implementation(libs.miuix.legacy.bottomsheet)
+    // fan.transition.ActivityOptionsHelper, used for the start button's scale-up into page two.
+    implementation(libs.miuix.legacy.transition)
 
     // The second UI engine is written against Material Design.
     implementation(libs.compose.material3)

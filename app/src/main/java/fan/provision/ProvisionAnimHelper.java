@@ -161,7 +161,9 @@ public class ProvisionAnimHelper {
         if (mContext != null) {
             mContext.registerReceiver(mReceiver, new IntentFilter("fan.action.PROVISION_ANIM_END"), Context.RECEIVER_EXPORTED);
             Intent intent = new Intent("fan.intent.action.OOBSERVICE");
-            intent.setPackage("com.sevtinge.hyperceiler");
+            // Upstream hardcodes "com.sevtinge.hyperceiler" here; the service it binds is declared
+            // by the provisioning module itself, so in this app it is this app's package.
+            intent.setPackage(mContext.getPackageName());
             mContext.bindService(intent, mConnection, 1);
         } else {
             Log.e(TAG, "registerAnimService context is null");

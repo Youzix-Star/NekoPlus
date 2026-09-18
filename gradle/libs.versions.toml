@@ -42,6 +42,9 @@ miuix-legacy-preference = { module = "fan.miuix:preference", version.ref = "miui
 miuix-legacy-recyclerview = { module = "fan.miuix:recyclerview", version.ref = "miuixLegacy" }
 miuix-legacy-springback = { module = "fan.miuix:springback", version.ref = "miuixLegacy" }
 miuix-legacy-theme = { module = "fan.miuix:theme", version.ref = "miuixLegacy" }
+# fan.transition.ActivityOptionsHelper — the shared-element scale-up from the guide's round
+# "start" button into the permission page.
+miuix-legacy-transition = { module = "fan.miuix:transition", version.ref = "miuixLegacy" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

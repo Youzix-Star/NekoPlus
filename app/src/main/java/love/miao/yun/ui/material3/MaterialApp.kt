@@ -56,10 +56,9 @@ import love.miao.yun.ui.material3.home.MaterialHomeScreen
 import love.miao.yun.ui.material3.licenses.MaterialLicensesScreen
 import love.miao.yun.ui.material3.settings.MaterialSettingsScreen
 import love.miao.yun.ui.material3.text.MaterialTextRulesScreen
-import love.miao.yun.ui.onboarding.MaterialOnboarding
-import love.miao.yun.ui.onboarding.OnboardingPrefs
 import love.miao.yun.ui.material3.widgets.SwipeableSnackbarHost
 import love.miao.yun.ui.predictiveback.PredictiveBackHost
+import love.miao.yun.ui.provision.ProvisionGuide
 import love.miao.yun.util.CrashHandler
 import love.miao.yun.ui.rememberMainPagerState
 
@@ -285,23 +284,15 @@ private fun MaterialShell(
             ),
     )
 
-    if (MiaoState.showOnboarding) {
-        MaterialOnboarding(
-            accessibilityEnabled = MiaoState.accessibilityEnabled,
-            hasOverlayPermission = hasOverlayPermission,
-            onOpenAccessibility = {
-                runCatching {
-                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }
-            },
-            onRequestOverlay = requestOverlay,
-            onFinish = {
-                // Marked seen on the way out whichever exit was taken, so a skipped guide never
-                // comes back on its own.
-                OnboardingPrefs.setDone(context, true)
-                MiaoState.showOnboarding = false
-            },
-        )
+    // About asks for the guide by setting this flag. The guide is now HyperCeiler's provisioning
+    // flow, ported as its own activities, so the flag hands the launch over to it and is cleared on
+    // the way out — once, exactly as the Compose guide in `love.miao.yun.ui.onboarding` behaved.
+    // That guide is still in the tree, untouched, until the ported one has been seen on a device.
+    LaunchedEffect(MiaoState.showOnboarding) {
+        if (MiaoState.showOnboarding) {
+            MiaoState.showOnboarding = false
+            ProvisionGuide.launch(context)
+        }
     }
     }
 }

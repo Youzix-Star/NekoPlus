@@ -26,6 +26,11 @@
     <string name="provision_permission_root">Allow operations as Root</string>
     <string name="provision_permission_installed_apps">Allow reading installed app list</string>
     <string name="provision_permission_lsp">Activate in Xposed Manager</string>
+
+    <!-- The two rows this port lists instead of HyperCeiler's four checks. The app ships no locale
+         variants and is written in Chinese, so these are Chinese in the default file too. -->
+    <string name="provision_permission_accessibility">无障碍服务</string>
+    <string name="provision_permission_overlay">悬浮窗权限</string>
     <string name="provision_terms_of_use_loading">Loading…</string>
     <string name="provision_terms_of_use_verification_code_tip">Your verification code is %1$s.</string>
     <string name="provision_terms_of_use_verification_code_dialog_title">Enter your verification code</string>

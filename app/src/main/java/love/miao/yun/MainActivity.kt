@@ -13,8 +13,8 @@ import love.miao.yun.service.MiaoAccessibilityService
 import love.miao.yun.ui.UiEngine
 import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.MaterialApp
-import love.miao.yun.ui.onboarding.OnboardingPrefs
 import love.miao.yun.ui.miuix.MiuixApp
+import love.miao.yun.ui.provision.ProvisionGuide
 
 /**
  * Picks the UI engine and hands the whole window to it.
@@ -26,13 +26,20 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // A first run walks through the guide; every later start goes straight to the app, and
+        // About can bring the guide back. The guide is HyperCeiler's provisioning flow, ported as
+        // its own activities, so the launch is handed over before any Compose content exists —
+        // which is the same moment the Compose guide it replaces used to open at, and it comes back
+        // to this activity when it is done.
+        if (!ProvisionGuide.isDone(this)) {
+            ProvisionGuide.launch(this)
+            finish()
+            return
+        }
         MiaoState.engine = UiEnginePrefs.load(this)
         MiaoState.useBlur = UiEnginePrefs.loadUseBlur(this)
         MiaoState.floatingColorSource = UiEnginePrefs.loadFloatingColor(this)
         MiaoState.predictiveBackStyle = UiEnginePrefs.loadPredictiveBackStyle(this)
-        // A first run walks through the guide; every later start goes straight to the app, and
-        // About can bring the guide back.
-        MiaoState.showOnboarding = !OnboardingPrefs.isDone(this)
         setContent {
             when (MiaoState.engine) {
                 UiEngine.Miuix -> MiuixApp()

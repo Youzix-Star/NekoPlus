@@ -32,6 +32,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import love.miao.yun.R;
+import love.miao.yun.ui.provision.ProvisionGuide;
 import com.sevtinge.hyperceiler.provision.renderengine.GlowController;
 import com.sevtinge.hyperceiler.provision.renderengine.RenderViewLayout;
 import com.sevtinge.hyperceiler.provision.utils.IOnFocusListener;
@@ -336,6 +337,9 @@ public class CongratulationFragment extends BaseFragment implements IOnFocusList
         boolean isDebugOobe = OobeUtils.isDebugOobeMode(requireActivity());
         if (!isDebugOobe) {
             OobeUtils.setProvisioned(requireContext(), true);
+            // The app's own "the guide has been seen" flag, kept in sync with the guide's here so
+            // the first-run guide cannot come back on the next launch.
+            ProvisionGuide.markDone(requireContext());
         }
         try {
             ActivityOptions customTaskAnimation = ActivityOptions.makeCustomAnimation(requireContext(), R.anim.enter_home_anim, R.anim.provision_out_anim);
@@ -350,11 +354,11 @@ public class CongratulationFragment extends BaseFragment implements IOnFocusList
     private Intent getHomeIntent() {
         Intent intent = new Intent(Intent.ACTION_MAIN);
         intent.setPackage(requireContext().getPackageName());
+        // Upstream sends this to its own SplashActivity (or to HomePageActivity in debug OOBE); in
+        // this app the guide hands over to the one activity that owns the window.
+        intent.setClassName(requireContext(), "love.miao.yun.MainActivity");
         if (OobeUtils.isDebugOobeMode(requireActivity())) {
-            intent.setClassName(requireContext(), "com.sevtinge.hyperceiler.ui.HomePageActivity");
             intent.putExtra(OobeUtils.EXTRA_DEBUG_OOBE, true);
-        } else {
-            intent.setClassName(requireContext(), "com.sevtinge.hyperceiler.ui.SplashActivity");
         }
         // 清除掉引导页所在的整个任务栈
         // 这样跳转后，栈内只有主页，按返回键会直接回到手机桌面

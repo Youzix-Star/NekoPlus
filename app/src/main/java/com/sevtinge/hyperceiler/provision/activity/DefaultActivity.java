@@ -34,6 +34,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityOptionsCompat;
 
 import com.sevtinge.hyperceiler.common.log.AndroidLog;
+import love.miao.yun.ui.provision.ProvisionGuide;
 import com.sevtinge.hyperceiler.provision.state.StartupState;
 import com.sevtinge.hyperceiler.provision.state.StateMachine;
 import com.sevtinge.hyperceiler.provision.utils.IKeyEvent;
@@ -154,6 +155,13 @@ public class DefaultActivity extends ProvisionBaseActivity {
     @Override
     public void onDestroy() {
         PageIntercepHelper.getInstance().unregisterReceiver(this);
+        // The guide can also be left from its first page with the back key. That counts as having
+        // seen it — it is what the app's own flag is for, and without this the first-run guide
+        // would come back on every launch. A configuration change does not finish the activity, so
+        // a rotation is not mistaken for leaving.
+        if (isFinishing()) {
+            ProvisionGuide.markDone(this);
+        }
         super.onDestroy();
     }
 

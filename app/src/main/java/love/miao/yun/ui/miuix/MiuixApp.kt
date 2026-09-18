@@ -53,8 +53,7 @@ import love.miao.yun.ui.miuix.licenses.LicensesScreen
 import love.miao.yun.ui.miuix.liquid.FloatingBottomBar
 import love.miao.yun.ui.miuix.settings.SettingsScreen
 import love.miao.yun.ui.miuix.text.TextRulesScreen
-import love.miao.yun.ui.onboarding.MiuixOnboarding
-import love.miao.yun.ui.onboarding.OnboardingPrefs
+import love.miao.yun.ui.provision.ProvisionGuide
 import love.miao.yun.ui.rememberMainPagerState
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
@@ -296,23 +295,15 @@ fun MiaoShell(
             ),
     )
 
-    if (MiaoState.showOnboarding) {
-        MiuixOnboarding(
-            accessibilityEnabled = MiaoState.accessibilityEnabled,
-            hasOverlayPermission = hasOverlayPermission,
-            onOpenAccessibility = {
-                runCatching {
-                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                }
-            },
-            onRequestOverlay = requestOverlay,
-            onFinish = {
-                // Marked seen on the way out whichever exit was taken, so a skipped guide never
-                // comes back on its own.
-                OnboardingPrefs.setDone(context, true)
-                MiaoState.showOnboarding = false
-            },
-        )
+    // About asks for the guide by setting this flag. The guide is now HyperCeiler's provisioning
+    // flow, ported as its own activities, so the flag hands the launch over to it and is cleared on
+    // the way out — once, exactly as the Compose guide in `love.miao.yun.ui.onboarding` behaved.
+    // That guide is still in the tree, untouched, until the ported one has been seen on a device.
+    LaunchedEffect(MiaoState.showOnboarding) {
+        if (MiaoState.showOnboarding) {
+            MiaoState.showOnboarding = false
+            ProvisionGuide.launch(context)
+        }
     }
     }
 }

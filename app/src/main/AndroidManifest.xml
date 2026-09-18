@@ -64,5 +64,45 @@
                 android:value="floating_window" />
         </service>
 
+        <!--
+          新手引导 = HyperCeiler 的 library/provision 模块原样搬过来（AGPL-3.0-only）。
+          三个页面串联成一条链：DefaultActivity（开场，自带 StartupFragment）
+          → PermissionSettingsActivity（权限）→ CongratulationActivity（完成，完成后回到 MainActivity）。
+          Activity/Service 的声明与上游一致，只有两点不同：
+
+          1. 上游全部 exported="true"（它的引导由 MIUI 引导框架从外部拉起，还带一个 MAIN
+             intent-filter）。本应用的引导只由自己启动，所以设为 false，并去掉那个 filter；
+          2. 主题是从上游 values/themes.xml 原样搬来的 @style/ProvisionTheme —
+             它继承 miuix 的 Theme.AppCompat.DayNight，依赖已经加进来的 fan.miuix:* 包。
+
+          ProvisionAnimService 是引导页"下一步/返回"动画的 AIDL 桩（上游同样 exported=false），
+          由 fan.provision.ProvisionAnimHelper 用本应用包名绑定；没有它，权限页的按钮会走
+          上游本来就有的直连分支，但动画回调链会断掉。
+        -->
+        <activity
+            android:name="com.sevtinge.hyperceiler.provision.activity.DefaultActivity"
+            android:exported="false"
+            android:theme="@style/ProvisionTheme" />
+
+        <activity
+            android:name="com.sevtinge.hyperceiler.provision.activity.PermissionSettingsActivity"
+            android:exported="false"
+            android:theme="@style/ProvisionTheme" />
+
+        <activity
+            android:name="com.sevtinge.hyperceiler.provision.activity.CongratulationActivity"
+            android:exported="false"
+            android:theme="@style/ProvisionTheme" />
+
+        <service
+            android:name="com.sevtinge.hyperceiler.provision.service.ProvisionAnimService"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="fan.intent.action.OOBSERVICE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </service>
+
     </application>
 </manifest>

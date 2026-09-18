@@ -16,6 +16,13 @@
   ~
   ~ Copyright (C) 2023-2026 HyperCeiler Contributions
   -->
+<!--
+  HyperCeiler's permission page lists four of its own checks. This port keeps the page, its
+  scrolling container, its paddings and its rows exactly as they are, and lists the two
+  permissions this app asks for instead; the note that introduces them ("you can set these later")
+  leads the list rather than sitting after the first row, because here neither row is a
+  prerequisite for the next button.
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
@@ -25,11 +32,6 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:paddingHorizontal="@dimen/miuix_theme_padding_horizontal_common">
-
-        <com.sevtinge.hyperceiler.provision.widget.PermissionItemView
-            android:id="@+id/network"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
 
         <TextView
             style="@style/ProvisionListSecondaryTextStyle"
@@ -42,21 +44,15 @@
             android:textSize="13sp" />
 
         <com.sevtinge.hyperceiler.provision.widget.PermissionItemView
-            android:id="@+id/root"
+            android:id="@+id/accessibility"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
         <com.sevtinge.hyperceiler.provision.widget.PermissionItemView
-            android:id="@+id/installed_apps"
+            android:id="@+id/overlay"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp" />
-
-        <com.sevtinge.hyperceiler.provision.widget.PermissionItemView
-            android:id="@+id/lsp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"/>
 
     </LinearLayout>
 </ScrollView>
