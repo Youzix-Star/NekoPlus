@@ -238,7 +238,7 @@ fun MaterialSettingsScreen(
                         // uncaught handler (and the report screen) see it exactly like a real one.
                         item {
                             NavigationItemWidget(
-                                icon = AppIcons.Info,
+                                icon = AppIcons.About,
                                 title = "模拟崩溃",
                                 description = "让应用崩一次，看看崩溃报告页长什么样",
                                 onClick = { throw IllegalStateException("模拟崩溃：这是调试里手动触发的") },
