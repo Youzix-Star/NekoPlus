@@ -18,6 +18,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import android.view.accessibility.AccessibilityWindowInfo
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -443,7 +444,9 @@ open class MiaoAccessibilityService : AccessibilityService() {
             if (node.isLongClickable) add("longClickable")
             if (node.isScrollable) add("scrollable")
             if (node.isCheckable) add("checkable")
-            if (node.isChecked) add("checked")
+            // `AccessibilityNodeInfo.isChecked` is deprecated on the platform; the compat
+            // wrapper is the supported way to read it.
+            if (AccessibilityNodeInfoCompat.wrap(node).isChecked) add("checked")
             if (node.isSelected) add("selected")
             if (node.isPassword) add("password")
             if (node.isEnabled) add("enabled") else add("disabled")

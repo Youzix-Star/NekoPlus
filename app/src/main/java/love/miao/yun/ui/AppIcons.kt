@@ -8,7 +8,7 @@ package love.miao.yun.ui
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.Article
+import androidx.compose.material.icons.automirrored.rounded.Article
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Code
@@ -55,7 +55,7 @@ object AppIcons {
     val Developer: ImageVector = Icons.Rounded.Person
     val Feedback: ImageVector = Icons.Rounded.Email
     val Phones: ImageVector = Icons.Rounded.PhoneAndroid
-    val Rule: ImageVector = Icons.Rounded.Article
+    val Rule: ImageVector = Icons.AutoMirrored.Rounded.Article
     val Grant: ImageVector = Icons.Rounded.CheckCircle
     val Tune: ImageVector = Icons.Rounded.Tune
     val Back: ImageVector = Icons.AutoMirrored.Rounded.ArrowBack
