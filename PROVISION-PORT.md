@@ -219,10 +219,11 @@
 - **本地没有 Android SDK，一次都没构建过**；唯一的构建/验证路径是 GitHub Actions。
 - CI：`./gradlew testDebugUnitTest`（规则引擎的 JVM 测试）+ `assembleRelease`（R8 + 资源压缩）
   全部通过。
-  - 四步版（当前 HEAD）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35374749580
+  - 四步版：https://github.com/Youzix-Star/NekoPlus/actions/runs/35375307539
   - 产物：artifact `MiaoAssistant-release-apk`，解出来是 `MiaoAssistant-1-merge.apk`，
-    5 201 975 字节，`sha256 e48f51353a9b7ea7d6951d4938409978b3e3ad29f75185c203bc923ba784d377`
-    （artifact id 10559917564；本地在 `~/apk-4step/MiaoAssistant-1-merge.apk`）。
+    5 201 975 字节，`sha256 fe5bc171b30213e49b68d594a475379c12d14a295a0ac4545146e4bf5812dbc1`
+    （artifact id 10560201005；本地在 `~/apk-final4/MiaoAssistant-1-merge.apk`，
+    上一轮的副本在 `~/apk-4step/`）。
     这个 PR 的 APK 是**有签名**的（CI 恢复了 keystore）。
   - 三步版的绿色 run（上一轮）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35373086630
 - 对 APK 做过静态核对（`MiaoAssistant-1-merge.apk`）：四个引导 Activity
@@ -231,7 +232,8 @@
   与 `provision_ai_*`，以及"无障碍服务 / 悬浮窗权限 / 权限设置 / 设置完毕 / AI 配置 /
   API 接口地址 / 模型名 / 连接测试"；dex 里能找到极光的 uniform 名
   （`uTime`/`uColorBlack`/`uCircleFinalRadius`）、状态机字符串（`com.android.provision.STATE_`、
-  `pref_oobe_state`）、`ProvisionAnimService` 与 `BasicSettingsFragment` / `connection_test`。
+  `pref_oobe_state`）、`ProvisionAnimService`、`BasicSettingsFragment`、`BasicState`/`StartupState`
+  类名与 `connection_test`/`base_url`/`api_key` 三个 key。
   （release 的资源文件名被 AGP 缩短成 `res/0F.xml` 这种，所以只能从 `resources.arsc` 里认名字；
   引导的 activity/fragment/state 类名被 keep 规则保住了，别的类名会被 R8 改。）
 
