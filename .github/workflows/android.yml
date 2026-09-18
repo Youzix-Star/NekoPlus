@@ -112,9 +112,14 @@ jobs:
       # release builds) does.
       - name: Name the APK after the ref
         run: |
+          # A pull request's ref name is not a branch name: it is "1/merge", and the slash turns the
+          # destination into a directory that does not exist ("dist/MiaoAssistant-1/merge.apk"), so
+          # every PR run died here after a perfectly good build. Sanitise it before using it as a
+          # file name.
+          SAFE_REF="${GITHUB_REF_NAME//\//-}"
           mkdir -p dist
           for apk in app/build/outputs/apk/release/*.apk; do
-            cp "$apk" "dist/MiaoAssistant-${GITHUB_REF_NAME}.apk"
+            cp "$apk" "dist/MiaoAssistant-${SAFE_REF}.apk"
           done
           ls -l dist/
 
