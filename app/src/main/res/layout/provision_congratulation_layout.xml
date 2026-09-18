@@ -62,8 +62,8 @@
                 -->
                 <TextView
                     android:id="@+id/logo_image"
-                    android:layout_width="90dp"
-                    android:layout_height="90dp"
+                    android:layout_width="104dp"
+                    android:layout_height="104dp"
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_gravity="center"
@@ -82,7 +82,7 @@
                     android:layout_height="@dimen/provision_startup_logo_height_thirteen"
                     android:layout_marginTop="20dp"
                     android:gravity="center"
-                    android:text="@string/app_name"
+                    android:text="@string/provision_guide_name"
                     android:textColor="@color/provision_complete_title_color"
                     android:textSize="@dimen/provision_title_text_size" />
 

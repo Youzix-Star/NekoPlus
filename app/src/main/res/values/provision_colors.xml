@@ -46,4 +46,7 @@
 
     <color name="anim_foreground_color">#99000000</color>
     <color name="anim_foreground_color_blur_enable">#00ffffff</color>
+    <!-- The guide's own subtitle over the aurora: a cool near-white with a dark shadow, so it
+         reads on the bright parts without going invisible on the dark ones. -->
+    <color name="provision_guide_subtitle_color">#FFE8E4FF</color>
 </resources>

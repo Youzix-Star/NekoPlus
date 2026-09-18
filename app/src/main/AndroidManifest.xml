@@ -9,6 +9,14 @@
     <!-- AI 修改文本需要访问 OpenAI 兼容接口 -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+      miuix's preference rows and buttons fire a haptic tap in the background (MIUI's
+      HapticFeedbackUtil through fan.utils.HapticFeedbackCompat). Without this permission that
+      call throws SecurityException on a worker thread, which is an uncaught crash: it is what
+      killed the guide the moment a row on the AI page was touched.
+    -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <application
         android:name=".MiaoApp"
         android:allowBackup="true"

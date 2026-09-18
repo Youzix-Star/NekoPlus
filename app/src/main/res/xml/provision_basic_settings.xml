@@ -30,18 +30,15 @@
     <PreferenceCategory android:title="@string/provision_ai_category_endpoint">
 
         <androidx.preference.EditTextPreference
-            android:icon="@drawable/provision_service_state"
             android:key="base_url"
             android:title="@string/provision_ai_base_url" />
 
         <androidx.preference.EditTextPreference
-            android:icon="@drawable/provision_terms"
             android:key="api_key"
             android:summary="@string/provision_ai_api_key_empty"
             android:title="@string/provision_ai_api_key" />
 
         <androidx.preference.EditTextPreference
-            android:icon="@drawable/provision_basic_settings"
             android:key="model"
             android:title="@string/provision_ai_model" />
 
@@ -50,7 +47,6 @@
     <PreferenceCategory android:title="@string/provision_ai_category_connection">
 
         <Preference
-            android:icon="@drawable/provision_picker_btn_radio"
             android:key="connection_test"
             android:summary="@string/provision_ai_test_summary"
             android:title="@string/provision_ai_test" />
