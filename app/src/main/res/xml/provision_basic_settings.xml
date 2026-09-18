@@ -17,13 +17,19 @@
   ~ Copyright (C) 2023-2026 HyperCeiler Contributions
   -->
 <!--
-  Upstream's BasicSettings page keeps its structure — a PreferenceCategory of rows, miuix
-  preference rows, an icon on every row, the page's own title and preview icon — and lists the
-  settings this app needs on a first run instead of HyperCeiler's own (language, launcher icon,
-  scope). The keys are the app's AI keys; the fragment writes them through AiManager.
+  Upstream's BasicSettings page keeps its structure — a PreferenceCategory of miuix preference rows,
+  the page's own title and preview icon — and lists the settings this app needs on a first run
+  instead of HyperCeiler's own (language, launcher icon, scope). Three rows:
 
-  EditTextPreference has to be spelled out in full: this inflater's default package is
-  `fan.preference`, which has no EditTextPreference.
+    接口地址 -> API Key -> 模型
+
+  The model row is upstream's own `<fan.preference.DropDownPreference>` (the same class its language
+  and icon rows use), because the model has to be *chosen* from what the endpoint reports — the list
+  it offers is fetched through AiManager and handed to `setEntries`/`setEntryValues` at runtime. That
+  fetch is also the connection test, which is why there is no separate test row.
+
+  EditTextPreference and DropDownPreference both have to be spelled out in full: this inflater's
+  default package is `fan.preference`, which has no EditTextPreference.
 -->
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -38,18 +44,9 @@
             android:summary="@string/provision_ai_api_key_empty"
             android:title="@string/provision_ai_api_key" />
 
-        <androidx.preference.EditTextPreference
+        <fan.preference.DropDownPreference
             android:key="model"
             android:title="@string/provision_ai_model" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/provision_ai_category_connection">
-
-        <Preference
-            android:key="connection_test"
-            android:summary="@string/provision_ai_test_summary"
-            android:title="@string/provision_ai_test" />
 
     </PreferenceCategory>
 

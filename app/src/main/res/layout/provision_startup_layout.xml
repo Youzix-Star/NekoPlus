@@ -120,10 +120,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="@dimen/provision_subtitle_margin_top"
                     android:alpha="1"
-                    android:shadowColor="#99000000"
+                    android:shadowColor="#99FFFFFF"
                     android:shadowDx="0"
-                    android:shadowDy="1"
-                    android:shadowRadius="6"
+                    android:shadowDy="0"
+                    android:shadowRadius="10"
                     android:text="@string/provision_guide_subtitle"
                     android:textColor="@color/provision_guide_subtitle_color"
                     android:textSize="@dimen/provision_subtitle_text_size" />
