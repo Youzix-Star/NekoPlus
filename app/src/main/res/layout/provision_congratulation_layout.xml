@@ -55,10 +55,14 @@
                 android:orientation="vertical">
 
                 <!--
-                  与开场页同一套品牌替换：90dp 这一格是 AppIconText 文字标记（在 Java 里设置），
+                  与开场页同一套品牌替换：104dp 这一格是 AppIconText 文字标记（在 Java 里设置，
+                  盒子尺寸与 autoSize 上限 40sp 都与开场页一致），
                   另一个槽位是应用名。上游这两个是它的 vector，文件仍留在 drawable 里。
-                  这一页用深色（它的 provision_complete_title_color，与下面 system_state_text 同色系），
-                  因为这一页的极光没有开场遮罩、是亮的 —— 上游这里也用的 _lite 深色稿。
+                  这一页用深色（它的 provision_complete_title_color），因为这一页的极光没有开场遮罩、
+                  是亮的 —— 上游这里也用的 _lite 深色稿。
+                  名字下面那行（system_state_text）本轮改成与开场页副标题同一个字号
+                  （provision_subtitle_text_size 14sp）与同一个间距（provision_guide_subtitle_margin_top 30dp），
+                  颜色仍是它的 #BF000000：两页底色相反，字号/间距统一、颜色各随底色。
                 -->
                 <TextView
                     android:id="@+id/logo_image"
@@ -67,7 +71,7 @@
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_gravity="center"
-                    android:autoSizeMaxTextSize="34sp"
+                    android:autoSizeMaxTextSize="40sp"
                     android:autoSizeMinTextSize="10sp"
                     android:autoSizeStepGranularity="1sp"
                     android:autoSizeTextType="uniform"
@@ -90,10 +94,10 @@
                     android:id="@+id/system_state_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="30dp"
+                    android:layout_marginTop="@dimen/provision_guide_subtitle_margin_top"
                     android:fontFamily="mipro-regular"
                     android:textColor="#BF000000"
-                    android:textSize="24sp" />
+                    android:textSize="@dimen/provision_subtitle_text_size" />
             </LinearLayout>
 
             <FrameLayout
@@ -124,7 +128,7 @@
                         android:layout_gravity="center"
                         android:text="@string/provision_complete_text"
                         android:textColor="#FFFFFFFF"
-                        android:textSize="17dp" />
+                        android:textSize="17sp" />
                 </FrameLayout>
             </FrameLayout>
         </RelativeLayout>

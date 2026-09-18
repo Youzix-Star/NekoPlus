@@ -21,7 +21,9 @@
   scrolling container, its paddings and its rows exactly as they are, and lists the two
   permissions this app asks for instead; the note that introduces them ("you can set these later")
   leads the list rather than sitting after the first row, because here neither row is a
-  prerequisite for the next button.
+  prerequisite for the next button. Its 13sp override is gone so the line uses its own style's size
+  (miuix_appcompat_secondary_text_size, 14sp) — the same secondary size the AI page's row summaries
+  and the two aurora pages' sub-lines use.
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -40,8 +42,7 @@
             android:paddingHorizontal="@dimen/miuix_theme_content_padding_horizontal_common"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"
-            android:text="@string/provision_set_permission_later"
-            android:textSize="13sp" />
+            android:text="@string/provision_set_permission_later" />
 
         <com.sevtinge.hyperceiler.provision.widget.PermissionItemView
             android:id="@+id/accessibility"

@@ -46,10 +46,14 @@
 
     <color name="anim_foreground_color">#99000000</color>
     <color name="anim_foreground_color_blur_enable">#00ffffff</color>
-    <!-- The guide's own subtitle over the aurora. #FFE8E4FF read as plain white on the device, so
-         this is a mid-deep slate violet instead: clearly not white, ~8:1 against the bright pastel
-         middle of the aurora and still ~5:1 against its mid tones. The row carries a *light* shadow
-         (see provision_startup_layout.xml) because the only place a mid-deep tone is weak is the
-         aurora's dark saturated valleys, where a white halo lifts the glyph edges. -->
-    <color name="provision_guide_subtitle_color">#FF3E3670</color>
+    <!-- The guide's own subtitle over the aurora.
+         #FFE8E4FF was the wrong answer for a reason that is not about "white": a *washed-out tint*
+         on top of a background that already has colour of its own just looks dirty. So this is a deep
+         violet with real chroma — #3A1D8C is HSL(256°, 66%, 33%), not a pale or muted tone and not a
+         lighter shade of the old one. Against the aurora's bright pastel middle it is ~8.9:1, against
+         its mid tones ~5.4:1, so it reads as ink laid over the glow instead of dissolving into it.
+         The row keeps a *light* shadow (see provision_startup_layout.xml): the one place a deep tone
+         is weak is the aurora's dark saturated valleys (~2.1:1), where a white halo lifts the glyph
+         edges — a dark shadow there would only smear the violet. -->
+    <color name="provision_guide_subtitle_color">#FF3A1D8C</color>
 </resources>

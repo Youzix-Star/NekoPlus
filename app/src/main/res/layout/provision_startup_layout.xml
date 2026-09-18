@@ -63,9 +63,10 @@
 
         <!--
           Branding: 上游这两个 view 是 HyperCeiler 的 logo / 字标 vector（文件仍留在 drawable 里，只是不再被引用）。
-          90dp 这一格放本应用的文字标记 —— 常量 love.miao.yun.ui.AppIconText，在 Java 里设置，
-          About 页用的也是它（launcher 图标里烤的是同一串）。盒子仍是它的 90dp、位置与入场动画不变；
-          autoSize 只是让这个窄长（约 5:1）的标记始终填满 90dp 宽，而不是被省略号截掉。
+          这一格（104dp，见下面 layout_width）放本应用的文字标记：常量 love.miao.yun.ui.AppIconText，
+          在 Java 里设置，与 About 页同一个（launcher 图标里烤的也是这一串）。位置与入场动画仍是上游的；
+          autoSize 只是让这个窄长（约 5:1）的标记始终填满方块宽，而不是被省略号截掉。
+          两个极光页共用一个尺寸：盒子 104dp、autoSize 上限 40sp（完成页原写 34sp，本轮对齐）。
         -->
         <TextView
             android:id="@+id/logo_image"
@@ -118,7 +119,7 @@
                     android:id="@+id/text_logo_subtitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/provision_subtitle_margin_top"
+                    android:layout_marginTop="@dimen/provision_guide_subtitle_margin_top"
                     android:alpha="1"
                     android:shadowColor="#99FFFFFF"
                     android:shadowDx="0"

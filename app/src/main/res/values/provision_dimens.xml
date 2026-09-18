@@ -136,4 +136,29 @@
     <dimen name="group_buttons_layout_extra_padding_bottom">16dp</dimen>
     <dimen name="group_buttons_layout_extra_padding_bottom_pad_land">4dp</dimen>
     <dimen name="group_buttons_layout_extra_padding_bottom_pad_port">24dp</dimen>
+
+    <!-- ================================================================================
+         The guide's own consistency numbers (the four steps have to agree with each other,
+         not just with upstream — the user sees one guide, not four activities).
+         Every value below is either derived from their numbers (stated) or marked as ours.
+         ================================================================================ -->
+
+    <!-- Row height for BOTH row pages (permission + AI). Derived, not invented: a miuix preference
+         row is `miuix_preference_item_padding_top/bottom` (14dp) + a 17sp title line + a 14sp
+         summary line + `miuix_preference_summary_margin_top` (0dp) ≈ 65dp, so pinning the permission
+         row to the same 65dp makes the two pages' rows the same height. Upstream's own
+         `provision_list_item_height` (56dp, kept untouched below) described a one-line row and no
+         longer matches what the AI page next to it draws. -->
+    <dimen name="provision_guide_row_height">65dp</dimen>
+
+    <!-- Row icon box. Ours: upstream's `provision_picker_btn_radio` declares `android:width="64px"`
+         (px, not dp — so it was ~24dp on a dense phone and ~64dp on an mdpi tablet, an inconsistency
+         with nothing to copy). 24dp is the standard MIUI row-icon size. -->
+    <dimen name="provision_guide_row_icon_size">24dp</dimen>
+
+    <!-- Gap between the brand name and the line under it, on BOTH aurora pages. Upstream has two
+         different numbers for this one position: `provision_subtitle_margin_top` (4dp, which is a
+         *page* subtitle right under a 32sp title) and 30dp hardcoded in its congratulation layout,
+         which is the same structure we have (line under the 45.28dp brand box). Taking 30dp. -->
+    <dimen name="provision_guide_subtitle_margin_top">30dp</dimen>
 </resources>

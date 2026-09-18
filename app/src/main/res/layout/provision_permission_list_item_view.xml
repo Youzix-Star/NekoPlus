@@ -19,7 +19,7 @@
   -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/provision_list_item_height"
+    android:layout_height="@dimen/provision_guide_row_height"
     android:background="@drawable/provision_list_item_background"
     android:layoutDirection="locale"
     android:paddingStart="@dimen/miuix_theme_content_padding_horizontal_common"
@@ -34,12 +34,13 @@
         android:layout_centerVertical="true"
         android:clickable="false"
         android:focusable="false"
-        android:textAppearance="@style/TextAppearance.PreferenceList" />
+        android:textAppearance="@style/TextAppearance.PreferenceList"
+        android:textSize="@dimen/miuix_preference_normal_text_size" />
 
     <ImageView
         android:id="@+id/item_icon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="@dimen/provision_guide_row_icon_size"
+        android:layout_height="@dimen/provision_guide_row_icon_size"
         android:layout_alignParentEnd="true"
         android:layout_centerVertical="true"
         android:clickable="false"
