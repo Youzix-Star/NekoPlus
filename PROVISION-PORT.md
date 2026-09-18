@@ -141,36 +141,45 @@
 `connection_test`），写回时先 `load()` 整份配置、只改一个字段，所以应用 AI 页的提示词不会被清掉。
 
 
-### 2.2 品牌（上游的 logo / 字标）
+### 2.2 品牌（上游的 logo / 字标 / 文案）
 
 上游开场页与完成页显示的是 HyperCeiler 的 logo 与 "HyperCeiler" 字标 vector，文案是
-"Welcome to HyperCeiler / Enter HyperCeiler"。这些换成了本应用的，**布局、尺寸、位置与入场
-动画一字未改**：
+"Welcome to HyperCeiler / Enter HyperCeiler"。这些换成了本应用的，**布局、尺寸、位置、
+间距与入场动画一字未改**（是替换，不是重新设计）：
 
 | 槽位 | 上游 | 现在 |
 |---|---|---|
-| 90dp 方块 `logo_image` | `provision_logo_image(_lite).xml`（白色/黑色 vector） | `@drawable/app_mark`（本应用 launcher 前景图按墨迹边界裁出来的那一块，像素未改；开场页 tint 白，完成页 tint `provision_complete_title_color`） |
-| 字标槽 `text_logo_image`（320×45.28dp，它的 dimens） | `provision_text_logo_image(_lite).xml` | 应用名文字 `@string/app_name`（「喵喵助手」），字号用它自己的 `provision_title_text_size` |
-| 开场页字标下面（新增一行） | — | 副标题「把输入框里的字改好」，`provision_subtitle_margin_top` / `provision_subtitle_text_size`，与 Compose 版引导首屏那句一样 |
-| 完成页按钮文案 | `provision_complete_text` = "Enter HyperCeiler" | 「开始使用」 |
-| 完成页外的欢迎串 | `provision_congratulation_label` = "Welcome to HyperCeiler" | 「欢迎使用喵喵助手」（含 `values-zh-rCN` 那一份；两条串实际没被布局引用，release 里会被资源压缩删掉） |
+| 90dp 标记位 `logo_image` | `provision_logo_image(_lite).xml` —— 它的 logo vector（ImageView） | `TextView`，文字取应用的常量 `love.miao.yun.ui.AppIconText`（About 页同一个；launcher 图标里烤的也是这一串），在 Fragment 里设置；`autoSizeTextType="uniform"` 只是让这个窄长（约 5:1）的标记始终填满这 90dp 宽而不被省略号截断。开场页白色，完成页用它自己的 `provision_complete_title_color` |
+| 字标槽 `text_logo_image`（320×45.28dp，它的 dimens） | `provision_text_logo_image(_lite).xml` —— "HyperCeiler" 字标 vector | 应用名文字 `@string/app_name`（「喵喵助手」），字号用它自己的 `provision_title_text_size`，同为白色/深色 |
+| 开场页字标下面（新增一行） | — | 副标题「把输入框里的字改好」，用它自己的 `provision_subtitle_margin_top` / `provision_subtitle_text_size`，与 Compose 版引导首屏那句一样 |
 
-两点说明：
+尺寸/位置/动画没动的三点：这两个槽位仍在原来的父容器与同一组 dimens 里；新增的一行放在同一个
+`logo_image_wrapper` 里（容器由 `FrameLayout` 改成纵向 `LinearLayout` 才叠得下，宽高都是
+`wrap_content` + 居中，与原来等价），所以上游对 wrapper 整体做的入场动画原样作用在两行上；
+Java 里 `mLogoImage`/`mTextLogoImage` 由 `ImageView` 变成 `TextView`，对应的
+`setImageResource(R.drawable.provision_logo_image*)` 调用删掉，**两个 vector 仍留在 `res/drawable`**。
 
-1. **标记为什么是图而不是 `AppIconText` 那句话**：`AppIconText` 是本应用的文字标记
-   （About 页也是它），launcher 图标里烤的就是同一个字串。但它是**窄长**的
-   （`app_icon.png` 432×432 里墨迹只有 217×43，宽高比约 5:1），直接塞进上游这个 90dp 方块
-   只有一半宽，所以把同一张图按墨迹边界裁成 `app_mark.png`（`app/icon` 原图保留，像素未动），
-   放进方块时正好铺满宽度。要改成直接显示那句话，改 `provision_startup_layout.xml` /
-   `provision_congratulation_layout.xml` 里那一个 view 即可。
-2. **两页的颜色不同是照它的设计**：开场页用白（黑底极光 + 圆形揭示），完成页用深色
-   （它自己的 `provision_complete_title_color`，与那一页 `system_state_text` 同色系）——
-   上游这两页本来也是"开场白字标 / 完成页 `_lite` 深色稿"，开了 MIUI 模糊时才换成白的；
-   现在两个平台同一套。
-3. 开场页的字标槽位与新增的副标题放在同一个 `logo_image_wrapper` 里（容器由 `FrameLayout`
-   改成纵向 `LinearLayout` 才叠得下两行文字，尺寸与居中不变），所以上游对 wrapper 整体做的
-   入场动画原样作用在两行上；`mTextLogoImage` 在 Java 里由 `ImageView` 变成 `TextView`，
-   对应的 `setImageResource(R.drawable.provision_logo_image*)` 调用删掉，两个 vector 仍留在树里。
+文案前后对照（用户能看到的都在这张表里）：
+
+| 资源 | 上游 | 现在 | 谁能看到 |
+|---|---|---|---|
+| `provision_complete_text` | "Enter HyperCeiler" | 「开始使用」 | 完成页按钮（zh-rCN 那份本来就是「开始使用」） |
+| `provision_congratulation_label` | "Welcome to HyperCeiler" / 「欢迎来到 HyperCeiler」 | 「喵喵助手 · 把输入框里的字改好」（两份都改） | **实际上看不到**：上游自己的完成页布局也没引用它（我们的同样没有），release 里被资源压缩删掉；改成我们的名字是为了它不再指向别的产品 |
+| `provision_terms_of_use_label_use_network_china` | "…before you can continue using HyperCeiler" / 「…才可继续使用 HyperCeiler」 | 换成「喵喵助手」/「喵喵助手」 | 协议页没搬，这条串没有任何布局/代码引用（死资源）；按"别让它意外露出来"处理 |
+| `provision_guide_subtitle` | — | 「把输入框里的字改好」（新增串） | 开场页副标题 |
+
+**别的产品名剩下的地方（都不可见，已逐条核对）**：
+
+- 构建产物里 `resources.arsc` **一次都没有** HyperCeiler / 迅雷 / sevtinge（见 §8 的核对），
+  也就是说没有任何 label、标题、按钮或提示能把它显示出来；
+- dex / 布局 XML 里剩下的是**内部标识符**：`com.sevtinge.hyperceiler.provision.*` 包名与类名
+  （原样搬它的代码就必然带着）、`OobeUtils` 写的 SharedPreferences 文件名 `hyperceiler_prefs`；
+- dex 里那条 `https://github.com/ReChronoRain/HyperCeiler` 来自应用自己的开源许可页
+  （`ui/miuix/licenses/LicensesScreen.kt` / `ui/material3/licenses/`）——那是搬它 AGPL 代码
+  **必须**给的署名，故意留着；
+- 死资源里还带别人名字的：`provision_service_policy_download`（迅雷 / Thunder，它自己的下载服务行）、
+  `provision_get_md_failed`（Markdown 文本里的 `hyperceiler://refresh` 协议名）。两条都没有任何
+  布局/代码引用，release 里会被资源压缩删掉，留着只为保持"原样搬进来"的完整性。
 
 ## 3. 主题：占位值删了，真值来自 `fan.miuix:*`
 
@@ -256,13 +265,13 @@
 - **本地没有 Android SDK，一次都没构建过**；唯一的构建/验证路径是 GitHub Actions。
 - CI：`./gradlew testDebugUnitTest`（规则引擎的 JVM 测试）+ `assembleRelease`（R8 + 资源压缩）
   全部通过。
-  - 当前（四步 + 我们的品牌）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35376896117
+  - 当前（四步 + 品牌最终口径）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35378199008
   - 产物：artifact `MiaoAssistant-release-apk`，解出来是 `MiaoAssistant-1-merge.apk`，
-    5 198 691 字节，`sha256 ae78de28850ec620ff17592e16b77e021bd73e6a8ce43f8b18cf2938b6289ede`
-    （artifact id 10560995452；本地在 `~/apk-branded/MiaoAssistant-1-merge.apk`）。
+    5 196 963 字节，`sha256 4e898517ca852be8ff3b4868778e754591bc291a7c3221437c7fcd413d100d30`
+    （artifact id 10561376128；本地在 `~/apk-brand/MiaoAssistant-1-merge.apk`）。
     这个 PR 的 APK 是**有签名**的（CI 恢复了 keystore）。
-  - 四步版（未换品牌的那次）：run 35375307539 / artifact 10560201005 /
-    `sha256 fe5bc171…`；三步版：run 35373086630。
+  - 更早的绿色 run：四步 + 裁图版品牌 run 35376896117（`~/apk-branded/`）、四步版 run 35375307539
+    （`~/apk-final4/`，`sha256 fe5bc171…`）、三步版 run 35373086630（`~/apk-final/`）。
 - 对 APK 做过静态核对（`MiaoAssistant-1-merge.apk`）：四个引导 Activity
   （Default / PermissionSettings / **BasicSettings** / Congratulation）与动画服务都在
   AndroidManifest 里；`resources.arsc` 里有 `provision_*` 布局/drawable/`glow`/`ProvisionTheme`
@@ -273,9 +282,10 @@
   类名与 `connection_test`/`base_url`/`api_key` 三个 key。
   （release 的资源文件名被 AGP 缩短成 `res/0F.xml` 这种，所以只能从 `resources.arsc` 里认名字；
   引导的 activity/fragment/state 类名被 keep 规则保住了，别的类名会被 R8 改。）
-- 品牌那一轮另外核对过：`resources.arsc` 里有「喵喵助手」「把输入框里的字改好」「开始使用」，
-  整个 arsc 里再也找不到 "HyperCeiler"；`res/Ef.png` 是裁好的 217×43 标记（1734 字节），
-  `res/aH.png` 是 launcher 用的 432×432 原图；四个引导 Activity 与三个 AI key 都在。
+- 品牌核对（对 `MiaoAssistant-1-merge.apk` 全量扫）：`resources.arsc` 里有「喵喵助手」
+  「把输入框里的字改好」「开始使用」，而 HyperCeiler / 迅雷 / sevtinge **在整个 arsc 里是 0 次**
+  （label、标题、按钮、提示都没有）；dex 里有 `AppIconText` 那个字串（标记是文字，不是图）。
+  仍然出现产品名的地方只有内部标识符与许可署名，逐条列在 §2.2 末尾。
   未被引用的 `provision_logo_image*.xml` / `provision_text_logo_image*.xml` 会被资源压缩从
   release APK 里删掉 —— 它们在**源码树里**保留着（用户要求保留图标）。
 
@@ -296,9 +306,10 @@
    变"失败：HTTP 401 …"。它与应用里 AI 页的"获取模型列表"是同一次请求。
 7. **引导里填的值应用有没有吃到**：在第三页把模型名改成别的，进应用「AI 配置」页看是不是同一个值
    （两边都走 `AiManager` / `ai_config`，理论上必然一致，但仍值得看一眼）。
-8. **我们自己的品牌在极光上好不好看**：开场页是"标记（白，裁到 90dp 满宽）+ 应用名 32sp
-   + 一行副标题"，完成页同款但用深色。标记本身窄长（约 5:1），所以在 90dp 方块里是"宽而扁"
-   的一条 —— 亮不亮、够不够醒目，要眼睛看。
+8. **我们自己的品牌在极光上好不好看**：开场页是"标记（AppIconText 文字，autoSize 填满 90dp）
+   + 应用名 32sp + 一行副标题"，完成页同款但用深色。这个标记本身窄长（约 5:1），在这个
+   90dp 方块里是一条"宽而扁"的字 —— 大小、字重、以及 ᯠ / ੭ 这类字符在系统字体回退下渲染得
+   对不对，都要眼睛看（About 页同一个常量渲染是正常的，但那里是 52sp 宽屏）。
 9. **完成页 `system_state_text`（「系统准备中 / 设置完毕」）的颜色是上游写死的 `#BF000000`**，
    而这一页的极光没有开场遮罩、是亮的、有时偏白：如果真机上这行字读不清，那是上游的配色
    （我们没有改），修的话把它换成与标记同色系即可。
@@ -317,6 +328,9 @@
   权限页/第三页的预览图标与行图标（`provision_service_state` / `provision_terms` /
   `provision_basic_settings` / `provision_picker_btn_radio`，都属于它搬进来的图标，
   用户要求保留）。开场页/完成页的两个 logo/字标 vector 仍留在 `res/drawable`，只是不再被引用。
+- 内部标识符里仍带 `hyperceiler`：包名 `com.sevtinge.hyperceiler.provision.*`（原样搬代码的必然结果）
+  与 `OobeUtils` 的 SharedPreferences 文件名 `hyperceiler_prefs`。都不可见；要改就等于改它的代码，
+  目前按"原样"留着。
 - 真机验收通过后，才可以删掉 Compose 版引导（`love/miao/yun/ui/onboarding/*` + `MiaoState.showOnboarding`
   那两个调用点），以及考虑把 `Implementation(libs.miuix.legacy.*)` 里实际没被引导用到的 artifact 去掉。
 - 没搬的（故意没搬）：协议与声明页（含条款 Web 弹层与 Markdown 渲染器）、
