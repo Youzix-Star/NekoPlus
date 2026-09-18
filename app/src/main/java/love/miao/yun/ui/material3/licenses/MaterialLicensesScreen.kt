@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: GPL-3.0-only
+ * SPDX-License-Identifier: AGPL-3.0-only
  *
  * Rows are built from the segmented-column widgets ported from InstallerX-Revived (GPL-3.0).
  */
@@ -47,6 +47,7 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
     val entries = remember {
         listOf(
+            LicenseEntry("NekoPlus（本项目）", "AGPL-3.0", "https://github.com/Youzix-Star/NekoPlus"),
             LicenseEntry("miuix", "Apache License 2.0", "https://github.com/compose-miuix-ui/miuix"),
             LicenseEntry(
                 "AndroidX / Jetpack Compose",
@@ -109,7 +110,7 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
         contentPadding = paddingValues + PaddingValues(bottom = 24.dp),
     ) {
         item {
-            SegmentedColumn(title = "本项目基于 GPL-3.0 开源") {
+            SegmentedColumn(title = "本项目基于 AGPL-3.0 开源") {
                 entries.forEach { entry ->
                     item(key = entry.name) {
                         NavigationItemWidget(

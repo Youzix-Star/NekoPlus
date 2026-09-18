@@ -524,7 +524,7 @@ app/src/main/java/love/miao/yun/
 │       └── widgets/             SegmentedColumn、BaseWidget、SwitchWidget、
 │                                NavigationItemWidget、NumberPickerWidget、
 │                                DropDownMenuWidget、SwipeableSnackbarHost
-│                                （GPL-3.0，来自 InstallerX-Revived）
+│                                （GPL-3.0-only，来自 InstallerX-Revived）
 └── service/
     ├── FloatingWindowService.kt 悬浮窗：一组可拖拽按钮（普通 View）
     └── MiaoAccessibilityService.kt  读取/写回当前输入框
@@ -532,8 +532,34 @@ app/src/main/java/love/miao/yun/
 
 ## 许可
 
-本项目以 **GPL-3.0** 发布。
+**本项目以 AGPL-3.0 发布** —— GNU Affero General Public License v3.0，全文见 [`LICENSE`](LICENSE)。
 
-其中 `ui/material3/widgets/` 移植自 [InstallerX-Revived](https://github.com/wxxsfxyzm/InstallerX-Revived)
-（GPL-3.0），`ui/miuix/liquid/` 来自 NekoEdit（Apache-2.0），
-两者的原始版权声明与 SPDX 标识均保留在各文件头部。
+这不是一个单一协议的作品，而是几部分拼起来的：**每部分保持各自的协议**，
+文件头部的 SPDX 标识才是权威说法。
+
+| 部分 | 文件数 | 协议 |
+|---|---|---|
+| 本仓库自有代码 | 52 | `AGPL-3.0-only`（`Copyright 2026, Youzix-Star` / `NekoPlus contributors`） |
+| `ui/material3/widgets/`、`ui/material3/Backdrop.kt`、`ui/material3/Shape.kt`、`ui/MainPagerState.kt` | 12 | `GPL-3.0-only`，逐行移植自 [InstallerX-Revived](https://github.com/wxxsfxyzm/InstallerX-Revived)，原作者版权声明原样保留 |
+| `ai/AiManager.kt`、`ai/TokenStats.kt`、`util/UpdateChecker.kt`、`service/MiaoAccessibilityService.kt` | 4 | `GPL-3.0-only`，移植自更早的 NekoNeko 项目，**沿用它原本的协议** |
+| `ui/miuix/liquid/`、`ui/miuix/animation/` | 7 | `Apache-2.0`，经 NekoEdit 转手，原作出自 Kyant0/AndroidLiquidGlass |
+
+**移植进来的文件一律保持原协议**：别人以 GPL-3.0 给出的代码，不能由本项目单方面改成
+AGPL-3.0。上面那两个 `GPL-3.0-only` 分组就是这么来的。
+
+`GPL-3.0` 的代码和 `AGPL-3.0` 的代码**可以合法地合在一起分发**：GPLv3 §13 与 AGPLv3 §13
+互相给了这个许可。合并之后 GPL 那部分**仍然是 GPL-3.0**（AGPLv3 §13 原文：*the work with
+which it is combined will remain governed by version 3 of the GNU General Public License*），
+整体按 AGPL-3.0 交付 —— 所以上表里 GPL-3.0 的文件没有被"升级"成 AGPL，也不该被升级。
+
+**为什么从 GPL-3.0 升到 AGPL**：为了能直接使用
+[HyperCeiler](https://github.com/ReChronoRain/HyperCeiler) 的实现，它是 `AGPL-3.0-only`，
+移植进来就要求整体按 AGPL 交付。AGPL 比 GPL 多出来的**只有 §13 网络条款**：如果用户通过
+网络远程与你运行的那一份程序交互，你必须向这些用户提供源码。本项目是本地 APK —— AI 功能
+是你自己填 key 直连第三方接口，仍然只是客户端 —— 不触发这一条；但**哪天加了自建后端或
+中转服务，那个后端就要按 AGPL 提供源码**。
+
+对使用者的实际影响和 GPL-3.0 几乎一样：随便用、随便改、随便再分发，但分发时必须附带完整
+对应源码、保留版权与协议声明，不能变成闭源专有软件。
+
+> `v2.0.2-beta.2` 及更早的版本是以 GPL-3.0 发布的，那些版本不受影响，也不会被追溯。

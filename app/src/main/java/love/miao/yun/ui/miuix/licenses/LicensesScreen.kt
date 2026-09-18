@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: GPL-3.0-only
+ * SPDX-License-Identifier: AGPL-3.0-only
  */
 
 package love.miao.yun.ui.miuix.licenses
@@ -32,6 +32,7 @@ fun LicensesScreen(contentPadding: PaddingValues) {
     val uriHandler = LocalUriHandler.current
     val entries = remember {
         listOf(
+            LicenseEntry("NekoPlus（本项目）", "AGPL-3.0", "https://github.com/Youzix-Star/NekoPlus"),
             LicenseEntry("miuix", "Apache License 2.0", "https://github.com/compose-miuix-ui/miuix"),
             LicenseEntry(
                 "AndroidX / Jetpack Compose",
@@ -70,7 +71,7 @@ fun LicensesScreen(contentPadding: PaddingValues) {
     ) {
         item(key = "licenses") {
             Column {
-                SmallTitle(text = "本项目基于 GPL-3.0 开源")
+                SmallTitle(text = "本项目基于 AGPL-3.0 开源")
                 Card(modifier = Modifier.fillMaxWidth()) {
                     entries.forEachIndexed { index, entry ->
                         if (index > 0) {

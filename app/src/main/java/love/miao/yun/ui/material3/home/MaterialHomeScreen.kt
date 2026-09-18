@@ -1,9 +1,10 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: GPL-3.0-only
+ * SPDX-License-Identifier: AGPL-3.0-only
  *
  * The status card, the statistic cards and the page skeleton follow InstallerX-Revived's
- * Material 3 home page (GPL-3.0), which this project is licensed to build upon.
+ * Material 3 home page (GPL-3.0-only), which may be combined with this project's
+ * AGPL-3.0-only code under GPLv3 §13.
  */
 
 @file:OptIn(ExperimentalMaterial3ExpressiveApi::class)

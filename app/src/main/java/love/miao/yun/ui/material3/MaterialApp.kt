@@ -1,6 +1,6 @@
 /*
  * Copyright 2026, Youzix-Star
- * SPDX-License-Identifier: GPL-3.0-only
+ * SPDX-License-Identifier: AGPL-3.0-only
  *
  * The shell follows InstallerX-Revived's Material 3 layout (GPL-3.0): an outer Scaffold that owns
  * only the bottom navigation, with each page carrying its own large top app bar.
