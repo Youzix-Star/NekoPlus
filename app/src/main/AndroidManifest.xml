@@ -66,8 +66,9 @@
 
         <!--
           新手引导 = HyperCeiler 的 library/provision 模块原样搬过来（AGPL-3.0-only）。
-          三个页面串联成一条链：DefaultActivity（开场，自带 StartupFragment）
-          → PermissionSettingsActivity（权限）→ CongratulationActivity（完成，完成后回到 MainActivity）。
+          四个页面串联成它自己的那条链：DefaultActivity（开场，自带 StartupFragment）
+          → PermissionSettingsActivity（权限）→ BasicSettingsActivity（它自己的"应用设置"那一页，
+          本应用用作 AI 配置）→ CongratulationActivity（完成，完成后回到 MainActivity）。
           Activity/Service 的声明与上游一致，只有两点不同：
 
           1. 上游全部 exported="true"（它的引导由 MIUI 引导框架从外部拉起，还带一个 MAIN
@@ -86,6 +87,11 @@
 
         <activity
             android:name="com.sevtinge.hyperceiler.provision.activity.PermissionSettingsActivity"
+            android:exported="false"
+            android:theme="@style/ProvisionTheme" />
+
+        <activity
+            android:name="com.sevtinge.hyperceiler.provision.activity.BasicSettingsActivity"
             android:exported="false"
             android:theme="@style/ProvisionTheme" />
 

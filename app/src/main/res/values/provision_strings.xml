@@ -31,6 +31,22 @@
          variants and is written in Chinese, so these are Chinese in the default file too. -->
     <string name="provision_permission_accessibility">无障碍服务</string>
     <string name="provision_permission_overlay">悬浮窗权限</string>
+
+    <!-- 上游这一页是它自己的"基础设置"（语言 / 图标 / 作用域）；本应用把这页用作 AI 配置，
+         行还是它的 PreferenceCategory + 行图标，内容换成下面这四行。一行一句，不加段落。 -->
+    <string name="provision_ai_settings_title">AI 配置</string>
+    <string name="provision_ai_category_endpoint">接口</string>
+    <string name="provision_ai_category_connection">连接</string>
+    <string name="provision_ai_base_url">API 接口地址</string>
+    <string name="provision_ai_api_key">API Key</string>
+    <string name="provision_ai_api_key_empty">未设置</string>
+    <string name="provision_ai_api_key_set">已设置 ····%1$s</string>
+    <string name="provision_ai_model">模型名</string>
+    <string name="provision_ai_test">连接测试</string>
+    <string name="provision_ai_test_summary">检查接口、Key 与模型</string>
+    <string name="provision_ai_test_running">连接中…</string>
+    <string name="provision_ai_test_ok">连通，%1$d 个模型</string>
+    <string name="provision_ai_test_failed">失败：%1$s</string>
     <string name="provision_terms_of_use_loading">Loading…</string>
     <string name="provision_terms_of_use_verification_code_tip">Your verification code is %1$s.</string>
     <string name="provision_terms_of_use_verification_code_dialog_title">Enter your verification code</string>

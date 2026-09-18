@@ -12,7 +12,10 @@
 小米那批 `fan.miuix:*` 1.0.13.0 jar 由 HyperCeiler 自己发在 GitHub Packages 上，已作为依赖接进来，
 **不再是"搬不动"的墙**（上一版这份文档说拿不到这些包，那是错的）。
 
-流程剪成它状态机的前三步：**开场（极光）→ 权限 → 完成**。
+流程就是它状态机本身，只去掉协议页那一步：**开场（极光）→ 权限 → AI 配置 → 完成**。
+第三步用的是它自己的"应用设置"那一页（`BasicSettingsActivity/Fragment` +
+`res/xml/provision_basic_settings.xml`），页面家什与行样式/图标都留着，行换成这个应用首次
+运行必须设的东西——AI 的接口地址 / API Key / 模型名 + 连接测试，读写走应用自己的 `AiManager`。
 首次启动交给它，「关于 → 新手引导」走同一个开关；Compose 版引导仍在树里，未删未改，
 等真机看过后再决定去留。
 
@@ -28,7 +31,8 @@
 | 夜间值 | 2 | `res/values-night/provision_{colors,themes}.xml` |
 | AGSL 着色器 | 1 | `res/raw/glow.glsl` |
 | 中文字符串 | 1 文件 | `res/values-zh-rCN/strings.xml`（本轮补搬，之前只有英文默认） |
-| Java | 33 | `.../provision/**`、`.../fan/provision/**` |
+| Java | 36 | `.../provision/**`、`.../fan/provision/**` |
+| 偏好设置 XML | 1 | `app/src/main/res/xml/provision_basic_settings.xml`（上游"基础设置"那一页，本应用用作 AI 配置） |
 | AIDL | 2 | `app/src/main/aidl/com/sevtinge/hyperceiler/provision/*.aidl` |
 
 本轮**新补搬**的 Java（本轮之前缺失、导致 Java 编译失败的就是这些）：
@@ -41,6 +45,7 @@
 | `utils/LifecycleHandler.java` | 上者的依赖：Activity 栈 |
 | `service/ProvisionAnimService.java` | AIDL 桩服务，"下一步/返回"动画回调链的落点 |
 | `aidl/**/IProvisionAnim.aidl`、`IAnimCallback.aidl` | 上者与 `fan.provision.ProvisionAnimHelper` 的接口 |
+| `state/BasicState.java`、`activity/BasicSettingsActivity.java` | 引导第三步：它自己的"应用设置"页（内容见 §2.1） |
 
 `BuildConfig` 之外唯一改过的地方：`PageIntercepHelper` 里 `import ...provision.R` → `love.miao.yun.R`
 （整个移植都是这一条替换，别的没动）。
@@ -52,12 +57,14 @@
 没有前两条，release 的 R8 直接失败：`fan.miuix:*` 引用着 `miui.util.HapticFeedbackUtil` 和
 `com.android.internal.view.menu.MenuBuilder` 这两个不在 `android.jar` 里的类。
 
-## 2. 只有三处按"内容必须变成我们的"改写过
+## 2. 只有四处按"内容必须变成我们的"改写过
 
-1. **`state/StateMachine.java`** —— 它的五步链剪成三步：`Startup → Permission → Congratulation`。
-   删掉 `mTermsAndStatementState` / `mBasicState` 两个字段、两条 `addState`、两条 `setNextState`
-   和 `getStateInfo()` 里两个分支，以及这两个 Activity 的 import。
-   `TermsAndStatementState` / `BasicState` / 两个 Activity / 协议页的布局与 Java 一律没搬。
+1. **`state/StateMachine.java`** —— 它的五步链去掉协议页那一步，剩下
+   `Startup → Permission → Basic → Congratulation`，与上游同一条链、同一套 result code
+   （`-1` 前进 / `0` 后退）。`StartupState`/`PermissionState`/`BasicState`/`CongratulationState`
+   的接线与上游逐字一致；只少了 `mTermsAndStatementState` 一个字段、一条 `addState`、两条
+   `setNextState`、`getStateInfo()` 一个分支和两个 Activity 的 import。
+   `TermsAndStatementState` / `TermsAndStatementActivity` / 协议页的布局与 Java 一律没搬。
 2. **权限页**（它自己的四行 network/root/installed_apps/lsp → 我们的两个开关）：
    - `fragment/PermissionSettingsFragment.java`：只留 `getLayoutId()` / `onViewCreated()` /
      `onResume()` 这套骨架，两个 `PermissionItemView` 的标题换成
@@ -74,7 +81,8 @@
    - `widget/PermissionItemView.java`：**一字未改**。它的行外观（56dp 高、16dp 圆角、
      `miuix_theme_content_padding_horizontal_common` 内边距、勾选用的
      `provision_picker_btn_radio` 图标）就是我们要的样子，只是由我们的两个开关驱动。
-3. **硬编码的包名/类名**（不改跑不通）：
+3. **第三页：上游的"基础设置" → 我们的 AI 配置**（详见 §2.1）。
+4. **硬编码的包名/类名**（不改跑不通）：
    - `fan/provision/ProvisionAnimHelper.java:164`：`setPackage("com.sevtinge.hyperceiler")`
      → `mContext.getPackageName()`（它绑的服务现在是本应用声明的）。
    - `fragment/CongratulationFragment.java:360`：`getHomeIntent()` 的两处
@@ -83,9 +91,47 @@
 另外两处**新增**（不是改写它的代码）：
 
 - `MainActivity.kt` / `ui/miuix/MiuixApp.kt` / `ui/material3/MaterialApp.kt`：入口改接到引导 Activity。
+  应用自己的设置页（`ui/miuix/settings/`、`ui/material3/settings/`、AI 配置页、文本规则页）一行未动。
 - `love/miao/yun/ui/provision/ProvisionGuide.kt`（新文件，`SPDX-License-Identifier: AGPL-3.0-only`）：
   只做三件事——`isDone()` 转问 `OnboardingPrefs`、`markDone()` 写它、`launch()` 调
   `OobeUtils.resetOobeState()` 后起 `DefaultActivity`。它不给引导加任何东西。
+
+### 2.1 第三页（AI 配置）怎么来的
+
+上游把这一页留给"这个应用自己要设置的东西"（语言 / 桌面图标 / 作用域）。**页面家什全部是它的**：
+
+| 保留 | 说明 |
+|---|---|
+| `activity/BasicSettingsActivity.java` | 原样搬（只有 `getTitleStringId()` 换成我们的标题串，见下） |
+| `state/BasicState.java` | 原样搬（上游这个文件自己没有 license 头，补了它标准的那个头） |
+| `res/xml/provision_basic_settings.xml` | 它的 `PreferenceScreen` + `PreferenceCategory` 结构 |
+| `fragment/BasicSettingsFragment.java` | 它的类形状：`extends fan.preference.PreferenceFragment`、`onCreatePreferences()` + `onViewCreated()` 两段式、行字段 + `findPreference()` + `setPersistent(false)` + `setOnPreferenceChangeListener` |
+| 页面图标 | `getPreviewDrawable()` 仍是它的 `R.drawable.provision_basic_settings` |
+| 行外观与尺寸 | miuix preference 行（它的布局/字号/内边距），每行都有 `android:icon` |
+| 底部按钮 | `ProvisionBaseActivity` 的"继续 / 跳过"，与其它页同一套 |
+
+**只有"行是什么"换了**，四行、一行一句、没有段落：
+
+| 行 | key | 图标（都来自它搬进来的 drawable，没有新画） | 行为 |
+|---|---|---|---|
+| API 接口地址 | `base_url` | `provision_service_state` | 点开 miuix 编辑框（`TYPE_TEXT_VARIATION_URI`），摘要显示当前值 |
+| API Key | `api_key` | `provision_terms` | 点开编辑框（密码输入类型），摘要只显示末 4 位 / "未设置" |
+| 模型名 | `model` | `provision_basic_settings` | 点开编辑框，摘要显示当前值 |
+| 连接测试 | `connection_test` | `provision_picker_btn_radio` | 调 `AiManager.listModels()`（就是应用"获取模型列表"那次请求），摘要变成"连通，N 个模型"/"失败：…" |
+
+分类标题两个：「接口」「连接」，与应用里 Compose 版 AI 页的小标题一致；页面标题「AI 配置」
+（`R.string.provision_ai_settings_title`，是本轮新加的串，不是改它原来的
+`provision_basic_settings_title`——那条在 `values-zh-rCN` 里另有一份，改默认值会被中文包盖掉）。
+
+**没有第二份真相**：四行都 `setPersistent(false)`（上游对它自己的应用设置行也是这么干的：
+`mLanguagePreference.setPersistent(false)` + `AppSettingsStore`），读写一律走
+`love.miao.yun.ai.AiManager`（`AiManager.INSTANCE.load/save/listModels`，即应用 AI 页用的同一个
+`ai_config` 存储与同一组键 `base_url`/`api_key`/`model`）。在引导里填的值，就是应用用的值；
+`prompt`/`system_prompt` 原样保留（回写时先读整份配置、只改一个字段）。
+
+图标是"复用已搬进来的它自己的 drawable"，不是为这一页新画的图：上游这页的行本来没有行图标，
+真机验收时若要换成正式美术资源，只需改 `provision_basic_settings.xml` 里四个 `android:icon`。
+
 
 ## 3. 主题：占位值删了，真值来自 `fan.miuix:*`
 
@@ -121,10 +167,11 @@
 
 ## 4. Manifest
 
-三个引导 Activity + 动画服务都声明了，主题 `@style/ProvisionTheme`：
+四个引导 Activity + 动画服务都声明了，主题 `@style/ProvisionTheme`：
 
 - `...provision.activity.DefaultActivity`（开场，`StartupState` 把自己的 `StartupFragment` 塞进它）
 - `...provision.activity.PermissionSettingsActivity`
+- `...provision.activity.BasicSettingsActivity`（第三步，AI 配置）
 - `...provision.activity.CongratulationActivity`
 - `...provision.service.ProvisionAnimService`（`fan.intent.action.OOBSERVICE`）
 
@@ -192,30 +239,42 @@
 3. **开场圆钮的放大转场**（`fan.transition.ActivityOptionsHelper.makeScaleUpAnim`）：
    它在非 MIUI 上可能返回 null——`StartupFragment` 本来就有 null 分支，会无动画直接进权限页。
 4. **模糊**（`MiuiBlurUtils`）：非 MIUI 不生效，本来就这样。
-5. **品牌归属**：极光页/完成页显示的是**它自己的 Logo 与字标**（`provision_logo_image*`、
+5. **第三页（AI 配置）这一页本身**：miuix 的 `fan.preference.PreferenceFragment` 只在 MIUI 上
+   被上游用过，非 MIUI 设备上它长什么样、`EditTextPreference` 的编辑弹层（miuix 自己的
+   `miuix_preference_dialog_edittext.xml`）能不能弹出来、四行的图标对齐——都要眼睛看。
+   四个行图标是复用已搬进来的它自己的 drawable（上游这页本来没有行图标），不是正式美术。
+6. **连接测试真的连一次**：填上 Key 点一下，看摘要是否变"连通，N 个模型"；故意填错 Key 看是否
+   变"失败：HTTP 401 …"。它与应用里 AI 页的"获取模型列表"是同一次请求。
+7. **引导里填的值应用有没有吃到**：在第三页把模型名改成别的，进应用「AI 配置」页看是不是同一个值
+   （两边都走 `AiManager` / `ai_config`，理论上必然一致，但仍值得看一眼）。
+8. **品牌归属**：极光页/完成页显示的是**它自己的 Logo 与字标**（`provision_logo_image*`、
    `provision_text_logo_image*` 是 "HyperCeiler" 的 vector 路径），文案是
    "欢迎来到 HyperCeiler / 开始使用"。这一版是"照搬优先"，**没有换成我们的品牌**——
    要不要换、换成什么，需要人来定（换的话是替换 `res/drawable/provision_*logo*` 与
    `provision_congratulation_label` / `provision_complete_text` 两条字符串）。
-6. **权限页的两行是否真好用**：点"无障碍服务"跳系统设置、点"悬浮窗权限"弹授权框，
+9. **权限页的两行是否真好用**：点"无障碍服务"跳系统设置、点"悬浮窗权限"弹授权框，
    回来（`onResume`）勾是否亮。
-7. **返回键路径**：开场页返回 = 退出引导且不再出现；权限页返回 = 回开场；完成页返回 =
-   回权限页且不带结果。
-8. **深色/浅色**：`ProvisionTheme` 浅色走 `DayNight`、夜间走 `Dark`，`values-night` 的颜色是它原本的。
+10. **返回键路径（现在是四页）**：开场返回 = 退出引导且不再出现；权限页返回 = 回开场；
+    第三页返回 = 回权限页；完成页返回 = 回第三页。
+11. **深色/浅色**：`ProvisionTheme` 浅色走 `DayNight`、夜间走 `Dark`，`values-night` 的颜色是它原本的。
 
 ## 10. 还剩什么
 
-- 上面第 9 条里 5、6 两项是人来决定的事（品牌、文案），代码上已经没有卡点。
+- 上面第 9 条里 5、6、8 三项是人来决定的事（这一页的真机观感、图标美术、品牌文案），
+  代码上已经没有卡点。
 - 真机验收通过后，才可以删掉 Compose 版引导（`love/miao/yun/ui/onboarding/*` + `MiaoState.showOnboarding`
   那两个调用点），以及考虑把 `Implementation(libs.miuix.legacy.*)` 里实际没被引导用到的 artifact 去掉。
-- 没搬的（故意没搬）：协议与声明页、基础设置页（语言/图标/作用域）、条款 Web 弹层与 Markdown 渲染器、
+- 没搬的（故意没搬）：协议与声明页（含条款 Web 弹层与 Markdown 渲染器）、
   `NoticeProvider` 协议版本同步、`AppLanguageHelper` 跨语言包装、`ProvisionManager`。
-  依赖它们而失去作用的文件也一并没搬：`BasicState`/`TermsAndStatementState`/两个 Activity、
+  依赖它们而失去作用的文件也一并没搬：`TermsAndStatementState`/`TermsAndStatementActivity`、
   `BaseListFragment`/`WebFragment`/`MarkdownView`/`TermsAndStatementBottomSheet`/`ClickSpan`/`TermsTitleSpan`、
-  `NetworkManager`（权限页不再探网）。仓库里仍有它们的死布局
+  `NetworkManager`（权限页不再探网）。上游"基础设置"页原有的内容（语言 / 图标 / 作用域）没有搬过来，
+  因为这一页已经改用 AI 配置；`AppLanguageHelper`/`AppSettingsStore`/`PrefsConfigurator` 都没有。
+  仓库里仍有它们的死布局
   （`provision_page_layout.xml`、`provision_list_page_layout.xml`、`fragment_bottom_sheet_web.xml`、
   `provision_terms_and_statement_layout.xml`、`edit_verification_code_dialog.xml`、
-  `provision_item_list_*.xml`）——那是原样搬进来的资源，留着不影响，删不删随意。
+  `provision_item_list_*.xml`）与死数组
+  （`res/values/provision_arrays.xml` 里图标/语言那几组）——那是原样搬进来的资源，留着不影响，删不删随意。
 
 ## 11. 怎么复现这一轮
 

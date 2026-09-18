@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 
 import com.sevtinge.hyperceiler.common.log.AndroidLog;
 import love.miao.yun.R;
+import com.sevtinge.hyperceiler.provision.activity.BasicSettingsActivity;
 import com.sevtinge.hyperceiler.provision.activity.CongratulationActivity;
 import com.sevtinge.hyperceiler.provision.activity.DefaultActivity;
 import com.sevtinge.hyperceiler.provision.activity.PermissionSettingsActivity;
@@ -30,6 +31,7 @@ public class StateMachine {
 
     private State mCurrentState;
     private State mPermissionState;
+    private State mBasicState;
     private CongratulationState mCompleteState;
 
 
@@ -52,15 +54,18 @@ public class StateMachine {
 
         mCurrentState = new StartupState();
         mPermissionState = new PermissionState().setTargetClass(PermissionSettingsActivity.class);
+        mBasicState = new BasicState().setTargetClass(BasicSettingsActivity.class);
         mCompleteState = new CongratulationState();
         mCompleteState.setTargetClass(CongratulationActivity.class);
 
         addState(mCurrentState);
         addState(mPermissionState);
+        addState(mBasicState);
         addState(mCompleteState);
 
         setNextState(mCurrentState, mPermissionState);
-        setNextState(mPermissionState, mCompleteState);
+        setNextState(mPermissionState, mBasicState);
+        setNextState(mBasicState, mCompleteState);
     }
 
     private void addState(State state) {
@@ -83,6 +88,9 @@ public class StateMachine {
         }
         if (PermissionState.class.getSimpleName().equals(state)) {
             return mStates.get(PermissionState.class.hashCode());
+        }
+        if (BasicState.class.getSimpleName().equals(state)) {
+            return mStates.get(BasicState.class.hashCode());
         }
         if (CongratulationState.class.getSimpleName().equals(state)) {
             return mStates.get(CongratulationState.class.hashCode());
