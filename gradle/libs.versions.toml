@@ -27,10 +27,7 @@ miuix-ui = { module = "top.yukonga.miuix.kmp:miuix-ui-android", version.ref = "m
 miuix-preference = { module = "top.yukonga.miuix.kmp:miuix-preference-android", version.ref = "miuix" }
 miuix-blur = { module = "top.yukonga.miuix.kmp:miuix-blur-android", version.ref = "miuix" }
 
-[plugins]
-android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-
+# Xiaomi's MIUI/Miuix framework jars, as republished by HyperCeiler on GitHub Packages.
 miuix-legacy-animation = { module = "fan.miuix:animation", version.ref = "miuixLegacy" }
 miuix-legacy-appcompat = { module = "fan.miuix:appcompat", version.ref = "miuixLegacy" }
 miuix-legacy-basewidget = { module = "fan.miuix:basewidget", version.ref = "miuixLegacy" }
@@ -45,3 +42,8 @@ miuix-legacy-preference = { module = "fan.miuix:preference", version.ref = "miui
 miuix-legacy-recyclerview = { module = "fan.miuix:recyclerview", version.ref = "miuixLegacy" }
 miuix-legacy-springback = { module = "fan.miuix:springback", version.ref = "miuixLegacy" }
 miuix-legacy-theme = { module = "fan.miuix:theme", version.ref = "miuixLegacy" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+
