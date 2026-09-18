@@ -305,7 +305,16 @@ Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 
 - **本地没有 Android SDK，一次都没构建过**；唯一的构建/验证路径是 GitHub Actions。
 - CI：`./gradlew testDebugUnitTest`（规则引擎的 JVM 测试）+ `assembleRelease`（R8 + 资源压缩）
   全部通过。
-  - 当前（四步 + 品牌最终口径）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35378199008
+  - **当前（Preview 4 = 四步 + 品牌 + AI 页 NPE 修复）**：
+    分支 run https://github.com/Youzix-Star/NekoPlus/actions/runs/35384135520（绿）
+    · tag run（发 preview APK）https://github.com/Youzix-Star/NekoPlus/actions/runs/35384541185（绿）
+    · 用户可装的 Release 产物：
+    `https://github.com/Youzix-Star/NekoPlus/releases/download/v2.0.3-onboarding-preview4/MiaoAssistant-v2.0.3-onboarding-preview4.apk`
+    8 155 556 字节，`sha256 f0d6f516056c8b49faad46e6d913f5cead0c58fbde034160939e781a188ae9bd`
+    （v2/v3 签名；本地 `~/rel-p4/`）。CI artifact 是另一次构建：`~/apk-p4/MiaoAssistant-1-merge.apk`，
+    同一份源码，`sha256 9fa0d93635f29b77315a2abb73319255fa6b6063136b33ab23dfe020e316e704`
+    —— 两个 hash 不同只是因为重新构建（zip 条目时间戳/签名块），内容逐项核对一致。
+  - 更早的：四步 + 品牌 run 35378199008（`~/apk-brand/`）
   - 产物：artifact `MiaoAssistant-release-apk`，解出来是 `MiaoAssistant-1-merge.apk`，
     5 196 963 字节，`sha256 4e898517ca852be8ff3b4868778e754591bc291a7c3221437c7fcd413d100d30`
     （artifact id 10561376128；本地在 `~/apk-brand/MiaoAssistant-1-merge.apk`）。
@@ -322,6 +331,12 @@ Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 
   类名与 `connection_test`/`base_url`/`api_key` 三个 key。
   （release 的资源文件名被 AGP 缩短成 `res/0F.xml` 这种，所以只能从 `resources.arsc` 里认名字；
   引导的 activity/fragment/state 类名被 keep 规则保住了，别的类名会被 R8 改。）
+- Preview 4 的核对（用 `~/dexclasses.py` / `~/dexmethods.py` / `~/checkbrand.py` 跑在**发布的那份 APK**上）：
+  manifest 里有 versionName「2.0.3 Onboarding Preview 4」；`resources.arsc` 里 HyperCeiler 0 次、
+  我们的文案都在；`Landroidx/preference/` 有 **80** 个类（修复前只有 1 个），
+  `Preference` / `PreferenceInflater.init` / `PreferenceFragmentCompat` / `EditTextPreference` /
+  `PreferenceCategory`（androidx 与 fan 两个包都有）全在、名字带包；
+  `BasicSettingsActivity` / `BasicSettingsFragment` 在；APK 有 v2/v3 签名块。
 - 品牌核对（对 `MiaoAssistant-1-merge.apk` 全量扫）：`resources.arsc` 里有「喵喵助手」
   「把输入框里的字改好」「开始使用」，而 HyperCeiler / 迅雷 / sevtinge **在整个 arsc 里是 0 次**
   （label、标题、按钮、提示都没有）；dex 里有 `AppIconText` 那个字串（标记是文字，不是图）。
