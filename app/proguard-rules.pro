@@ -6,6 +6,7 @@
 # The floating window service is declared in the manifest and instantiated by the system.
 -keep class love.miao.yun.service.FloatingWindowService { *; }
 
+<<<<<<< HEAD
 # --- The ported first-run guide (HyperCeiler's library/provision, AGPL-3.0-only) ---
 #
 # The guide is written against Xiaomi's MIUI/Miuix framework jars (fan.miuix:*), and those jars
@@ -67,3 +68,14 @@
 # written by the previous APK could name a different state after an update and resume the guide on
 # the wrong page.
 -keep class com.sevtinge.hyperceiler.provision.state.** { *; }
+=======
+# --- Crash reports have to be readable ---
+#
+# Without these, every frame in a crash report reads `r8-map-id-<hash>:29`: no file name, and the
+# number is a synthetic offset rather than a line. Keeping the line-number table and renaming the
+# source file attribute to a plain `SourceFile` gives `MiuixOnboarding.kt:412` style frames, which
+# is the difference between a report someone can act on and one they have to guess at. Copied in
+# spirit from HyperCeiler's own app-level rules (`app/src/main/keepRules/rules.keep`).
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+>>>>>>> origin/main
