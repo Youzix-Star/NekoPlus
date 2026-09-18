@@ -31,7 +31,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
-import com.sevtinge.hyperceiler.common.utils.AppLanguageHelper;
 import love.miao.yun.R;
 import com.sevtinge.hyperceiler.provision.utils.PageIntercepHelper;
 
@@ -44,7 +43,7 @@ public abstract class BaseActivity extends ProvisionBaseActivity {
     protected void attachBaseContext(Context newBase) {
         // 引导页面中的所有子页面 Activity 都应跨语言切换后同步语言，
         // 否则仅 DefaultActivity 被包裹会造成子页面仍然显示旧语言。
-        super.attachBaseContext(AppLanguageHelper.wrapContext(newBase));
+        super.attachBaseContext(newBase);
     }
 
     protected Fragment mFragment;

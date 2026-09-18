@@ -100,6 +100,24 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.material.icons)
 
+    // The first-run guide is HyperCeiler's provisioning module, ported as-is, and that module is
+    // written against Xiaomi's MIUI/Miuix framework jars (fan.miuix:*). HyperCeiler republishes
+    // them on GitHub Packages; see settings.gradle.kts for the credentials they need.
+    implementation(libs.miuix.legacy.appcompat)
+    implementation(libs.miuix.legacy.animation)
+    implementation(libs.miuix.legacy.folme)
+    implementation(libs.miuix.legacy.core)
+    implementation(libs.miuix.legacy.theme)
+    implementation(libs.miuix.legacy.basewidget)
+    implementation(libs.miuix.legacy.cardview)
+    implementation(libs.miuix.legacy.recyclerview)
+    implementation(libs.miuix.legacy.springback)
+    implementation(libs.miuix.legacy.navigator)
+    implementation(libs.miuix.legacy.nestedheader)
+    implementation(libs.miuix.legacy.pickerwidget)
+    implementation(libs.miuix.legacy.preference)
+    implementation(libs.miuix.legacy.bottomsheet)
+
     // The second UI engine is written against Material Design.
     implementation(libs.compose.material3)
 

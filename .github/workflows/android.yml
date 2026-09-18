@@ -48,6 +48,20 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # The guide's fan.miuix:* dependencies come from HyperCeiler's GitHub Packages, which needs a
+      # token even though those packages are public. PACKAGES_TOKEN is a PAT with read:packages;
+      # without it the job's own token is tried, and if that is refused the build says so plainly.
+      - name: Expose the packages token to Gradle
+        env:
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          echo "GIT_ACTOR=${{ github.actor }}" >> "$GITHUB_ENV"
+          if [ -z "${PACKAGES_TOKEN:-}" ]; then
+            echo "::warning::no token available for GitHub Packages; fan.miuix:* will not resolve"
+          else
+            echo "GIT_TOKEN=$PACKAGES_TOKEN" >> "$GITHUB_ENV"
+          fi
+
       - name: Restore signing keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
