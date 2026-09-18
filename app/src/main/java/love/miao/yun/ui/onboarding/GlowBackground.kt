@@ -90,12 +90,17 @@ internal fun GlowBackground(
     }
 
     Box(
-        modifier = modifier.drawBehind {
-            painter.setTime(time.floatValue)
-            painter.setResolution(size.width, size.height)
-            painter.setCircleVisible(circleVisible)
-            painter.setCircleYOffset(circleYOffset)
-            drawRect(brush)
-        },
+        // The flat gradient sits *behind* the shader as well: the shader's output is opaque, so it
+        // covers it — but if a driver ever refuses the shader at draw time rather than at compile
+        // time, the guide still gets a background instead of the app showing through.
+        modifier = modifier
+            .background(Brush.linearGradient(listOf(palette.start, palette.mid, palette.end)))
+            .drawBehind {
+                painter.setTime(time.floatValue)
+                painter.setResolution(size.width, size.height)
+                painter.setCircleVisible(circleVisible)
+                painter.setCircleYOffset(circleYOffset)
+                drawRect(brush)
+            },
     )
 }
