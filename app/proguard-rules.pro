@@ -17,6 +17,20 @@
 # already guarded by the miuix library's own feature checks.
 -dontwarn miui.**
 -dontwarn com.android.internal.view.menu.MenuBuilder
+-dontwarn javax.annotation.**
+
+# --- The rule whose absence crashed the guide (2026-09-19) ---
+#
+# Copied from the same file as the -dontwarn lines above, `library/core/src/main/keepRules/rules.keep`.
+# Without it R8 strips methods out of `fan.**` that it cannot see anyone calling: the buttons the
+# guide is built from are inflated by class name out of XML, and `DrawableInflater` then instantiates
+# them reflectively, so R8's reachability graph never reaches `FolmeEase.spring(float, float)`.
+# The result was `NoSuchMethodError: No static method spring(FF)…` while inflating
+# `miuix_appcompat_group_buttons_layout`, i.e. the moment the guide opened. Verified by diffing the
+# dex: the `(FF)Lfan/animation/utils/EaseManager$EaseStyle;` descriptor is absent from the crashing
+# build and present once this rule is back.
+-keep class fan.** { *; }
+-keep class com.fan.** { *; }
 
 -keep class com.sevtinge.hyperceiler.provision.activity.** { *; }
 -keep class com.sevtinge.hyperceiler.provision.fragment.** { *; }
