@@ -220,15 +220,27 @@ SharedPreferences），**每个按钮各自独立**：
 - 开场环带的圆心**对准文字标记**，不是屏幕正中 —— 上游用 `setCircleYOffsetWithView()` 干这件事，
   这里用 `onGloballyPositioned` 取标记的中线再换算成着色器要的偏移。
 
-两处**有意的不同**（都记在文件头里，免得以后当成漏做）：
+**流程和转场也是抄的**（`GuideWizard.kt`，这是这个页面真正的骨架）：
 
-1. 上游把着色器画在 20 % 尺寸的 View 上再放大 5×（省算力 + 柔化噪点），这里改成整屏直画 ——
-   Compose 没有 shader 版的 `RenderEffect` 工厂（`ui-graphics` 里只有 `BlurEffect`/`OffsetEffect`），
-   而在 Compose 里塞一个被缩放的平台 View 要受互操作层裁剪的摆布；代价用**帧率**补回来：
-   时钟按 30 fps 走，极光本来就是两分钟一循环，看不出来；
-2. 上一步/下一步之间走的是 pager 自己的滑动（所以**可以左右滑**），不是它那条定长 350 ms 的
-   slide 转场；它那个「圆形截图放大」的共享元素转场（跨 Activity 的 PixelCopy）没有搬，
-   单 Activity 的 Compose 里要换 `SharedTransitionLayout`，等有人真的想要再说。
+- 走的是它 `state/StateMachine.java` 那套：**一次一步、单向链**，`forward`/`backward`
+  到边界就停，不会绕回去（`GuideFlow`，有单元测试）。没有 pager，所以**不能左右滑** ——
+  上游也不能，页面只由按钮推进，这是拿到下面两个转场的前提；
+- **页间转场**照它的 `provision_slide_in_right.xml` + `provision_slide_out_left.xml`：
+  两页各平移一整屏、**350 ms**、`@android:anim/accelerate_decelerate_interpolator`
+  （＝ `CubicBezierEasing(0.4f, 0f, 0.2f, 1f)`）；返回时方向镜像；
+- **开场按圆钮那一下是「撑开」的**，照它 `StartupFragment.launchPermissionPickPage` +
+  `utils/ViewUtils.captureRoundedBitmap` 的做法：圆钮的圆从按钮的位置一直长到盖住整屏，
+  透过这个圆露出下一页；圆外压 `#99000000`（`colors.xml: anim_foreground_color`）——
+  那一层暗色才是「一个亮洞在变暗的屏幕上张开」的观感来源。按钮在动画开始时隐藏
+  （上游 `exitStartedCallback`）、结束时恢复（`exitFinishCallback`），所以退回第一页仍然有按钮。
+
+一处**有意的不同**（记在文件头里，免得以后当成漏做）：上游把着色器画在 20 % 尺寸的 View 上
+再放大 5×（省算力 + 柔化噪点），这里改成整屏直画 —— Compose 没有 shader 版的 `RenderEffect`
+工厂（`ui-graphics` 里只有 `BlurEffect`/`OffsetEffect`），而在 Compose 里塞一个被缩放的平台 View
+要受互操作层裁剪的摆布；代价用**帧率**补回来：时钟按 30 fps 走，极光本来就是两分钟一循环，
+看不出来。另外上游真正的页间动画其实是 MIUI 那个 OOBE 系统服务（`fan.action.PROVISION_ANIM_START`
+经 AIDL 回跳）在播，它的时长在闭源包里查不到，所以「撑开」的时长（420 ms）是照着它其它转场的
+量级自己定的，不是抄来的数。
 
 「跳过」「继续」和「开始使用」都会把 `onboarding` 这个 SharedPreferences 标记为已看过，
 所以引导只在自己会出来的时候出现一次；想再看就去 **关于 → 新手引导**，那只是把

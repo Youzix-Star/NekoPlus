@@ -2,9 +2,8 @@
  * Copyright 2026, Youzix-Star
  * SPDX-License-Identifier: AGPL-3.0-only
  *
- * The shape of this guide — the full-screen glow, the title block, the row list, the bottom action
- * button, the entrance animation — follows HyperCeiler's provisioning flow (library/provision,
- * AGPL-3.0-only). The words, the steps and the permission rows are this app's.
+ * The flow and the transitions live in `GuideWizard.kt`, ported from HyperCeiler's provisioning
+ * module (library/provision, AGPL-3.0-only); this file is the miuix-drawn furniture of each page.
  */
 
 package love.miao.yun.ui.onboarding
@@ -28,31 +27,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
 import love.miao.yun.ui.AppIconText
 import love.miao.yun.ui.AppIcons
 import top.yukonga.miuix.kmp.basic.Icon
@@ -74,103 +67,74 @@ fun MiuixOnboarding(
     onRequestOverlay: () -> Unit,
     onFinish: () -> Unit,
 ) {
-    val pages = GuidePages
-    val pagerState = rememberPagerState(pageCount = { pages.size })
-    val scope = rememberCoroutineScope()
-    val current = pages[pagerState.currentPage]
     val scheme = MiuixTheme.colorScheme
     val dark = scheme.surface.luminance() < 0.5f
     // miuix has no plain `tertiary`, only its container — which is the tint we want here anyway.
     val palette = glowPaletteOf(scheme.primary, scheme.secondary, scheme.tertiaryContainer, scheme.surface)
 
-    // Where the opening ring should be centred. Upstream points it at its logo rather than at the
-    // middle of the screen, which is what makes the sweep feel like it belongs to the mark.
-    val containerTop = remember { mutableFloatStateOf(0f) }
-    val containerHeight = remember { mutableFloatStateOf(0f) }
-    val markCentre = remember { mutableFloatStateOf(0f) }
-    val circleYOffset = if (containerHeight.floatValue > 0f && markCentre.floatValue > 0f) {
-        val middle = containerHeight.floatValue / 2f
-        (middle - (markCentre.floatValue - containerTop.floatValue)) / containerHeight.floatValue
-    } else {
-        0f
-    }
-
-    fun goTo(index: Int) = scope.launch { pagerState.animateScrollToPage(index) }
-
     BackHandler { onFinish() }
 
-    Box(
+    GuideWizard(pages = GuidePages, palette = palette, onFinish = onFinish) { nav ->
+        GuidePageFrame(
+            nav = nav,
+            dark = dark,
+            accessibilityEnabled = accessibilityEnabled,
+            hasOverlayPermission = hasOverlayPermission,
+            onOpenAccessibility = onOpenAccessibility,
+            onRequestOverlay = onRequestOverlay,
+        )
+    }
+}
+
+/** One whole page: the bar on top, the step's own content, and the one action button at the bottom. */
+@Composable
+private fun GuidePageFrame(
+    nav: GuideNav,
+    dark: Boolean,
+    accessibilityEnabled: Boolean,
+    hasOverlayPermission: Boolean,
+    onOpenAccessibility: () -> Unit,
+    onRequestOverlay: () -> Unit,
+) {
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .onGloballyPositioned { coordinates ->
-                containerTop.floatValue = coordinates.positionInWindow().y
-                containerHeight.floatValue = coordinates.size.height.toFloat()
-            },
+            .safeDrawingPadding(),
     ) {
-        // The ring only plays on the page the guide opens with: it belongs to the start of the
-        // shader's clock, and on any later page it would look like a bug.
-        GlowBackground(
-            palette = palette,
-            circleVisible = current.step == GuideStep.Welcome,
-            circleYOffset = circleYOffset,
+        GuideActionBar(
+            canGoBack = !nav.isFirst,
+            onBack = nav.onBack,
+            onSkip = nav.onSkip,
         )
 
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .safeDrawingPadding(),
+                .fillMaxWidth()
+                .weight(1f),
         ) {
-            GuideActionBar(
-                canGoBack = pagerState.currentPage > 0,
-                onBack = { goTo(pagerState.currentPage - 1) },
-                onSkip = onFinish,
-            )
-
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            ) { index ->
-                when (pages[index].step) {
-                    GuideStep.Welcome -> WelcomeStep(
-                        page = pages[index],
-                        onStart = { goTo(pagerState.currentPage + 1) },
-                        onMarkPositioned = { markCentre.floatValue = it },
-                    )
-
-                    GuideStep.Permissions -> PermissionsStep(
-                        page = pages[index],
-                        accessibilityEnabled = accessibilityEnabled,
-                        hasOverlayPermission = hasOverlayPermission,
-                        onOpenAccessibility = onOpenAccessibility,
-                        onRequestOverlay = onRequestOverlay,
-                        dark = dark,
-                    )
-
-                    GuideStep.Done -> DoneStep(
-                        page = pages[index],
-                        onMarkPositioned = { markCentre.floatValue = it },
-                        dark = dark,
-                    )
-
-                    else -> RowsStep(pages[index], dark)
-                }
-            }
-
-            // The welcome page brings its own round button; every other step ends on this one.
-            if (current.step != GuideStep.Welcome) {
-                GuideActionButton(
-                    text = if (current.step == GuideStep.Done) "开始使用" else "继续",
-                    onClick = {
-                        if (current.step == GuideStep.Done) {
-                            onFinish()
-                        } else {
-                            goTo(pagerState.currentPage + 1)
-                        }
-                    },
+            when (nav.page.step) {
+                GuideStep.Welcome -> WelcomeStep(nav)
+                GuideStep.Permissions -> PermissionsStep(
+                    nav = nav,
+                    accessibilityEnabled = accessibilityEnabled,
+                    hasOverlayPermission = hasOverlayPermission,
+                    onOpenAccessibility = onOpenAccessibility,
+                    onRequestOverlay = onRequestOverlay,
+                    dark = dark,
                 )
+
+                GuideStep.Done -> DoneStep(nav, dark)
+                else -> RowsStep(nav, dark)
             }
+        }
+
+        // The welcome page brings its own round button; every other step ends on this one.
+        if (nav.page.step != GuideStep.Welcome) {
+            GuideActionButton(
+                text = if (nav.isLast) "开始使用" else "继续",
+                enabled = !nav.busy,
+                onClick = nav.onNext,
+            )
         }
     }
 }
@@ -236,9 +200,9 @@ private fun GuideActionBar(canGoBack: Boolean, onBack: () -> Unit, onSkip: () ->
     }
 }
 
-/** The opening step: the mark, the name, and one line about what this is. */
+/** The opening step: the mark, the name, and the round button that opens the next page. */
 @Composable
-private fun WelcomeStep(page: GuidePage, onStart: () -> Unit, onMarkPositioned: (Float) -> Unit) {
+private fun WelcomeStep(nav: GuideNav) {
     val rise = enterProgress()
     val button = enterProgress(delayMillis = 900, durationMillis = 450)
 
@@ -255,17 +219,17 @@ private fun WelcomeStep(page: GuidePage, onStart: () -> Unit, onMarkPositioned: 
             },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            AppMark(onPositioned = onMarkPositioned)
+            AppMark(modifier = nav.reportGlowAnchor(Modifier))
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = page.title,
+                text = nav.page.title,
                 style = MiuixTheme.textStyles.title1,
                 color = MiuixTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = page.subtitle,
+                text = nav.page.subtitle,
                 style = MiuixTheme.textStyles.body2,
                 color = MiuixTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
@@ -274,14 +238,21 @@ private fun WelcomeStep(page: GuidePage, onStart: () -> Unit, onMarkPositioned: 
 
         Spacer(modifier = Modifier.weight(40f))
 
+        // While the page is on its way out the button is hidden (upstream hides it the moment the
+        // scale-up starts); when it is done, the button is back — so coming back here still works.
         Box(
-            modifier = Modifier.graphicsLayer {
-                alpha = button
-                scaleX = 0.9f + 0.1f * button
-                scaleY = 0.9f + 0.1f * button
-            },
+            modifier = Modifier
+                .alpha(if (nav.leaving) 0f else 1f)
+                .graphicsLayer {
+                    alpha = button
+                    scaleX = 0.9f + 0.1f * button
+                    scaleY = 0.9f + 0.1f * button
+                },
         ) {
-            RoundStartButton(onClick = onStart)
+            RoundStartButton(
+                onClick = nav.onNext,
+                modifier = nav.reportStartCircle(Modifier),
+            )
         }
 
         Spacer(modifier = Modifier.weight(20f))
@@ -290,7 +261,7 @@ private fun WelcomeStep(page: GuidePage, onStart: () -> Unit, onMarkPositioned: 
 
 /** The closing step: the same mark, one line, one last hint, and the button below it. */
 @Composable
-private fun DoneStep(page: GuidePage, onMarkPositioned: (Float) -> Unit, dark: Boolean) {
+private fun DoneStep(nav: GuideNav, dark: Boolean) {
     val rise = enterProgress()
 
     Column(
@@ -306,22 +277,22 @@ private fun DoneStep(page: GuidePage, onMarkPositioned: (Float) -> Unit, dark: B
         // No `weight` spacers here: this column scrolls, and a weight in a scrollable column has no
         // space to divide.
         Spacer(modifier = Modifier.height(88.dp))
-        AppMark(onPositioned = onMarkPositioned)
+        AppMark(modifier = nav.reportGlowAnchor(Modifier))
         Spacer(modifier = Modifier.height(28.dp))
         Text(
-            text = page.title,
+            text = nav.page.title,
             style = MiuixTheme.textStyles.title1,
             color = MiuixTheme.colorScheme.onBackground,
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = page.subtitle,
+            text = nav.page.subtitle,
             style = MiuixTheme.textStyles.body2,
             color = MiuixTheme.colorScheme.onBackground,
         )
         Spacer(modifier = Modifier.height(44.dp))
         Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-            page.rows.forEach { row ->
+            nav.page.rows.forEach { row ->
                 GuideRowView(
                     icon = row.icon,
                     title = row.title,
@@ -339,7 +310,7 @@ private fun DoneStep(page: GuidePage, onMarkPositioned: (Float) -> Unit, dark: B
 
 /** A step that is only a title, a subtitle and a list of rows. */
 @Composable
-private fun RowsStep(page: GuidePage, dark: Boolean) {
+private fun RowsStep(nav: GuideNav, dark: Boolean) {
     val rise = enterProgress()
 
     Column(
@@ -353,9 +324,9 @@ private fun RowsStep(page: GuidePage, dark: Boolean) {
             .padding(horizontal = 20.dp),
     ) {
         Spacer(modifier = Modifier.height(36.dp))
-        StepTitle(page)
+        StepTitle(nav.page)
         Spacer(modifier = Modifier.height(20.dp))
-        page.rows.forEach { row ->
+        nav.page.rows.forEach { row ->
             GuideRowView(
                 icon = row.icon,
                 title = row.title,
@@ -373,7 +344,7 @@ private fun RowsStep(page: GuidePage, dark: Boolean) {
 /** The permission step: the same rows, but with the live state of the two switches. */
 @Composable
 private fun PermissionsStep(
-    page: GuidePage,
+    nav: GuideNav,
     accessibilityEnabled: Boolean,
     hasOverlayPermission: Boolean,
     onOpenAccessibility: () -> Unit,
@@ -393,7 +364,7 @@ private fun PermissionsStep(
             .padding(horizontal = 20.dp),
     ) {
         Spacer(modifier = Modifier.height(36.dp))
-        StepTitle(page)
+        StepTitle(nav.page)
         Spacer(modifier = Modifier.height(16.dp))
         GuideRowView(
             icon = AppIcons.Grant,
@@ -483,11 +454,11 @@ private fun GuideRowView(
     }
 }
 
-/** The round button the welcome step ends on, the way upstream's flow starts. */
+/** The round button the opening step ends on — the thing the scale-up opens out of. */
 @Composable
-private fun RoundStartButton(onClick: () -> Unit) {
+private fun RoundStartButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(70.dp)
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.60f))
@@ -505,7 +476,7 @@ private fun RoundStartButton(onClick: () -> Unit) {
 
 /** The one action button, sized the same on every step so it never jumps. */
 @Composable
-private fun GuideActionButton(text: String, onClick: () -> Unit) {
+private fun GuideActionButton(text: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -518,8 +489,8 @@ private fun GuideActionButton(text: String, onClick: () -> Unit) {
                 .fillMaxWidth()
                 .height(50.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color.Black.copy(alpha = 0.60f))
-                .clickable(onClick = onClick),
+                .background(Color.Black.copy(alpha = if (enabled) 0.60f else 0.30f))
+                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -532,21 +503,14 @@ private fun GuideActionButton(text: String, onClick: () -> Unit) {
     }
 }
 
-/**
- * The app's mark: text, because the launcher icon is an adaptive icon `painterResource` cannot load.
- *
- * [onPositioned] reports the mark's vertical centre in window coordinates, which is what the opening
- * ring is aimed at.
- */
+/** The app's mark: text, because the launcher icon is an adaptive icon `painterResource` cannot load. */
 @Composable
-private fun AppMark(onPositioned: (Float) -> Unit) {
+private fun AppMark(modifier: Modifier = Modifier) {
     Text(
         text = AppIconText,
         fontSize = 52.sp,
         color = MiuixTheme.colorScheme.onBackground,
         textAlign = TextAlign.Center,
-        modifier = Modifier.onGloballyPositioned { coordinates ->
-            onPositioned(coordinates.positionInWindow().y + coordinates.size.height / 2f)
-        },
+        modifier = modifier,
     )
 }
