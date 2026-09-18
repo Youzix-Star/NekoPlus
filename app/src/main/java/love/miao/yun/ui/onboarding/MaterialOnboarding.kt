@@ -1,9 +1,11 @@
 /*
  * Copyright 2026, Youzix-Star
  * SPDX-License-Identifier: AGPL-3.0-only
+ *
+ * The shape of this guide — the full-screen glow, the title block, the row list, the bottom action
+ * button — follows HyperCeiler's provisioning flow (library/provision, AGPL-3.0-only). The words,
+ * the steps and the permission rows are this app's.
  */
-
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
 
 package love.miao.yun.ui.onboarding
 
@@ -13,41 +15,47 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import love.miao.yun.ui.AppIconText
+import love.miao.yun.ui.AppIcons
 
 /**
  * The first-run guide, drawn over everything else while it is open.
  *
- * It exists because the app needs two system switches and one optional API key before it does
- * anything useful, and finding that out by trial and error is the worst possible introduction.
- * The About page can bring it back at any time.
+ * It exists because the app needs two system switches before it does anything useful, and finding
+ * that out by trial and error is the worst possible introduction. The About page can bring it back
+ * at any time.
  */
 @Composable
 fun MaterialOnboarding(
@@ -60,167 +68,357 @@ fun MaterialOnboarding(
     val pages = GuidePages
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
-    val lastPage = pagerState.currentPage == pages.lastIndex
+    val current = pages[pagerState.currentPage]
+    val scheme = MaterialTheme.colorScheme
+    val dark = scheme.surface.luminance() < 0.5f
+    val palette = glowPaletteOf(scheme.primary, scheme.secondary, scheme.tertiary, scheme.surface)
+
+    fun goTo(index: Int) = scope.launch { pagerState.animateScrollToPage(index) }
 
     BackHandler { onFinish() }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.surface)
-            .safeDrawingPadding()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Text(
-                text = "跳过",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .clickable { onFinish() }
-                    .padding(8.dp),
+    Box(modifier = Modifier.fillMaxSize()) {
+        // The ring only plays on the page the guide opens with: it belongs to the start of the
+        // shader's clock, and on any later page it would look like a bug.
+        GlowBackground(palette = palette, circleVisible = current.step == GuideStep.Welcome)
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding(),
+        ) {
+            GuideActionBar(
+                canGoBack = pagerState.currentPage > 0,
+                onBack = { goTo(pagerState.currentPage - 1) },
+                onSkip = onFinish,
             )
-        }
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        ) { index ->
-            val page = pages[index]
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(96.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = page.icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(44.dp),
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(28.dp))
-                Text(
-                    text = page.title,
-                    style = MaterialTheme.typography.headlineSmallEmphasized,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = page.body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) { index ->
+                when (pages[index].step) {
+                    GuideStep.Welcome -> WelcomeStep(
+                        page = pages[index],
+                        onStart = { goTo(pagerState.currentPage + 1) },
+                    )
 
-                // The two switches the guide is really about, with their live state.
-                if (index == 1) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        ),
-                    ) {
-                        GuideSwitch(
-                            title = if (accessibilityEnabled) "无障碍服务已开启" else "无障碍服务未开启",
-                            action = if (accessibilityEnabled) "已开启" else "去开启",
-                            onClick = onOpenAccessibility,
-                        )
-                        GuideSwitch(
-                            title = if (hasOverlayPermission) "悬浮窗权限已授予" else "悬浮窗权限未授予",
-                            action = if (hasOverlayPermission) "已授予" else "去授权",
-                            onClick = onRequestOverlay,
-                        )
-                    }
+                    GuideStep.Permissions -> PermissionsStep(
+                        page = pages[index],
+                        accessibilityEnabled = accessibilityEnabled,
+                        hasOverlayPermission = hasOverlayPermission,
+                        onOpenAccessibility = onOpenAccessibility,
+                        onRequestOverlay = onRequestOverlay,
+                        dark = dark,
+                    )
+
+                    GuideStep.Done -> DoneStep(pages[index])
+                    else -> RowsStep(pages[index], dark)
                 }
             }
-        }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            pages.indices.forEach { index ->
-                val active = index == pagerState.currentPage
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp)
-                        .size(if (active) 9.dp else 7.dp)
-                        .background(
-                            color = if (active) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.surfaceVariant
-                            },
-                            shape = CircleShape,
-                        ),
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (pagerState.currentPage > 0) {
-                FilledTonalButton(
+            // The welcome page brings its own round button; every other step ends on this one.
+            if (current.step != GuideStep.Welcome) {
+                GuideActionButton(
+                    text = if (current.step == GuideStep.Done) "开始使用" else "继续",
                     onClick = {
-                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                        if (current.step == GuideStep.Done) {
+                            onFinish()
+                        } else {
+                            goTo(pagerState.currentPage + 1)
+                        }
                     },
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(vertical = 12.dp),
-                ) {
-                    Text("上一步")
-                }
-            }
-            Button(
-                onClick = {
-                    if (lastPage) {
-                        onFinish()
-                    } else {
-                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(vertical = 12.dp),
-            ) {
-                Text(if (lastPage) "开始使用" else "下一步")
+                )
             }
         }
     }
 }
 
-/** One row of the permission card: a status and the way to change it. */
+/** Back on the left, skip on the right — the one bar every step shares. */
 @Composable
-private fun GuideSwitch(title: String, action: String, onClick: () -> Unit) {
+private fun GuideActionBar(canGoBack: Boolean, onBack: () -> Unit, onSkip: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .height(56.dp)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (canGoBack) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = AppIcons.Back,
+                    contentDescription = "上一步",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.weight(1f))
         Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = action,
+            text = "跳过",
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onSkip)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
         )
     }
+}
+
+/** The opening step: the mark, the name, and one line about what this is. */
+@Composable
+private fun WelcomeStep(page: GuidePage, onStart: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(modifier = Modifier.weight(30f))
+        AppMark()
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = page.title,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = page.subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.weight(40f))
+        RoundStartButton(onClick = onStart)
+        Spacer(modifier = Modifier.weight(20f))
+    }
+}
+
+/** The closing step: the same mark, one line, and the button the outer column places below it. */
+@Composable
+private fun DoneStep(page: GuidePage) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(modifier = Modifier.weight(24f))
+        AppMark()
+        Spacer(modifier = Modifier.height(28.dp))
+        Text(
+            text = page.title,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = page.subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.weight(30f))
+    }
+}
+
+/** A step that is only a title, a subtitle and a list of rows. */
+@Composable
+private fun RowsStep(page: GuidePage, dark: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp),
+    ) {
+        Spacer(modifier = Modifier.height(36.dp))
+        StepTitle(page)
+        Spacer(modifier = Modifier.height(20.dp))
+        page.rows.forEach { row ->
+            GuideRowView(
+                icon = row.icon,
+                title = row.title,
+                detail = row.detail,
+                trailing = null,
+                dark = dark,
+                onClick = null,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+/** The permission step: the same rows, but with the live state of the two switches. */
+@Composable
+private fun PermissionsStep(
+    page: GuidePage,
+    accessibilityEnabled: Boolean,
+    hasOverlayPermission: Boolean,
+    onOpenAccessibility: () -> Unit,
+    onRequestOverlay: () -> Unit,
+    dark: Boolean,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp),
+    ) {
+        Spacer(modifier = Modifier.height(36.dp))
+        StepTitle(page)
+        Spacer(modifier = Modifier.height(16.dp))
+        GuideRowView(
+            icon = AppIcons.Grant,
+            title = if (accessibilityEnabled) "无障碍服务已开启" else "无障碍服务未开启",
+            detail = "读写输入框要靠它",
+            trailing = if (accessibilityEnabled) "已开启" else "去开启",
+            dark = dark,
+            onClick = onOpenAccessibility,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        GuideRowView(
+            icon = AppIcons.Floating,
+            title = if (hasOverlayPermission) "悬浮窗权限已授予" else "悬浮窗权限未授予",
+            detail = "显示那组按钮要靠它",
+            trailing = if (hasOverlayPermission) "已授予" else "去授权",
+            dark = dark,
+            onClick = onRequestOverlay,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun StepTitle(page: GuidePage) {
+    Column {
+        Text(
+            text = page.title,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = page.subtitle,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+/** One rounded row. A row without an [onClick] is not clickable and carries no [trailing] text. */
+@Composable
+private fun GuideRowView(
+    icon: ImageVector,
+    title: String,
+    detail: String,
+    trailing: String?,
+    dark: Boolean,
+    onClick: (() -> Unit)?,
+) {
+    val fill = if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.34f)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(fill)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(22.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = detail,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        if (trailing != null) {
+            Text(
+                text = trailing,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
+
+/** The round button the welcome step ends on, the way upstream's flow starts. */
+@Composable
+private fun RoundStartButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(70.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.60f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = AppIcons.Forward,
+            contentDescription = "开始",
+            tint = Color.White,
+            modifier = Modifier.size(30.dp),
+        )
+    }
+}
+
+/** The one action button, sized the same on every step so it never jumps. */
+@Composable
+private fun GuideActionButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 336.dp)
+                .fillMaxWidth()
+                .height(50.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(alpha = 0.60f))
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = text,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White,
+            )
+        }
+    }
+}
+
+/** The app's mark: text, because the launcher icon is an adaptive icon `painterResource` cannot load. */
+@Composable
+private fun AppMark() {
+    Text(
+        text = AppIconText,
+        fontSize = 52.sp,
+        color = MaterialTheme.colorScheme.onSurface,
+        textAlign = TextAlign.Center,
+    )
 }

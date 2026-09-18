@@ -48,6 +48,11 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
     val entries = remember {
         listOf(
             LicenseEntry("NekoPlus（本项目）", "AGPL-3.0", "https://github.com/Youzix-Star/NekoPlus"),
+            LicenseEntry(
+                "HyperCeiler（新手引导的极光与版式）",
+                "AGPL-3.0",
+                "https://github.com/ReChronoRain/HyperCeiler",
+            ),
             LicenseEntry("miuix", "Apache License 2.0", "https://github.com/compose-miuix-ui/miuix"),
             LicenseEntry(
                 "AndroidX / Jetpack Compose",

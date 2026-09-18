@@ -195,14 +195,33 @@ SharedPreferences），**每个按钮各自独立**：
 
 ## 新手引导
 
-首次启动会先走一遍四页引导（`ui/onboarding/`），两套引擎各有一份实现，盖在整个界面上：
+首次启动会先走一遍五步引导（`ui/onboarding/`），两套引擎各有一份实现，盖在整个界面上：
 
-1. 这个应用做什么；
-2. 要开的两个开关 —— 无障碍服务与悬浮窗权限，**带实时状态**，点一下直接跳系统设置；
-3. 按钮怎么用（点按 / 长按 / 拖动 / 贴边）；
-4. 去哪里填 API Key。
+1. **开场** —— 文字标记 + 应用名 + 一个圆形开始按钮，背景是那道会动的极光；
+2. **它是怎么工作的** —— 抓取 / 改写 / 写回，外加「只在你点的时候才动」；
+3. **两个开关** —— 无障碍服务与悬浮窗权限，**带实时状态**，点一下直接跳系统设置；
+4. **悬浮窗按钮** —— 点按 / 长按 / 拖动贴边；
+5. **设置完毕** —— 底部一个「开始使用」。
 
-「跳过」和「开始使用」等价，都会把 `onboarding` 这个 SharedPreferences 标记为已看过，
+**版式与极光来自 [HyperCeiler](https://github.com/ReChronoRain/HyperCeiler) 的 `library/provision`**
+（AGPL-3.0-only，版权归 HyperCeiler Contributions，文件头注明）：
+
+- `res/raw/glow.glsl` 是它那份 AGSL 着色器，**原样搬来**（37 个 uniform 的默认值也一条没改，
+  见 `GlowPainter.kt`）：双层 3D simplex 噪声 + 三色 Oklab 渐变 + screen 提亮，
+  时间在 2 s ↔ 120 s 之间来回走，所以画面永不重复；
+- 三个颜色**不抄它的品牌色**，而是从当前主题的 primary/secondary/tertiary 推出来并排成
+  「暗 → 亮 → 中间」的次序（`GlowPalette.fromTheme`）—— 动态取色开着时，引导页会跟着壁纸变；
+  暗色主题下整体压暗（`DARK_DIM`），否则白字压在亮极光上没法看；
+- 开场那道**环带**就是同一个着色器的 `uShowCircle`，只在第一页打开；
+- 页头 56 dp（左返回、右跳过）、标题 + 副标题、圆角 16 dp 的条目行、底部 336×50 dp 的动作按钮，
+  都是照着它的 `provision_*_layout.xml` 的尺寸来的。
+
+一处**有意的不同**：上游把着色器画在 20 % 尺寸的 View 上再放大 5×（省算力 + 柔化噪点），
+这里改成整屏直画 —— Compose 没有 shader 版的 `RenderEffect` 工厂，而在 Compose 里塞一个被缩放的
+平台 View 要受互操作层裁剪的摆布；代价用**帧率**补回来：时钟按 30 fps 走，极光本来就是两分钟
+一循环，看不出来。
+
+「跳过」「继续」和「开始使用」都会把 `onboarding` 这个 SharedPreferences 标记为已看过，
 所以引导只在自己会出来的时候出现一次；想再看就去 **关于 → 新手引导**，那只是把
 `MiaoState.showOnboarding` 重新置为 true，不会动那个标记。返回键等于「跳过」。
 
@@ -539,7 +558,8 @@ app/src/main/java/love/miao/yun/
 
 | 部分 | 文件数 | 协议 |
 |---|---|---|
-| 本仓库自有代码 | 52 | `AGPL-3.0-only`（`Copyright 2026, Youzix-Star` / `NekoPlus contributors`） |
+| 本仓库自有代码 | 54 | `AGPL-3.0-only`（`Copyright 2026, Youzix-Star` / `NekoPlus contributors`） |
+| `ui/onboarding/GlowPainter.kt`、`GlowBackground.kt`、`res/raw/glow.glsl` | 3 | `AGPL-3.0-only`，移植自 [HyperCeiler](https://github.com/ReChronoRain/HyperCeiler) 的 `library/provision`，版权归 **HyperCeiler Contributions**，文件头注明 |
 | `ui/material3/widgets/`、`ui/material3/Backdrop.kt`、`ui/material3/Shape.kt`、`ui/MainPagerState.kt` | 12 | `GPL-3.0-only`，逐行移植自 [InstallerX-Revived](https://github.com/wxxsfxyzm/InstallerX-Revived)，原作者版权声明原样保留 |
 | `ai/AiManager.kt`、`ai/TokenStats.kt`、`util/UpdateChecker.kt`、`service/MiaoAccessibilityService.kt` | 4 | `GPL-3.0-only`，移植自更早的 NekoNeko 项目，**沿用它原本的协议** |
 | `ui/miuix/liquid/`、`ui/miuix/animation/` | 7 | `Apache-2.0`，经 NekoEdit 转手，原作出自 Kyant0/AndroidLiquidGlass |

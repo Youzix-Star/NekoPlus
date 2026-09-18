@@ -1,6 +1,10 @@
 /*
  * Copyright 2026, Youzix-Star
  * SPDX-License-Identifier: AGPL-3.0-only
+ *
+ * The shape of this guide — the full-screen glow, the title block, the row list, the bottom action
+ * button — follows HyperCeiler's provisioning flow (library/provision, AGPL-3.0-only). The words,
+ * the steps and the permission rows are this app's.
  */
 
 package love.miao.yun.ui.onboarding
@@ -16,23 +20,32 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import love.miao.yun.ui.AppIconText
+import love.miao.yun.ui.AppIcons
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -40,9 +53,9 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 /**
  * The first-run guide, drawn over everything else while it is open.
  *
- * It exists because the app needs two system switches and one optional API key before it does
- * anything useful, and finding that out by trial and error is the worst possible introduction.
- * The About page can bring it back at any time.
+ * It exists because the app needs two system switches before it does anything useful, and finding
+ * that out by trial and error is the worst possible introduction. The About page can bring it back
+ * at any time.
  */
 @Composable
 fun MiuixOnboarding(
@@ -55,165 +68,357 @@ fun MiuixOnboarding(
     val pages = GuidePages
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
-    val lastPage = pagerState.currentPage == pages.lastIndex
+    val current = pages[pagerState.currentPage]
+    val scheme = MiuixTheme.colorScheme
+    val dark = scheme.surface.luminance() < 0.5f
+    // miuix has no plain `tertiary`, only its container — which is the tint we want here anyway.
+    val palette = glowPaletteOf(scheme.primary, scheme.secondary, scheme.tertiaryContainer, scheme.surface)
+
+    fun goTo(index: Int) = scope.launch { pagerState.animateScrollToPage(index) }
 
     BackHandler { onFinish() }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MiuixTheme.colorScheme.surface)
-            .safeDrawingPadding()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
-    ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Text(
-                text = "跳过",
-                style = MiuixTheme.textStyles.body2,
-                color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                modifier = Modifier
-                    .clickable { onFinish() }
-                    .padding(8.dp),
+    Box(modifier = Modifier.fillMaxSize()) {
+        // The ring only plays on the page the guide opens with: it belongs to the start of the
+        // shader's clock, and on any later page it would look like a bug.
+        GlowBackground(palette = palette, circleVisible = current.step == GuideStep.Welcome)
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding(),
+        ) {
+            GuideActionBar(
+                canGoBack = pagerState.currentPage > 0,
+                onBack = { goTo(pagerState.currentPage - 1) },
+                onSkip = onFinish,
             )
-        }
 
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        ) { index ->
-            val page = pages[index]
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .background(MiuixTheme.colorScheme.primaryContainer, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = page.icon,
-                        contentDescription = null,
-                        tint = MiuixTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(44.dp),
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) { index ->
+                when (pages[index].step) {
+                    GuideStep.Welcome -> WelcomeStep(
+                        page = pages[index],
+                        onStart = { goTo(pagerState.currentPage + 1) },
                     )
-                }
-                Spacer(modifier = Modifier.height(28.dp))
-                Text(
-                    text = page.title,
-                    style = MiuixTheme.textStyles.title2,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = page.body,
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-                    textAlign = TextAlign.Center,
-                )
+                    GuideStep.Permissions -> PermissionsStep(
+                        page = pages[index],
+                        accessibilityEnabled = accessibilityEnabled,
+                        hasOverlayPermission = hasOverlayPermission,
+                        onOpenAccessibility = onOpenAccessibility,
+                        onRequestOverlay = onRequestOverlay,
+                        dark = dark,
+                    )
 
-                // The two switches the guide is really about, with their live state.
-                if (index == 1) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        GuideSwitch(
-                            title = if (accessibilityEnabled) "无障碍服务已开启" else "无障碍服务未开启",
-                            action = if (accessibilityEnabled) "已开启" else "去开启",
-                            onClick = onOpenAccessibility,
-                        )
-                        GuideSwitch(
-                            title = if (hasOverlayPermission) "悬浮窗权限已授予" else "悬浮窗权限未授予",
-                            action = if (hasOverlayPermission) "已授予" else "去授权",
-                            onClick = onRequestOverlay,
-                        )
-                    }
+                    GuideStep.Done -> DoneStep(pages[index])
+                    else -> RowsStep(pages[index], dark)
                 }
             }
-        }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 12.dp),
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            pages.indices.forEach { index ->
-                val active = index == pagerState.currentPage
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp)
-                        .size(if (active) 9.dp else 7.dp)
-                        .background(
-                            color = if (active) {
-                                MiuixTheme.colorScheme.primary
-                            } else {
-                                MiuixTheme.colorScheme.secondaryContainer
-                            },
-                            shape = CircleShape,
-                        ),
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            if (pagerState.currentPage > 0) {
-                // A Button, not a Card: the two actions have to be the same size, and a Button is
-                // the only thing that carries miuix's own min-height and inside margin.
-                Button(
+            // The welcome page brings its own round button; every other step ends on this one.
+            if (current.step != GuideStep.Welcome) {
+                GuideActionButton(
+                    text = if (current.step == GuideStep.Done) "开始使用" else "继续",
                     onClick = {
-                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
+                        if (current.step == GuideStep.Done) {
+                            onFinish()
+                        } else {
+                            goTo(pagerState.currentPage + 1)
+                        }
                     },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        color = MiuixTheme.colorScheme.secondaryContainer,
-                        contentColor = MiuixTheme.colorScheme.onSecondaryContainer,
-                    ),
-                ) {
-                    Text("上一步")
-                }
-            }
-            Button(
-                onClick = {
-                    if (lastPage) {
-                        onFinish()
-                    } else {
-                        scope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
-                    }
-                },
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(if (lastPage) "开始使用" else "下一步")
+                )
             }
         }
     }
 }
 
-/** One row of the permission card: a status and the way to change it. */
+/** Back on the left, skip on the right — the one bar every step shares. */
 @Composable
-private fun GuideSwitch(title: String, action: String, onClick: () -> Unit) {
+private fun GuideActionBar(canGoBack: Boolean, onBack: () -> Unit, onSkip: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 14.dp),
+            .height(56.dp)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (canGoBack) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = AppIcons.Back,
+                    contentDescription = "上一步",
+                    tint = MiuixTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+        }
+        Spacer(modifier = Modifier.weight(1f))
         Text(
-            text = title,
+            text = "跳过",
             style = MiuixTheme.textStyles.body2,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = action,
-            style = MiuixTheme.textStyles.footnote1,
-            color = MiuixTheme.colorScheme.primary,
+            color = MiuixTheme.colorScheme.onBackground,
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onSkip)
+                .padding(horizontal = 14.dp, vertical = 8.dp),
         )
     }
+}
+
+/** The opening and closing step: the mark, the name, and one line about what this is. */
+@Composable
+private fun WelcomeStep(page: GuidePage, onStart: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(modifier = Modifier.weight(30f))
+        AppMark()
+        Spacer(modifier = Modifier.height(20.dp))
+        Text(
+            text = page.title,
+            style = MiuixTheme.textStyles.title1,
+            color = MiuixTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = page.subtitle,
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.weight(40f))
+        RoundStartButton(onClick = onStart)
+        Spacer(modifier = Modifier.weight(20f))
+    }
+}
+
+/** The closing step: the same mark, one line, and the button the outer column places below it. */
+@Composable
+private fun DoneStep(page: GuidePage) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Spacer(modifier = Modifier.weight(24f))
+        AppMark()
+        Spacer(modifier = Modifier.height(28.dp))
+        Text(
+            text = page.title,
+            style = MiuixTheme.textStyles.title1,
+            color = MiuixTheme.colorScheme.onBackground,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = page.subtitle,
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onBackground,
+        )
+        Spacer(modifier = Modifier.weight(30f))
+    }
+}
+
+/** A step that is only a title, a subtitle and a list of rows. */
+@Composable
+private fun RowsStep(page: GuidePage, dark: Boolean) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp),
+    ) {
+        Spacer(modifier = Modifier.height(36.dp))
+        StepTitle(page)
+        Spacer(modifier = Modifier.height(20.dp))
+        page.rows.forEach { row ->
+            GuideRowView(
+                icon = row.icon,
+                title = row.title,
+                detail = row.detail,
+                trailing = null,
+                dark = dark,
+                onClick = null,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+/** The permission step: the same rows, but with the live state of the two switches. */
+@Composable
+private fun PermissionsStep(
+    page: GuidePage,
+    accessibilityEnabled: Boolean,
+    hasOverlayPermission: Boolean,
+    onOpenAccessibility: () -> Unit,
+    onRequestOverlay: () -> Unit,
+    dark: Boolean,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp),
+    ) {
+        Spacer(modifier = Modifier.height(36.dp))
+        StepTitle(page)
+        Spacer(modifier = Modifier.height(16.dp))
+        GuideRowView(
+            icon = AppIcons.Grant,
+            title = if (accessibilityEnabled) "无障碍服务已开启" else "无障碍服务未开启",
+            detail = "读写输入框要靠它",
+            trailing = if (accessibilityEnabled) "已开启" else "去开启",
+            dark = dark,
+            onClick = onOpenAccessibility,
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        GuideRowView(
+            icon = AppIcons.Floating,
+            title = if (hasOverlayPermission) "悬浮窗权限已授予" else "悬浮窗权限未授予",
+            detail = "显示那组按钮要靠它",
+            trailing = if (hasOverlayPermission) "已授予" else "去授权",
+            dark = dark,
+            onClick = onRequestOverlay,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun StepTitle(page: GuidePage) {
+    Column {
+        Text(
+            text = page.title,
+            style = MiuixTheme.textStyles.title1,
+            color = MiuixTheme.colorScheme.onBackground,
+        )
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = page.subtitle,
+            style = MiuixTheme.textStyles.footnote1,
+            color = MiuixTheme.colorScheme.onBackground,
+        )
+    }
+}
+
+/** One rounded row. A row without an [onClick] is not clickable and carries no [trailing] text. */
+@Composable
+private fun GuideRowView(
+    icon: ImageVector,
+    title: String,
+    detail: String,
+    trailing: String?,
+    dark: Boolean,
+    onClick: (() -> Unit)?,
+) {
+    val fill = if (dark) Color.White.copy(alpha = 0.10f) else Color.White.copy(alpha = 0.34f)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(fill)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MiuixTheme.colorScheme.onBackground,
+            modifier = Modifier.size(22.dp),
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MiuixTheme.textStyles.body2,
+                color = MiuixTheme.colorScheme.onBackground,
+            )
+            Text(
+                text = detail,
+                style = MiuixTheme.textStyles.footnote2,
+                color = MiuixTheme.colorScheme.onBackground,
+            )
+        }
+        if (trailing != null) {
+            Text(
+                text = trailing,
+                style = MiuixTheme.textStyles.footnote1,
+                color = MiuixTheme.colorScheme.onBackground,
+            )
+        }
+    }
+}
+
+/** The round button the welcome step ends on, the way upstream's flow starts. */
+@Composable
+private fun RoundStartButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(70.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.60f))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = AppIcons.Forward,
+            contentDescription = "开始",
+            tint = Color.White,
+            modifier = Modifier.size(30.dp),
+        )
+    }
+}
+
+/** The one action button, sized the same on every step so it never jumps. */
+@Composable
+private fun GuideActionButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, bottom = 24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .widthIn(max = 336.dp)
+                .fillMaxWidth()
+                .height(50.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(alpha = 0.60f))
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = text,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White,
+            )
+        }
+    }
+}
+
+/** The app's mark: text, because the launcher icon is an adaptive icon `painterResource` cannot load. */
+@Composable
+private fun AppMark() {
+    Text(
+        text = AppIconText,
+        fontSize = 52.sp,
+        color = MiuixTheme.colorScheme.onBackground,
+        textAlign = TextAlign.Center,
+    )
 }

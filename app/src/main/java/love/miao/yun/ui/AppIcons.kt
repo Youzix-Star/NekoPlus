@@ -59,4 +59,9 @@ object AppIcons {
     val Sparkle: ImageVector = Icons.Rounded.AutoAwesome
     val Touch: ImageVector = Icons.Rounded.TouchApp
     val Key: ImageVector = Icons.Rounded.Key
+    val Read: ImageVector = Icons.Rounded.TextFields
+    val Write: ImageVector = Icons.Rounded.Send
+    val Hold: ImageVector = Icons.Rounded.PanTool
+    val Drag: ImageVector = Icons.Rounded.OpenWith
+    val Forward: ImageVector = Icons.AutoMirrored.Rounded.ArrowForward
 }
