@@ -20,3 +20,10 @@
 
 -keep class com.sevtinge.hyperceiler.provision.activity.** { *; }
 -keep class com.sevtinge.hyperceiler.provision.fragment.** { *; }
+
+# Not one of HyperCeiler's rules, but the same reasoning as theirs: StateMachine persists the guide's
+# position as `Class.getSimpleName()` (`com.android.provision.STATE_<i>`), so the state classes have
+# to keep their names. Obfuscated, save and restore would still agree within one build, but a chain
+# written by the previous APK could name a different state after an update and resume the guide on
+# the wrong page.
+-keep class com.sevtinge.hyperceiler.provision.state.** { *; }

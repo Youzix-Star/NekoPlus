@@ -53,7 +53,9 @@
 补搬它的 keep 规则：`app/proguard-rules.pro` 里
 `-dontwarn miui.**`、`-dontwarn com.android.internal.view.menu.MenuBuilder` 照抄自它
 `library/core/src/main/keepRules/rules.keep:26-28`；`-keep ...provision.activity.**` /
-`-keep ...provision.fragment.**` 照抄自 `library/provision/src/main/keepRules/rules.keep`。
+`-keep ...provision.fragment.**` 照抄自 `library/provision/src/main/keepRules/rules.keep`，
+另外自己加了一条 `-keep ...provision.state.**`：状态机把引导进度按 `getSimpleName()` 持久化，
+不保名的话，跨版本更新后旧状态链可能指到别的页。
 没有前两条，release 的 R8 直接失败：`fan.miuix:*` 引用着 `miui.util.HapticFeedbackUtil` 和
 `com.android.internal.view.menu.MenuBuilder` 这两个不在 `android.jar` 里的类。
 
@@ -217,18 +219,21 @@
 - **本地没有 Android SDK，一次都没构建过**；唯一的构建/验证路径是 GitHub Actions。
 - CI：`./gradlew testDebugUnitTest`（规则引擎的 JVM 测试）+ `assembleRelease`（R8 + 资源压缩）
   全部通过。
-  - run（最后一个绿色）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35373086630
-  - 产物：artifact `MiaoAssistant-release-apk`，解出来是
-    `MiaoAssistant-1-merge.apk`，5 103 663 字节，
-    `sha256 6d24c02a5e2bf5e5316ea95674d51348843ce84e4ed875aad351ffcc9dfb3ef0`
-    （artifact id 10559037216；本地在 `~/apk-final/MiaoAssistant-1-merge.apk`）。这个 PR 的
-    APK 是**有签名**的（CI 恢复了 keystore）。
-- 对 APK 做过静态核对（`MiaoAssistant-1-merge.apk`）：三个引导 Activity 与动画服务都在
+  - 四步版（当前 HEAD）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35374749580
+  - 产物：artifact `MiaoAssistant-release-apk`，解出来是 `MiaoAssistant-1-merge.apk`，
+    5 201 975 字节，`sha256 e48f51353a9b7ea7d6951d4938409978b3e3ad29f75185c203bc923ba784d377`
+    （artifact id 10559917564；本地在 `~/apk-4step/MiaoAssistant-1-merge.apk`）。
+    这个 PR 的 APK 是**有签名**的（CI 恢复了 keystore）。
+  - 三步版的绿色 run（上一轮）：https://github.com/Youzix-Star/NekoPlus/actions/runs/35373086630
+- 对 APK 做过静态核对（`MiaoAssistant-1-merge.apk`）：四个引导 Activity
+  （Default / PermissionSettings / **BasicSettings** / Congratulation）与动画服务都在
   AndroidManifest 里；`resources.arsc` 里有 `provision_*` 布局/drawable/`glow`/`ProvisionTheme`
-  以及"无障碍服务 / 悬浮窗权限 / 权限设置 / 设置完毕"（中文来自 `values-zh-rCN`）；
-  dex 里能找到极光的 uniform 名（`uTime`/`uColorBlack`/`uCircleFinalRadius`）、状态机字符串
-  （`com.android.provision.STATE_`、`pref_oobe_state`）和 `ProvisionAnimService`。
-  （release 的资源文件名被 AGP 缩短成 `res/0F.xml` 这种，所以只能从 `resources.arsc` 里认名字。）
+  与 `provision_ai_*`，以及"无障碍服务 / 悬浮窗权限 / 权限设置 / 设置完毕 / AI 配置 /
+  API 接口地址 / 模型名 / 连接测试"；dex 里能找到极光的 uniform 名
+  （`uTime`/`uColorBlack`/`uCircleFinalRadius`）、状态机字符串（`com.android.provision.STATE_`、
+  `pref_oobe_state`）、`ProvisionAnimService` 与 `BasicSettingsFragment` / `connection_test`。
+  （release 的资源文件名被 AGP 缩短成 `res/0F.xml` 这种，所以只能从 `resources.arsc` 里认名字；
+  引导的 activity/fragment/state 类名被 keep 规则保住了，别的类名会被 R8 改。）
 
 ## 9. 只有真机才能验的部分（请重点看这些）
 
