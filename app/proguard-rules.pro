@@ -32,6 +32,32 @@
 -keep class fan.** { *; }
 -keep class com.fan.** { *; }
 
+# --- The rule whose absence crashed the AI step (2026-09-19) ---
+#
+# Same file as the rules above: `library/core/src/main/keepRules/rules.keep:14`, copied verbatim.
+#
+# `androidx.preference.PreferenceInflater.init()` resolves the preference classes named by the XML by
+# package prefix, and it takes that prefix from the classes themselves:
+#
+#     setDefaultPackages(new String[]{
+#         Preference.class.getPackage().getName() + ".",
+#         SwitchPreference.class.getPackage().getName() + "."});
+#
+# (verbatim from androidx.preference 1.2.1 sources — upstream code, not a miuix change; the dex of
+# `PreferenceInflater` in fan.miuix:preference shows exactly this `Class.getPackage()` →
+# `Package.getName()` chain at `init`.)
+#
+# `Class.getPackage()` returns null for a class in the unnamed package, and R8's release defaults
+# repackage obfuscated classes into exactly that: 4118 of the 4257 classes in the last APK carry
+# package-less `La0;`-style names, `androidx.preference.Preference` among them. So
+# `setPreferencesFromResource()` in BasicSettingsFragment threw
+# "NullPointerException: … java.lang.Package.getName() on a null object reference" before a single row
+# was inflated. HyperCeiler hits the same trap (its app rules do `-repackageclasses`, the same
+# default-package repackaging) and fixes it with this line — copied rather than reinvented. The whole
+# package has to keep its names, not just `Preference`, because the prefix it derives is then used to
+# look the other preference classes up by name.
+-keep class androidx.preference.** { *; }
+
 -keep class com.sevtinge.hyperceiler.provision.activity.** { *; }
 -keep class com.sevtinge.hyperceiler.provision.fragment.** { *; }
 
