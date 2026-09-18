@@ -322,7 +322,7 @@ private class CircleClip(private val centre: Offset, private val radius: Float) 
         density: Density,
     ): Outline = Outline.Generic(
         Path().apply {
-            addOval(Rect(centre = centre, radius = radius))
+            addOval(Rect(center = centre, radius = radius))
         },
     )
 }
