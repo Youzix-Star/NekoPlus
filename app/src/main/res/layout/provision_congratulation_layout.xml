@@ -54,6 +54,14 @@
                 android:gravity="center_horizontal"
                 android:orientation="vertical">
 
+                <!--
+                  与开场页同一套品牌替换：app_mark.png 是本应用 launcher 前景图按墨迹边界
+                  裁出来的（像素未改，见开场页布局里的说明），里面就是 AppIconText 那个标记。
+                  字标槽位改成应用名文字。上游这两个 view 是它的 logo/字标 vector，
+                  vector 本身留在 drawable 里没删。尺寸与 20dp 间距照抄它的值。
+                  这一页用深色（它的 provision_complete_title_color，与下面 system_state_text
+                  同色系），因为这一页的极光没有开场遮罩、是亮的 —— 上游这里也用的 _lite 深色稿。
+                -->
                 <ImageView
                     android:id="@+id/logo_image"
                     android:layout_width="90dp"
@@ -61,14 +69,18 @@
                     android:contentDescription="@null"
                     android:importantForAccessibility="no"
                     android:layout_gravity="center"
-                    android:src="@drawable/provision_logo_image_lite" />
+                    android:src="@drawable/app_mark"
+                    android:tint="@color/provision_complete_title_color" />
 
-                <ImageView
+                <TextView
                     android:id="@+id/text_logo_image"
                     android:layout_width="@dimen/provision_startup_logo_width_thirteen"
                     android:layout_height="@dimen/provision_startup_logo_height_thirteen"
                     android:layout_marginTop="20dp"
-                    android:src="@drawable/provision_text_logo_image_lite" />
+                    android:gravity="center"
+                    android:text="@string/app_name"
+                    android:textColor="@color/provision_complete_title_color"
+                    android:textSize="@dimen/provision_title_text_size" />
 
                 <TextView
                     android:id="@+id/system_state_text"

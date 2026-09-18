@@ -61,34 +61,65 @@
                 android:importantForAccessibility="no" />
         </RelativeLayout>
 
+        <!--
+          Branding: HyperCeiler 自己的 logo 与字标 vector 换成我们的（drawable 仍留在树里）。
+          这 90dp 方块里放本应用的标记：app_mark.png 就是本应用 launcher 前景图
+          （app_icon.png，里面烤的是同一个 AppIconText 字串）按墨迹边界裁出来的那一块，
+          像素一个没改 —— 原图 432x432 里墨迹只有 217x43、宽高比约 5:1，不裁的话放进 90dp
+          方块只占一半宽。在黑色极光上按原色看不见，所以 tint 成白色。
+          尺寸、位置、入场动画与上游一致。
+        -->
         <ImageView
             android:id="@+id/logo_image"
             android:layout_width="90dp"
             android:layout_height="90dp"
             android:contentDescription="@null"
             android:importantForAccessibility="no"
-            android:layout_gravity="center"/>
+            android:layout_gravity="center"
+            android:src="@drawable/app_mark"
+            android:tint="@android:color/white" />
 
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="40">
 
-            <FrameLayout
+            <!--
+              字标槽位（320x45.28dp，它的 dimens）：上游这里是 "HyperCeiler" 的白色字标 vector，
+              现在是应用名；下面再加一行副标题，与 Compose 版引导首屏那三行（标记 / 应用名 /
+              一句话）一致。容器由 FrameLayout 改成纵向 LinearLayout 只为了叠两行文字，
+              尺寸、居中方式与它原来的写法相同。两行都在 logo_image_wrapper 里，
+              所以上游那套入场动画（对 wrapper 整体做）一字未改地作用在它们身上。
+            -->
+            <LinearLayout
                 android:id="@+id/logo_image_wrapper"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignParentTop="true"
-                android:layout_centerHorizontal="true">
+                android:layout_centerHorizontal="true"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
 
-                <ImageView
+                <TextView
                     android:id="@+id/text_logo_image"
                     android:layout_width="@dimen/provision_startup_logo_width_thirteen"
                     android:layout_height="@dimen/provision_startup_logo_height_thirteen"
-                    android:contentDescription="@null"
-                    android:importantForAccessibility="no"
-                    android:layout_marginTop="20dp"/>
-            </FrameLayout>
+                    android:layout_marginTop="20dp"
+                    android:gravity="center"
+                    android:text="@string/app_name"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/provision_title_text_size" />
+
+                <TextView
+                    android:id="@+id/text_logo_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/provision_subtitle_margin_top"
+                    android:alpha="0.7"
+                    android:text="@string/provision_guide_subtitle"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/provision_subtitle_text_size" />
+            </LinearLayout>
 
             <FrameLayout
                 android:id="@+id/next_layout"

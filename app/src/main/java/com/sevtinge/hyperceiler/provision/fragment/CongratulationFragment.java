@@ -66,7 +66,8 @@ public class CongratulationFragment extends BaseFragment implements IOnFocusList
     private View mGlowEffectView;
     private View mContentView;
     private ImageView mLogoImage;
-    private ImageView mTextLogoImage;
+    // 字标槽位现在是文字（应用名），不再是它的字标 vector。
+    private TextView mTextLogoImage;
     private View mLogoImageWrapper;
     private View mNext;
     private View mNextView;
@@ -147,13 +148,14 @@ public class CongratulationFragment extends BaseFragment implements IOnFocusList
             MiuiBlurUtils.setBackgroundBlur(mContentView, (int) ((getResources().getDisplayMetrics().density * 50.0f) + 0.5f));
             MiuiBlurUtils.setViewBlurMode(mContentView, 0);
             if (mLogoImage != null) {
+                // 上游这里会把 logo/字标换成白色版本（模糊开启时）；品牌现在是我们的，
+                // 配色写死在布局里（这一页是深色，见 provision_congratulation_layout.xml），
+                // 开不开模糊都是同一套，两个平台的路径也就一致了。
                 setupViewBlur(mLogoImage, true, new int[]{-867546550, -11579569, -15011328}, new int[]{19, 100, 106});
-                mLogoImage.setImageResource(R.drawable.provision_logo_image);
             }
 
             if (mTextLogoImage != null) {
                 setupViewBlur(mTextLogoImage, true, new int[]{-867546550, -11579569, -15011328}, new int[]{19, 100, 106});
-                mTextLogoImage.setImageResource(R.drawable.provision_text_logo_image);
             }
             if (mNext != null) {
                 setupViewBlur(mNext, true, new int[]{-12763843, -15021056}, new int[]{100, 106});

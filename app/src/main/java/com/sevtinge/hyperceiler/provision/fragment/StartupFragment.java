@@ -11,6 +11,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -69,7 +70,8 @@ public class StartupFragment extends BaseFragment implements IOnFocusListener {
 
     private ImageView mLogoImage;
 
-    private ImageView mTextLogoImage;
+    // 字标槽位现在是文字（应用名），不再是它的字标 vector。
+    private TextView mTextLogoImage;
     private View mLogoImageWrapper;
 
     private View mNextLayout;
@@ -157,8 +159,7 @@ public class StartupFragment extends BaseFragment implements IOnFocusListener {
         if (!IS_SUPPORT_WELCOME_ANIM) {
             AndroidLog.i(TAG, "not support anim");
             mBackgroundImage.setImageResource(R.drawable.provision_logo_image_bg);
-            mLogoImage.setImageResource(R.drawable.provision_logo_image_lite);
-            mTextLogoImage.setImageResource(R.drawable.provision_text_logo_image_lite);
+            // 上游这里会把 logo/字标换成 _lite 版本；品牌现在是我们的，配色写在布局里。
             setNextBackground();
         } else {
             mRenderViewLayout = view.findViewById(R.id.render_view_layout);
@@ -172,17 +173,12 @@ public class StartupFragment extends BaseFragment implements IOnFocusListener {
                 BlurUtils.setupViewBlur(mLogoImage, true, new int[]{-867546550, -11579569, -15011328}, new int[]{19, 100, 106});
 
                 BlurUtils.setupViewBlur(mTextLogoImage, true, new int[]{-867546550, -11579569, -15011328}, new int[]{19, 100, 106});
-                mLogoImage.setImageResource(R.drawable.provision_logo_image);
-
-                mTextLogoImage.setImageResource(R.drawable.provision_text_logo_image);
                 BlurUtils.setupViewBlur(mNext, true, new int[]{-13750738, -15011328}, new int[]{100, 106});
                 mNext.setBackgroundResource(R.drawable.provision_next);
                 mNextArrow.setVisibility(View.VISIBLE);
                 mNextArrow.setImageResource(R.drawable.provision_icon_arrow);
             } else {
                 AndroidLog.i(TAG, " MiuiBlur not EffectEnabled ");
-                mLogoImage.setImageResource(R.drawable.provision_logo_image_lite);
-                mTextLogoImage.setImageResource(R.drawable.provision_text_logo_image_lite);
                 setNextBackground();
             }
         }
