@@ -39,6 +39,7 @@ class MainActivity : ComponentActivity() {
         MiaoState.engine = UiEnginePrefs.load(this)
         MiaoState.useBlur = UiEnginePrefs.loadUseBlur(this)
         MiaoState.floatingColorSource = UiEnginePrefs.loadFloatingColor(this)
+        MiaoState.developerMode = UiEnginePrefs.loadDeveloperMode(this)
         setContent {
             when (MiaoState.engine) {
                 UiEngine.Miuix -> MiuixApp()

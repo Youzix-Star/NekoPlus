@@ -38,7 +38,6 @@ import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.utils.overScrollVertical
@@ -162,46 +161,12 @@ fun HomeScreen(
                             )
                         },
                     )
-                    BasicComponent(
-                        title = "悬浮窗权限",
-                        summary = if (hasOverlayPermission) "已授予" else "未授予",
-                        startAction = {
-                            Icon(
-                                imageVector = AppIcons.Grant,
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        },
-                    )
+
                 }
             }
         }
 
-        item(key = "quick") {
-            Column {
-                SmallTitle(text = "快捷操作")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    ArrowPreference(
-                        title = if (floatingRunning) "收起悬浮窗" else "启动悬浮窗",
-                        summary = if (hasOverlayPermission) {
-                            "任意界面上的悬浮按钮"
-                        } else {
-                            "需要先授予悬浮窗权限"
-                        },
-                        startAction = {
-                            Icon(
-                                imageVector = AppIcons.Floating,
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        },
-                        onClick = {
-                            if (hasOverlayPermission) onToggleFloating() else onRequestOverlay()
-                        },
-                    )
-                }
-            }
-        }
+
     }
 }
 

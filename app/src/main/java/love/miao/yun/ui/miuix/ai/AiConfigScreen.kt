@@ -201,16 +201,6 @@ fun AiConfigScreen(
                             showSaveDialog = true
                         },
                     )
-                    ArrowPreference(
-                        title = "恢复默认",
-                        summary = "清空配置，回到默认",
-                        onClick = {
-                            val fresh = AiManager.Config()
-                            config = fresh
-                            AiManager.save(context, fresh)
-                            onNotify("已恢复默认")
-                        },
-                    )
                 }
             }
         }

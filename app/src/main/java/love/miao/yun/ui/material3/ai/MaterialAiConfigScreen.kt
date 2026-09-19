@@ -273,19 +273,6 @@ fun MaterialAiConfigScreen(
                             }
                         }
                     }
-                    item {
-                        NavigationItemWidget(
-                            icon = AppIcons.Settings,
-                            title = "恢复默认",
-                            description = "清空配置，回到默认",
-                            onClick = {
-                                val fresh = AiManager.Config()
-                                config = fresh
-                                AiManager.save(context, fresh)
-                                onNotify("已恢复默认")
-                            },
-                        )
-                    }
                 }
             }
 

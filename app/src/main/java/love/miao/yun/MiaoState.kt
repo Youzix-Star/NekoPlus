@@ -55,4 +55,7 @@ object MiaoState {
     /** Placeholder counters so the home page has something to draw. */
     var todayCount by mutableStateOf(0)
     var ruleCount by mutableStateOf(0)
+
+    /** Whether developer mode is unlocked (triple-tap on version in About). */
+    var developerMode by mutableStateOf(false)
 }

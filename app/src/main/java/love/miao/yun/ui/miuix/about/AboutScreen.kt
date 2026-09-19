@@ -5,6 +5,7 @@
 
 package love.miao.yun.ui.miuix.about
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
@@ -43,6 +44,7 @@ import love.miao.yun.BuildConfig
 import love.miao.yun.MiaoState
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.AppIconText
+import love.miao.yun.ui.UiEnginePrefs
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
@@ -70,6 +72,8 @@ fun AboutScreen(
     var showCrash by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
     var update by remember { mutableStateOf<UpdateResult.Available?>(null) }
+    var versionTapCount by remember { mutableStateOf(0) }
+    var lastVersionTapTime by remember { mutableStateOf(0L) }
 
     LazyColumn(
         modifier = Modifier
@@ -80,7 +84,18 @@ fun AboutScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "header") {
-            AppHeader()
+            AppHeader(onVersionTap = {
+                val now = System.currentTimeMillis()
+                if (now - lastVersionTapTime > 1000) versionTapCount = 0
+                lastVersionTapTime = now
+                versionTapCount++
+                if (versionTapCount >= 3) {
+                    versionTapCount = 0
+                    MiaoState.developerMode = !MiaoState.developerMode
+                    UiEnginePrefs.saveDeveloperMode(context, MiaoState.developerMode)
+                    onNotify(if (MiaoState.developerMode) "开发者模式已开启" else "开发者模式已关闭")
+                }
+            })
         }
 
         item(key = "about") {
@@ -316,7 +331,7 @@ fun AboutScreen(
 }
 
 @Composable
-private fun AppHeader() {
+private fun AppHeader(onVersionTap: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -346,6 +361,7 @@ private fun AppHeader() {
             text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             style = MiuixTheme.textStyles.footnote1,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+            modifier = Modifier.clickable { onVersionTap() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(

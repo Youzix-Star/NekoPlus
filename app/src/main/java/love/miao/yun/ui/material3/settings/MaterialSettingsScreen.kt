@@ -68,8 +68,6 @@ fun MaterialSettingsScreen(
     onOpenTextRules: () -> Unit,
 ) {
     val context = LocalContext.current
-    var autoStart by remember { mutableStateOf(false) }
-    var keepAlive by remember { mutableStateOf(true) }
     val backup = rememberBackupActions(onNotify)
     val clipboard = LocalClipboardManager.current
     var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
@@ -137,11 +135,6 @@ fun MaterialSettingsScreen(
                             },
                         )
                     }
-                }
-            }
-
-            item {
-                SegmentedColumn(title = "引擎") {
                     item {
                         DropDownMenuWidget(
                             icon = AppIcons.Tune,
@@ -175,57 +168,61 @@ fun MaterialSettingsScreen(
                 }
             }
 
-            item {
-                SegmentedColumn(title = "替换") {
-                    item {
-                        NavigationItemWidget(
-                            icon = AppIcons.Rule,
-                            title = "替换规则",
-                            description = "后缀、颜文字、按条件替换",
-                            onClick = onOpenTextRules,
-                        )
+            if (MiaoState.developerMode) {
+                item {
+                    SegmentedColumn(title = "替换") {
+                        item {
+                            NavigationItemWidget(
+                                icon = AppIcons.Rule,
+                                title = "替换规则",
+                                description = "后缀、颜文字、按条件替换",
+                                onClick = onOpenTextRules,
+                            )
+                        }
                     }
                 }
             }
 
-            item {
-                SegmentedColumn(title = "调试") {
-                    item {
-                        SwitchWidget(
-                            icon = AppIcons.Tune,
-                            title = "调试模式",
-                            description = "排查「抓不到输入框」这类问题",
-                            checked = debugMode,
-                            onCheckedChange = {
-                                debugMode = it
-                                UiEnginePrefs.saveDebugMode(context, it)
-                            },
-                        )
-                    }
-                    if (debugMode) {
+            if (MiaoState.developerMode) {
+                item {
+                    SegmentedColumn(title = "调试") {
                         item {
-                            NavigationItemWidget(
-                                icon = AppIcons.Rule,
-                                title = "查看最近一次抓取",
-                                description = dump
-                                    ?.let { "共 ${it.lineSequence().count()} 行" }
-                                    ?: "还没有抓取过",
-                                onClick = {
-                                    dump = DebugDump.read(context)
-                                    showDump = true
+                            SwitchWidget(
+                                icon = AppIcons.Tune,
+                                title = "调试模式",
+                                description = "排查「抓不到输入框」这类问题",
+                                checked = debugMode,
+                                onCheckedChange = {
+                                    debugMode = it
+                                    UiEnginePrefs.saveDebugMode(context, it)
                                 },
                             )
                         }
-                        // Verifying the crash screen needs a crash, and waiting for a real bug to
-                        // happen is not a test. Deliberately thrown on the main thread so the
-                        // uncaught handler (and the report screen) see it exactly like a real one.
-                        item {
-                            NavigationItemWidget(
-                                icon = AppIcons.About,
-                                title = "模拟崩溃",
-                                description = "让应用崩一次，看看崩溃报告页长什么样",
-                                onClick = { throw IllegalStateException("模拟崩溃：这是调试里手动触发的") },
-                            )
+                        if (debugMode) {
+                            item {
+                                NavigationItemWidget(
+                                    icon = AppIcons.Rule,
+                                    title = "查看最近一次抓取",
+                                    description = dump
+                                        ?.let { "共 ${it.lineSequence().count()} 行" }
+                                        ?: "还没有抓取过",
+                                    onClick = {
+                                        dump = DebugDump.read(context)
+                                        showDump = true
+                                    },
+                                )
+                            }
+                            // Verifying the crash screen needs a crash, and waiting for a real bug to
+                            // happen is not a test. Deliberately thrown on the main thread so the
+                            // uncaught handler (and the report screen) see it exactly like a real one.
+                            item {
+                                NavigationItemWidget(
+                                    icon = AppIcons.About,
+                                    title = "模拟崩溃",
+                                    description = "让应用崩一次，看看崩溃报告页长什么样",
+                                    onClick = { throw IllegalStateException("模拟崩溃：这是调试里手动触发的") },
+                                )
+                            }
                         }
                     }
                 }
@@ -252,28 +249,6 @@ fun MaterialSettingsScreen(
                 }
             }
 
-            item {
-                SegmentedColumn(title = "服务") {
-                    item {
-                        SwitchWidget(
-                            icon = AppIcons.Settings,
-                            title = "开机自启",
-                            description = "开机自动启动",
-                            checked = autoStart,
-                            onCheckedChange = { autoStart = it },
-                        )
-                    }
-                    item {
-                        SwitchWidget(
-                            icon = AppIcons.Settings,
-                            title = "保持运行",
-                            description = "常驻通知，降低被杀概率",
-                            checked = keepAlive,
-                            onCheckedChange = { keepAlive = it },
-                        )
-                    }
-                }
-            }
         }
     }
 

@@ -9,6 +9,7 @@
 
 package love.miao.yun.ui.material3.about
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -38,6 +39,7 @@ import love.miao.yun.BuildConfig
 import love.miao.yun.MiaoState
 import love.miao.yun.ui.AppIcons
 import love.miao.yun.ui.AppIconText
+import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.material3.material3AppBarColor
 import love.miao.yun.ui.material3.material3BlurEffect
 import love.miao.yun.ui.material3.rememberMaterial3BlurBackdrop
@@ -78,6 +80,8 @@ fun MaterialAboutScreen(
     var showCrash by remember { mutableStateOf(false) }
     var checking by remember { mutableStateOf(false) }
     var update by remember { mutableStateOf<UpdateResult.Available?>(null) }
+    var versionTapCount by remember { mutableStateOf(0) }
+    var lastVersionTapTime by remember { mutableStateOf(0L) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
 
@@ -105,7 +109,20 @@ fun MaterialAboutScreen(
                 .then(backdrop?.let { Modifier.layerBackdrop(it) } ?: Modifier),
             contentPadding = paddingValues + outerPadding,
         ) {
-            item { AppHeader() }
+            item {
+                AppHeader(onVersionTap = {
+                    val now = System.currentTimeMillis()
+                    if (now - lastVersionTapTime > 1000) versionTapCount = 0
+                    lastVersionTapTime = now
+                    versionTapCount++
+                    if (versionTapCount >= 3) {
+                        versionTapCount = 0
+                        MiaoState.developerMode = !MiaoState.developerMode
+                        UiEnginePrefs.saveDeveloperMode(context, MiaoState.developerMode)
+                        onNotify(if (MiaoState.developerMode) "开发者模式已开启" else "开发者模式已关闭")
+                    }
+                })
+            }
 
             item {
                 SegmentedColumn(title = "关于") {
@@ -319,7 +336,7 @@ fun MaterialAboutScreen(
 }
 
 @Composable
-private fun AppHeader() {
+private fun AppHeader(onVersionTap: () -> Unit = {}) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -345,6 +362,7 @@ private fun AppHeader() {
             text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clickable { onVersionTap() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
