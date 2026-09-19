@@ -10,7 +10,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import love.miao.yun.ui.FloatingColorSource
 import love.miao.yun.ui.UiEngine
-import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 
 /**
  * Process-wide UI state for the shell.
@@ -44,7 +43,6 @@ object MiaoState {
     var floatingColorSource by mutableStateOf(FloatingColorSource.Dynamic)
 
     /** Which predictive-back animation plays on second-level pages. */
-    var predictiveBackStyle by mutableStateOf(PredictiveBackStyle.Miuix)
 
     /**
      * Whether the first-run guide is on screen.

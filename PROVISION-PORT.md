@@ -278,6 +278,67 @@ Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 
 | **空白** 内容居中 | 两页都居中，actionbar/底部按钮原位 | ② `provision_permission_layout.xml` 的内层 `LinearLayout` 加 `android:layout_gravity="center_vertical"`（ScrollView 仍 match_parent：内容比视口小时 FrameLayout 才应用 gravity，变高时照样能滚）；③ 覆盖它自己的钩子 `getListViewPaddingTop()`（**protected、子类可覆盖**，已用 AAR 方法表确认 `onCreateRecyclerView` 会调它）返回 `super + provision_guide_list_extra_top`(96dp，**我们的数**，按 ~558dp 内容区/约 230dp 内容、余量约 330dp 算，居中一半是 ≈165dp，96dp 是保守起点，旋钮就这一个值) |
 | **M2** 行高 | 保持上游：② 56dp vs ③ ≈70dp | 回退了我上一轮擅自统一的 65dp：② 重新用它的 `provision_list_item_height`(56dp)。③ 按它库里的数算：14dp + 17sp 行 + 14sp 行 + `miuix_preference_summary_margin_top` 0dp + 14dp ≈ 65dp（用户记作 ≈70dp）。③ 的行有摘要，值这份高度，采纳用户判断 |
 
+### 2.6 预测性返回：只剩 miuix 官方那一套（本轮）
+
+用户要求「预测性返回动画仅使用 miuix，如果 miuix 有官方的预测返回动画，直接用」。miuix 确实有：
+`top.yukonga.miuix.kmp:miuix-nav-android:0.9.4-rc01`（和我们其它 miuix 依赖同一个版本）。已加进依赖。
+
+**签名（读的是 Maven Central 上的 sources jar，不是猜的）**：
+
+```kotlin
+@Composable
+fun PredictiveBackHandler(
+    enabled: Boolean,
+    onProgress: suspend (Flow<NavBackEvent>) -> Unit,
+    onCommit: () -> Unit,
+    onCancel: () -> Unit,
+)
+
+@Stable class NavBackEvent(val progress: Float, val swipeEdge: NavSwipeEdge,
+                           val touchY: Float, val frameTimeMillis: Long = 0)
+```
+
+它和我们原来用的 `androidx.activity.compose.PredictiveBackHandler` 的差别，恰好是能让我们少写代码的地方：
+
+| | androidx（旧） | miuix（现在） |
+|---|---|---|
+| 进度 | `BackEventCompat(progress, swipeEdge, touchY)` 的事件流（`Int` 边） | `NavBackEvent(progress, swipeEdge: NavSwipeEdge, touchY, frameTimeMillis)` |
+| 结束 | 只能从流的 `CancellationException` 猜是取消还是提交 | 分开的 `onCommit` / `onCancel` 回调，且都在进度流收完之后触发 |
+| 会话 | 无 | 内部带 session id（`PredictiveBackOwnership`/`PredictiveBackSession`），保证延迟收尾不会落到新手势上 |
+
+于是我们删掉了原来那段 try/catch（取消与提交不再靠异常区分），进度/边缘/纵向触点**全部用它的值**。
+它注册在 androidx.navigationevent 的 dispatcher 上；`androidx.activity` 1.13.0 的 `ComponentActivity`
+把 owner 挂在 decorView 上（`setViewTreeNavigationEventDispatcherOwner`），而
+`LocalNavigationEventDispatcherOwner` 是 view-tree 宿主默认值 ⇒ **在我们这棵树里是活的**（否则它会
+直接 `?: return` 变成哑的，所以我专门去 activity 1.13.0 的源码里核过这一点）。
+
+**设置删掉了**：`PredictiveBackStyle`（Aosp / Miuix / None）与 `PredictiveBackStyle.kt` 整个删除，
+连同 `MiaoState.predictiveBackStyle`、`UiEnginePrefs.load/savePredictiveBackStyle`、`BackupActions`
+里的恢复、两个引擎设置页里的「预见式返回动画」下拉。现在只有一种行为，没有可选枚举残留。
+几何仍在唯一一处（`Modifier.backLayer` + `MiuixBackMotion`），所以两个引擎动画一致。
+
+**`enableOnBackInvokedCallback`**：manifest 里本来就是 `true`（`<application>` 上），**没动**。
+它正是平台愿意投递预测性返回的前提；而引导那四个页面走的是上游自己的
+`getOnBackPressedDispatcher()` / `OnBackPressedCallback` + result-code 链（`BaseActivity`、
+`CongratulationActivity`），这条链在 flag 打开时照常工作 —— 用户已经用真机走完四页，也印证了这点。
+换句话说：不需要改，也不该改。
+
+### 2.7 AI 提示词模板：从 3 套加到 11 套（本轮）
+
+用户要求「AI 配置你可以多整几套模板」，并点名要「翻译腔」与「成吉思鸡」。
+机制一个字没改：预设仍然只住在 `AiManager`（`PRESET_*` 常量、`BUILTIN_*_PROMPT`、
+`builtinPreset()`、JSON 存在 `presets` 里），两个引擎的 AI 页都通过
+`getAllPresetNames()` / `loadPreset()` 读它 —— **一份真相，没有按引擎复制**。
+
+新增八套：翻译腔、成吉思鸡、阴阳怪气、发疯文学、鲁迅体、浅近文言、机器人客服、猫娘
+（翻译腔与成吉思鸡用用户给的原文；其余六套按用户给的性格描述写，各自都以
+「直接输出改写后的文本，不要任何解释。」收尾）。列表顺序＝原三套 → 新八套 → 用户自定义。
+
+**逻辑在先**这一点是照做了的：每个模板只带 `prompt`（`systemPrompt` 用默认系统提示词），
+`baseUrl`/`apiKey`/`model` 留空表示"沿用当前"——两个 AI 页本来就是这么合并的，所以套用后
+用户还能继续编辑；`loadPreset()` 也补上了新名字（否则它们会掉进"用户自定义"分支返回空配置，
+这是本轮唯一一处必须动的方法）；保存的自定义预设、原三套的行为都没变。
+
 ## 3. 主题：占位值删了，真值来自 `fan.miuix:*`
 
 之前 `res/values/provision_miuix_stubs.xml` 里五个手猜的 stand-in 已**整个删除**。

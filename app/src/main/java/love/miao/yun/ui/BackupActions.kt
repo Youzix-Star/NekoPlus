@@ -97,5 +97,4 @@ private fun refreshFromPreferences(context: Context) {
     MiaoState.engine = UiEnginePrefs.load(context)
     MiaoState.useBlur = UiEnginePrefs.loadUseBlur(context)
     MiaoState.floatingColorSource = UiEnginePrefs.loadFloatingColor(context)
-    MiaoState.predictiveBackStyle = UiEnginePrefs.loadPredictiveBackStyle(context)
 }

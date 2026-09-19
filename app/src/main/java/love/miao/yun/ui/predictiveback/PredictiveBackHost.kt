@@ -5,11 +5,11 @@
 
 package love.miao.yun.ui.predictiveback
 
-import androidx.activity.BackEventCompat
-import androidx.activity.compose.PredictiveBackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -29,12 +29,65 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.nav.gesture.PredictiveBackHandler
+import top.yukonga.miuix.kmp.nav.transition.NavSwipeEdge
+
+/**
+ * The geometry one back motion is made of.
+ *
+ * Every value describes the same drag: how the two layers look while the second-level page is fully
+ * open, and how they look once it is gone. The transforms interpolate between those two ends as a
+ * pure function of the drag's progress, which is what keeps the finger tracking exact.
+ *
+ * @param pageFollowsFinger whether the dismissing page translates with the drag at all.
+ * @param pageVerticalDrift whether it also tracks the finger's vertical movement.
+ * @param pageScaleAtDismiss scale the dismissing page shrinks to as it leaves.
+ * @param pageCornerRadiusAtDismiss corner radius it rounds to as it leaves, or `null` for square.
+ * @param coveredParallaxFraction how far the revealed page slides toward the leading edge while it
+ *   is covered, as a fraction of the screen width.
+ * @param coveredDimAtRest how transparent the revealed page is while it is covered.
+ * @param coveredScrimAtRest alpha of the dark scrim laid over the revealed page while covered.
+ * @param commitSpec the animation that carries the drag to completion once the finger lifts.
+ * @param cancelSpec the animation that springs the page back when the gesture is abandoned.
+ */
+internal data class BackMotionConfig(
+    val pageFollowsFinger: Boolean,
+    val pageVerticalDrift: Boolean,
+    val pageScaleAtDismiss: Float,
+    val pageCornerRadiusAtDismiss: Dp?,
+    val coveredParallaxFraction: Float,
+    val coveredDimAtRest: Float,
+    val coveredScrimAtRest: Float,
+    val commitSpec: AnimationSpec<Float>,
+    val cancelSpec: AnimationSpec<Float>,
+)
+
+/**
+ * The one motion the guide's predictive back plays.
+ *
+ * There used to be three of these (`Aosp` / `Miuix` / `无动画`) behind a setting in 外观. The user
+ * settled it: miuix only, and miuix's own gesture — so there is nothing left to choose and nothing
+ * left to keep for a case that can no longer happen. These are the numbers the `Miuix` style
+ * carried; the geometry they feed still lives in one place ([Modifier.backLayer]), which is what
+ * keeps the two UI engines animating identically.
+ */
+internal val MiuixBackMotion = BackMotionConfig(
+    pageFollowsFinger = true,
+    pageVerticalDrift = false,
+    pageScaleAtDismiss = 1f,
+    pageCornerRadiusAtDismiss = 24.dp,
+    coveredParallaxFraction = 0.25f,
+    coveredDimAtRest = 0.1f,
+    coveredScrimAtRest = 0.18f,
+    commitSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+    cancelSpec = spring(dampingRatio = 1f, stiffness = Spring.StiffnessMediumLow),
+)
 
 /** How far the drifting page is kept away from the screen edge, mirroring the platform gesture. */
 private val VerticalDriftMargin = 8.dp
@@ -147,7 +200,6 @@ private fun rememberBackController(): BackController {
  * it to get right.
  *
  * @param subPageOpen whether a second-level page is showing.
- * @param style which motion the drag follows.
  * @param onDismissed invoked once a committed dismissal has finished animating, and only then.
  * @param levelOne the tab content, revealed as the page above it leaves.
  * @param subPage the second-level page, given the action that closes it; only composed while
@@ -156,33 +208,37 @@ private fun rememberBackController(): BackController {
 @Composable
 fun PredictiveBackHost(
     subPageOpen: Boolean,
-    style: PredictiveBackStyle,
     onDismissed: () -> Unit,
     levelOne: @Composable () -> Unit,
     subPage: @Composable (close: () -> Unit) -> Unit,
 ) {
     val controller = rememberBackController()
     val dismiss by rememberUpdatedState(onDismissed)
-    val config = style.config
 
-    PredictiveBackHandler(enabled = subPageOpen) { events ->
-        controller.beginGesture()
-        try {
+    // miuix's own handler (`top.yukonga.miuix.kmp.nav.gesture`), not androidx's: it reports the
+    // gesture as `NavBackEvent(progress, swipeEdge, touchY, frameTimeMillis)` and, unlike androidx's
+    // callback flow, hands us a per-gesture stream plus separate commit/cancel callbacks — so the
+    // release no longer has to be guessed from a CancellationException. It registers on the
+    // navigation-event dispatcher, which androidx.activity's ComponentActivity installs on the decor
+    // view, so this is live in our tree (verified against activity 1.13.0's sources).
+    PredictiveBackHandler(
+        enabled = subPageOpen,
+        onProgress = { events ->
+            controller.beginGesture()
             events.collect { event ->
                 controller.onProgress(
-                    fromRightEdge = event.swipeEdge == BackEventCompat.EDGE_RIGHT,
+                    fromRightEdge = event.swipeEdge == NavSwipeEdge.Right,
                     touchYValue = event.touchY,
                     fraction = event.progress,
                 )
             }
-            controller.settle(commit = true, spec = config.commitSpec) { dismiss() }
-        } catch (cancelled: CancellationException) {
-            // This coroutine is already cancelled, so the spring back runs on the controller's own
-            // scope — otherwise it would die on the spot and leave the page stuck mid-gesture.
-            controller.settle(commit = false, spec = config.cancelSpec) {}
-            throw cancelled
-        }
-    }
+        },
+        // Both terminals run on the controller's own scope (see BackController.settle): the
+        // handler's coroutine is gone by the time these fire, so an animation started from inside
+        // it would be cancelled on the spot and leave the page stuck mid-gesture.
+        onCommit = { controller.settle(commit = true, spec = MiuixBackMotion.commitSpec) { dismiss() } },
+        onCancel = { controller.settle(commit = false, spec = MiuixBackMotion.cancelSpec) {} },
+    )
 
     LaunchedEffect(subPageOpen) {
         if (subPageOpen) {
@@ -210,7 +266,7 @@ fun PredictiveBackHost(
     // A back button plays the same dismissal as the gesture: the page travels the rest of the way
     // out and only then is it taken down, so neither route can leave a half-moved page behind.
     val close: () -> Unit = {
-        controller.settle(commit = true, spec = config.commitSpec) { dismiss() }
+        controller.settle(commit = true, spec = MiuixBackMotion.commitSpec) { dismiss() }
     }
 
     val coveredInfo = {
@@ -243,7 +299,7 @@ fun PredictiveBackHost(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(if (subPageOpen) Modifier.backLayer(style, coveredInfo) else Modifier),
+                .then(if (subPageOpen) Modifier.backLayer(coveredInfo) else Modifier),
         ) {
             levelOne()
         }
@@ -252,12 +308,12 @@ fun PredictiveBackHost(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .backScrim(config) { controller.value },
+                    .backScrim { controller.value },
             )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .backLayer(style, outgoingInfo),
+                    .backLayer(outgoingInfo),
             ) {
                 subPage(close)
             }
@@ -266,16 +322,16 @@ fun PredictiveBackHost(
 }
 
 /**
- * Applies the selected style's geometry to one layer.
+ * Applies the guide's back motion to one layer.
  *
  * Read the body as a pair of end states: `progress == 0` is the second-level page fully open,
  * `progress == 1` is it fully gone. Both layers interpolate between those two ends, which is what
  * makes the finger tracking exact — the transform is a pure function of the drag, nothing else.
  */
-internal fun Modifier.backLayer(style: PredictiveBackStyle, info: () -> BackLayerInfo): Modifier =
+internal fun Modifier.backLayer(info: () -> BackLayerInfo): Modifier =
     this.graphicsLayer {
         val state = info()
-        val config = style.config
+        val config = MiuixBackMotion
         val progress = state.progress.coerceIn(0f, 1f)
 
         // In LTR a drag from the left edge carries the page to the right; a drag from the right

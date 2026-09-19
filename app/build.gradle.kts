@@ -37,8 +37,8 @@ android {
         applicationId = "love.miao.yun"
         minSdk = 33
         targetSdk = 35
-        versionCode = 113
-        versionName = "2.0.3 Onboarding Preview 8"
+        versionCode = 114
+        versionName = "2.0.3 Onboarding Preview 9"
     }
 
     signingConfigs {
@@ -131,6 +131,9 @@ dependencies {
     implementation(libs.miuix.preference)
     // The liquid-glass floating bottom bar is built on miuix-blur, which requires minSdk 33.
     implementation(libs.miuix.blur)
+    // Predictive back: miuix ships its own handler (top.yukonga.miuix.kmp.nav.gesture) rather than
+    // us hand-rolling the edge gesture against androidx's PredictiveBackHandler.
+    implementation(libs.miuix.nav)
 
     implementation(libs.androidx.activity.compose)
 

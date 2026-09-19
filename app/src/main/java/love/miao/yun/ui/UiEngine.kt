@@ -6,7 +6,6 @@
 package love.miao.yun.ui
 
 import android.content.Context
-import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 
 /**
  * Which UI engine draws the app.
@@ -30,7 +29,6 @@ object UiEnginePrefs {
     private const val KEY_ENGINE = "ui_engine"
     private const val KEY_USE_BLUR = "use_blur"
     private const val KEY_FLOATING_COLOR = "floating_color"
-    private const val KEY_PREDICTIVE_BACK = "predictive_back"
     private const val KEY_DEBUG_MODE = "debug_mode"
 
     private fun prefs(context: Context) =
@@ -79,14 +77,6 @@ object UiEnginePrefs {
         listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener,
     ) {
         prefs(context).unregisterOnSharedPreferenceChangeListener(listener)
-    }
-
-    /** Which predictive-back animation second-level pages use. */
-    fun loadPredictiveBackStyle(context: Context): PredictiveBackStyle =
-        PredictiveBackStyle.from(prefs(context).getString(KEY_PREDICTIVE_BACK, null))
-
-    fun savePredictiveBackStyle(context: Context, style: PredictiveBackStyle) {
-        prefs(context).edit().putString(KEY_PREDICTIVE_BACK, style.id).apply()
     }
 
     /** Whether the diagnostic tools are on show in Settings. */

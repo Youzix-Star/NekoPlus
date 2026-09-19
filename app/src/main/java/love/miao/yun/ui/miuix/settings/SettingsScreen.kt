@@ -34,7 +34,6 @@ import love.miao.yun.ui.UiEnginePrefs
 import love.miao.yun.ui.miuix.ThemeModeOptions
 import love.miao.yun.ui.rememberBackupActions
 import love.miao.yun.util.DebugDump
-import love.miao.yun.ui.predictiveback.PredictiveBackStyle
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
@@ -71,7 +70,6 @@ fun SettingsScreen(
     // One row that opens a chooser, mirroring how the reference app picks its UI engine.
     val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
     val engineItems = remember { UiEngine.entries.map { DropdownItem(text = it.label) } }
-    val backStyleItems = remember { PredictiveBackStyle.entries.map { DropdownItem(text = it.label) } }
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
     var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
@@ -99,19 +97,6 @@ fun SettingsScreen(
                         selectedIndex = selectedThemeIndex,
                         onSelectedIndexChange = { index ->
                             ThemeModeOptions.getOrNull(index)?.let { onColorSchemeModeChange(it.first) }
-                        },
-                    )
-                    WindowSpinnerPreference(
-                        title = "预见式返回动画",
-                        summary = "二级页面的返回跟手动画",
-                        items = backStyleItems,
-                        selectedIndex = PredictiveBackStyle.entries
-                            .indexOf(MiaoState.predictiveBackStyle).coerceAtLeast(0),
-                        onSelectedIndexChange = { index ->
-                            PredictiveBackStyle.entries.getOrNull(index)?.let {
-                                MiaoState.predictiveBackStyle = it
-                                UiEnginePrefs.savePredictiveBackStyle(context, it)
-                            }
                         },
                     )
                     SwitchPreference(

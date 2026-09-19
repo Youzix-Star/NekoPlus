@@ -204,7 +204,6 @@ fun MiaoShell(
     Box(modifier = Modifier.fillMaxSize()) {
     PredictiveBackHost(
         subPageOpen = subPage != null,
-        style = MiaoState.predictiveBackStyle,
         onDismissed = { subPage = null },
         levelOne = {
             MiaoTabs(

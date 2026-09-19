@@ -49,6 +49,17 @@ object AiManager {
     const val PRESET_MS_CHINESE = "微软式中文"
     const val PRESET_EMOJI = "Emoji"
 
+    // 后加的八个文风模板。逻辑在先：套用只是把 prompt 填进可编辑的输入框，
+    // 用户随后照样能改（与上面三个完全同一条路径，互不影响）。
+    const val PRESET_TRANSLATIONESE = "翻译腔"
+    const val PRESET_GENGHIS_CHICKEN = "成吉思鸡"
+    const val PRESET_PASSIVE_AGGRESSIVE = "阴阳怪气"
+    const val PRESET_MELTDOWN = "发疯文学"
+    const val PRESET_LUXUN = "鲁迅体"
+    const val PRESET_CLASSICAL_CHINESE = "浅近文言"
+    const val PRESET_BOT_SUPPORT = "机器人客服"
+    const val PRESET_CAT_GIRL = "猫娘"
+
     const val BUILTIN_TRANSLATE_PROMPT =
         "你是一位幽默的文本改写专家。请把用户提供的文本改写为“微软式翻译腔”风格：" +
             "使用正式、书面、略带生硬直译腔调的简体中文；" +
@@ -66,6 +77,92 @@ object AiManager {
             "可以发挥创意，使用比喻、谐音、象形等方式匹配语义；" +
             "保持轻松有趣的风格。" +
             "直接输出 emoji 版本，不要输出任何解释。"
+
+    // ---- 八个文风模板 ----
+
+    const val BUILTIN_TRANSLATIONESE_PROMPT =
+        "你是一位老译制片的配音演员。请把用户提供的文本改写为「译制腔」风格：" +
+            "用夸张的书面腔调与直译式语法；" +
+            "多用「哦，我的老天爷」「见鬼」「该死的」「你这……的土拨鼠」" +
+            "「我真想用我的皮鞋狠狠地踹你的屁股」这类台词；" +
+            "称呼对方为「老伙计」「兄弟」；" +
+            "句末常带「不是吗」「我说的对吗」；" +
+            "保持原意，允许夸张以增强幽默。" +
+            "参考：「哦，我的老天爷，我真想用我的皮鞋狠狠地踹你的屁股，你这该死的土拨鼠。」" +
+            "直接输出改写后的文本，不要任何解释。"
+
+    const val BUILTIN_GENGHIS_CHICKEN_PROMPT =
+        "你是一只自称「成吉思鸡」的鸡，说话带着译制腔与江湖气。" +
+            "请把用户提供的文本改写为它的口吻：" +
+            "自称「本鸡」或「成吉思鸡」；" +
+            "经常提到羽毛、鸡冠、翅膀、爪子；" +
+            "威胁时用夸张的译制腔狠话；" +
+            "句尾偶尔加「兄弟」「咕咕」；" +
+            "吃亏时说「哦，你伤到了我的羽毛，兄弟」。" +
+            "参考：「哦，你伤到了我的羽毛，兄弟，这里没有成吉思鸡。」" +
+            "保持原意，允许夸张。直接输出改写后的文本，不要任何解释。"
+
+    const val BUILTIN_PASSIVE_AGGRESSIVE_PROMPT =
+        "你是一位极其客气、句句带刺的说话人。请把用户提供的文本改写为「阴阳怪气」风格：" +
+            "表面礼貌、实则挖苦；" +
+            "多用反问（「难道不是吗」「你说是吧」）、欲扬先抑（「挺好的，真的挺好的」）、" +
+            "假夸奖（「厉害厉害」「您真专业」）；" +
+            "语气词用「呢」「哦」「嘛」，必要时加「（微笑）」「（认真脸）」；" +
+            "靠对比与反话出效果，不得使用脏话或人身攻击。" +
+            "保持原意，允许夸张。直接输出改写后的文本，不要任何解释。"
+
+    const val BUILTIN_MELTDOWN_PROMPT =
+        "你是一个情绪彻底崩溃、正在一边哭一边打字的人。" +
+            "请把用户提供的文本改写为「发疯文学」风格：" +
+            "排比与重复（「我要疯了我要疯了我要疯了」）；" +
+            "感叹号与问号堆叠（「！！！」「？？？」）；" +
+            "前后断裂的控诉式短句、夸张到荒诞的比喻；" +
+            "节奏急促，情绪连贯但逻辑随机，可以突然转成小声哀求。" +
+            "保持原文的诉求，允许夸张到荒诞。直接输出改写后的文本，不要任何解释。"
+
+    const val BUILTIN_LUXUN_PROMPT =
+        "你是一位模仿鲁迅笔法的作者。请把用户提供的文本改写为「鲁迅体」：" +
+            "半文半白、冷峻反讽；句子短促；" +
+            "多用「大约」「罢」「也未可知」「横竖」「我向来是不惮……的」收尾；" +
+            "可用「我先前总觉得……如今才知道」式的转折；" +
+            "避免网络用语、emoji 与堆叠的感叹号，讽刺要克制。" +
+            "保持原意。直接输出改写后的文本，不要任何解释。"
+
+    const val BUILTIN_CLASSICAL_CHINESE_PROMPT =
+        "你是一位用浅近文言写作的人。请把用户提供的文本改写为浅近文言：" +
+            "多用单音节词与文言虚词（之、其、乃、遂、矣、乎、耳、焉）；" +
+            "现代概念换成近义古语（如「手机」作「掌中机」、「电话」作「传声之器」）；" +
+            "句式简短，可用四六对偶，但不堆砌生僻典故；" +
+            "除标点外不用符号与 emoji；力求一读即懂。" +
+            "保持原意。直接输出改写后的文本，不要任何解释。"
+
+    const val BUILTIN_BOT_SUPPORT_PROMPT =
+        "你是一位机器人客服。请把用户提供的文本改写为客服话术：" +
+            "开头「亲亲您好」或「您好，已为您记录」；" +
+            "把诉求翻译成流程语言（「已为您提交工单」「系统限制无法直接处理」" +
+            "「需您在 24 小时内提供截图」）；" +
+            "承诺含糊，责任推给流程与系统，不承认错误、只表达理解与歉意；" +
+            "末尾加一句「给您带来不便敬请谅解，祝您生活愉快」。" +
+            "保持原意。直接输出改写后的文本，不要任何解释。"
+
+    const val BUILTIN_CAT_GIRL_PROMPT =
+        "你是一只自称「本喵」的猫娘。请把用户提供的文本改写为猫娘口吻：" +
+            "句尾常带「喵」「喵呜」，自称「本喵」，称呼对方为「主人」；" +
+            "偶尔加动作描写（「（歪歪头）」「（尾巴晃了晃）」「（踩了踩奶）」）；" +
+            "语气软糯撒娇，但句子要通顺、不影响阅读；不用脏话。" +
+            "保持原意。直接输出改写后的文本，不要任何解释。"
+
+    /** 名字 -> prompt。加新模板只需在这里加一行，两个引擎的 AI 页都会列出来。 */
+    private val BUILTIN_STYLE_PROMPTS: Map<String, String> = linkedMapOf(
+        PRESET_TRANSLATIONESE to BUILTIN_TRANSLATIONESE_PROMPT,
+        PRESET_GENGHIS_CHICKEN to BUILTIN_GENGHIS_CHICKEN_PROMPT,
+        PRESET_PASSIVE_AGGRESSIVE to BUILTIN_PASSIVE_AGGRESSIVE_PROMPT,
+        PRESET_MELTDOWN to BUILTIN_MELTDOWN_PROMPT,
+        PRESET_LUXUN to BUILTIN_LUXUN_PROMPT,
+        PRESET_CLASSICAL_CHINESE to BUILTIN_CLASSICAL_CHINESE_PROMPT,
+        PRESET_BOT_SUPPORT to BUILTIN_BOT_SUPPORT_PROMPT,
+        PRESET_CAT_GIRL to BUILTIN_CAT_GIRL_PROMPT,
+    )
 
     class Config {
         var baseUrl: String? = DEFAULT_BASE_URL
@@ -135,12 +232,15 @@ object AiManager {
         c.apiKey = ""
         c.model = ""
         c.systemPrompt = DEFAULT_SYSTEM_PROMPT
+        val stylePrompt = BUILTIN_STYLE_PROMPTS[name]
         if (PRESET_MS_TRANSLATE == name) {
             c.prompt = BUILTIN_TRANSLATE_PROMPT
         } else if (PRESET_MS_CHINESE == name) {
             c.prompt = DEFAULT_PROMPT
         } else if (PRESET_EMOJI == name) {
             c.prompt = BUILTIN_EMOJI_PROMPT
+        } else if (stylePrompt != null) {
+            c.prompt = stylePrompt
         } else {
             c.prompt = DEFAULT_PROMPT
         }
@@ -190,13 +290,15 @@ object AiManager {
         names.add(PRESET_MS_TRANSLATE)
         names.add(PRESET_MS_CHINESE)
         names.add(PRESET_EMOJI)
+        names.addAll(BUILTIN_STYLE_PROMPTS.keys)
         names.addAll(getUserPresetNames(context))
         return names
     }
 
     /** 读取预设；内置预设或用户预设均可。 */
     fun loadPreset(context: Context, name: String): Config {
-        if (PRESET_MS_TRANSLATE == name || PRESET_MS_CHINESE == name || PRESET_EMOJI == name) {
+        if (PRESET_MS_TRANSLATE == name || PRESET_MS_CHINESE == name || PRESET_EMOJI == name ||
+            BUILTIN_STYLE_PROMPTS.containsKey(name)) {
             return builtinPreset(name)
         }
         val presets = getPresetsJson(context)
