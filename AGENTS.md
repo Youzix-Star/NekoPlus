@@ -15,7 +15,10 @@
 - **新手引导**：移植版在分支 **`feat/provision-port`**（草稿 PR #1），相对 main 有 100+ 文件。
   它把 HyperCeiler 的 `library/provision` 原样搬了进来（布局/动画/drawable/Java/状态机/发光引擎）。
   **main 上还是旧的 Compose 版引导**（`ui/onboarding/*`），**用户还没批准删除**，别自作主张删。
-- 用户手上装的是分支构建的 **preview 包**（`v2.0.3-onboarding-previewN`），最新 Preview 9。
+- 用户手上装的是分支构建的 **preview 包**（`v2.0.3-onboarding-previewN`），最新 **Preview 10（115）**，
+  他对这一版的评价是「基本上就很好了」。
+- **`main` 的版本号是 `2.0.2 Beta 2 (105)`，分支是 `2.0.3 Onboarding Preview 10 (115)`** ——
+  分支还没合并，别把两者的版本号搞混。
 
 ---
 
@@ -167,21 +170,44 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
 
 ---
 
-## 7. 悬而未决（接手时先问用户，别自己拍）
+## 7. 状态与待办（截至 2026-09-19 · Preview 10）
 
-1. **撤回"内容垂直居中"**：用户对 Preview 8 的反馈是"配置位置太靠低"，已下指令撤回
-   （权限页 `layout_gravity="center_vertical"`、AI 页 `getListViewPaddingTop()` 覆盖），**在 Preview 10 里**。
-   **行下方的空白保持原样**，不要再想办法填。
-2. 完成页「设置完毕」被从 24sp 压到 14sp（为跨页一致）：用户还没看过，可能要 17sp。
-3. `-keep class fan.** { *; }` 让 APK 从 5.2 MB 涨到 8.1 MB。引导验收通过后收窄这条规则（保留 `fan.animation.**`
-   与被 XML 按名 inflate 的那些 widget）能把体积要回来。
-4. 旧 Compose 版引导（`ui/onboarding/*` + 测试）在用户认可移植版之后才能删。
-5. 许可：`ai/AiManager.kt`、`ai/TokenStats.kt`、`util/UpdateChecker.kt`、
-   `service/MiaoAccessibilityService.kt` 头里写"移植自 NekoNeko，GPL-3.0-only"。
-   **若 NekoNeko 是用户自己的项目**，这 4 个可以一并升到 AGPL；否则保持 GPL —— 问过用户，他还没答。
-6. 设置页、AI 配置页（Compose 那套）、文本替换页**一律没动**，用户明确说过"我仅仅是让改新手引导"。
+### 7.1 已经做完的（别再当待办、也别重复问）
 
----
+| 事 | 落地 |
+|---|---|
+| **撤回"内容垂直居中"** | Preview 10（115，commit `8cc93dc`）：权限页去掉 `layout_gravity="center_vertical"`、AI 页去掉 `getListViewPaddingTop()` 覆盖（96dp dimen 一并删除），两页恢复**顶对齐**。用户原话：「有点太靠低了，还不如上个版本的高度」。**行下方的空白保持原样，不要用 padding/gravity/offset 去"修"** |
+| 引导四步链 | 开场 → 权限 → AI 配置 → 完成，入口 `ProvisionGuide` 接 `OnboardingPrefs` |
+| 品牌 | 标记 = `AppIconText` 文本、名字 = `NekoPlus`、副标题 = `Ciallo～(∠・ω c)⌒★`（深饱和紫 + 浅光晕） |
+| AI 页三行 | 接口地址 / API Key / **模型（`DropDownPreference`，进页面拉 `GET {base}/models` 后可选）**；「连接测试」按用户要求**已删** |
+| 预测返回 | 改用 miuix 官方 `PredictiveBackHandler`（`miuix-nav`），`Aosp`/`None` 与外观里的选择项**已删** |
+| AI 模板 | 3 → **11 套**（翻译腔、成吉思鸡、阴阳怪气、发疯文学、鲁迅体、浅近文言、机器人客服、猫娘 + 原有三套） |
+| 崩溃报告页 | 独立进程 `:crash` + `CrashHandler`，调试模式里有「模拟崩溃」可主动验证 |
+| 崩溃堆栈可读 | `-keepattributes SourceFile,LineNumberTable` + CI 上传 `r8-mapping` artifact |
+| 跨页尺寸 | 三个字号刻度 32 / 17 / 14sp；图标 104 / 70 / 24dp（见 §6） |
+
+### 7.2 真正还悬着、要用户点头的
+
+1. **把 `feat/provision-port` 合进 `main`**（草稿 PR #1）。用户评价已是「基本上就很好了」但**没说过 merge**；
+   合并前别改 `main` 的 `2.0.2 Beta 2 (105)`。
+2. **删掉旧 Compose 版引导**：`ui/onboarding/*`（含 `GlowPalette`/`GlowPainter`/`GlowBackground`/`GuideWizard`/`OnboardingPages`）
+   及其测试、`MiuixApp`/`MaterialApp` 两个调用点 —— **必须等用户明确认可移植版之后再删**。
+3. **收窄 `-keep class fan.** { *; }`**：APK 因此从 5.2 MB 涨到 8.1 MB。验收后只保留 `fan.animation.**`
+   与被 XML 按名 inflate 的 widget，把体积要回来（改完必须用 `scripts/dexmethods.py` 复核 `spring(FF)` 等仍在）。
+4. **完成页「设置完毕」字号**：现为 14sp（为跨页一致压下来的），备选 **17sp**（行标题/按钮那一档）。
+   用户还没对这一版表态。
+5. **许可**：`ai/AiManager.kt`、`ai/TokenStats.kt`、`util/UpdateChecker.kt`、`service/MiaoAccessibilityService.kt`
+   头里写"移植自 NekoNeko，GPL-3.0-only"。**若 NekoNeko 是用户自己的项目**，这 4 个可一并升 AGPL；
+   问过一次，他还没答。
+6. **本地构建**：要不要在这台设备上装 JDK + Android cmdline-tools（编译从 3~6 分钟压到 20 秒）。
+   我建议装；它与"不在本地构建"的旧约定冲突，属于用户的决定。
+7. 还没被真机验证过的观感（问用户才知道）：PredictiveBack 的跟手度、11 套模板的味道、
+   深紫副标题 + 浅光晕在极光暗谷的可读性、开场圆钮的放大转场（非 MIUI 可能是 no-op，属上游自带分支）。
+
+### 7.3 边界（用户明确说过，别越界）
+
+- **只改新手引导**。设置页、Compose 版 AI 配置页、文本替换页一律不动（原话：「我仅仅是让改新手引导」）。
+- 文案一行一句、不放营销话：「我们是以逻辑主导设计的」。多出来的入口会被骂（「删除表单编辑那个按钮，神经病！」）。
 
 ## 8. 工作区布局与卫生（用户明确要求过：别把仓库根目录搞乱）
 
