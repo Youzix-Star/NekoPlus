@@ -73,7 +73,7 @@ internal data class BackMotionConfig(
  *
  * There used to be three of these (`Aosp` / `Miuix` / `无动画`) behind a setting in 外观. The user
  * settled it: miuix only, and miuix's own gesture — so there is nothing left to choose and nothing
- * left to keep for a case that can no longer happen. These are the numbers the `Miuix` style
+ * left to keep for a case that can no longer happen. These are the numbers the old `Miuix` style
  * carried; the geometry they feed still lives in one place ([Modifier.backLayer]), which is what
  * keeps the two UI engines animating identically.
  */
@@ -244,7 +244,7 @@ fun PredictiveBackHost(
         if (subPageOpen) {
             controller.reset()
             // Opening is a plain slide in from the trailing edge, so the page starts fully off
-            // screen and the style's own motion only takes over once a gesture begins.
+            // screen; the back motion only takes over once a gesture begins.
             controller.progress.snapTo(1f)
             controller.progress.animateTo(
                 targetValue = 0f,
@@ -402,7 +402,8 @@ internal fun Modifier.backLayer(info: () -> BackLayerInfo): Modifier =
     }
 
 /** The scrim laid over the revealed page; it fades out as that page takes over. */
-internal fun Modifier.backScrim(config: BackMotionConfig, progress: () -> Float): Modifier {
+internal fun Modifier.backScrim(progress: () -> Float): Modifier {
+    val config = MiuixBackMotion
     if (config.coveredScrimAtRest <= 0f) return this
     return this
         .graphicsLayer {
