@@ -34,7 +34,7 @@ android {
 
     defaultConfig {
         applicationId = "top.youzix.nekoplus"
-        minSdk = 33
+        minSdk = 31
         targetSdk = 35
         versionCode = 115
         versionName = "2.0.3 Onboarding Preview 10"
@@ -128,7 +128,8 @@ dependencies {
 
     implementation(libs.miuix.ui)
     implementation(libs.miuix.preference)
-    // The liquid-glass floating bottom bar is built on miuix-blur, which requires minSdk 33.
+    // The liquid-glass floating bottom bar is built on miuix-blur, which internally requires
+    // minSdk 33, but gracefully degrades on Android 12-12L via isRenderEffectSupported().
     implementation(libs.miuix.blur)
     // Predictive back: miuix ships its own handler (top.yukonga.miuix.kmp.nav.gesture) rather than
     // us hand-rolling the edge gesture against androidx's PredictiveBackHandler.

@@ -263,6 +263,7 @@ fun FloatingScreen(
                     accentColor = MiuixTheme.colorScheme.primary,
                     onAccentColor = MiuixTheme.colorScheme.onPrimary,
                     labelColor = MiuixTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 12.dp),
                 )
 
                 Column(
