@@ -432,6 +432,13 @@ fun PredictiveBackHandler(
     （v2/v3 签名；本地 `~/rel-p4/`）。CI artifact 是另一次构建：`~/apk-p4/MiaoAssistant-1-merge.apk`，
     同一份源码，`sha256 9fa0d93635f29b77315a2abb73319255fa6b6063136b33ab23dfe020e316e704`
     —— 两个 hash 不同只是因为重新构建（zip 条目时间戳/签名块），内容逐项核对一致。
+  - **Preview 9（预测性返回改用 miuix 官方实现 + AI 模板 8 套）**：
+    分支 run https://github.com/Youzix-Star/NekoPlus/actions/runs/35413405946（绿；
+    更早一次红是 `backScrim` 定义没跟着调用点改成单参 —— CI 的
+    `No value passed for parameter 'config'` 直接指出，已修）
+    · tag run https://github.com/Youzix-Star/NekoPlus/actions/runs/35413693279（绿）
+    · Release 产物 `https://github.com/Youzix-Star/NekoPlus/releases/download/v2.0.3-onboarding-preview9/MiaoAssistant-v2.0.3-onboarding-preview9.apk`
+    **8 113 304 字节，`sha256 43ff43d4f41bf056cd4dc43f55da2f69f64d8fc9f082952b3d536e76ab22c78e`**（本地 `~/rel-p9/`）
   - **Preview 8（四页大小/字号/图标对齐 + 用户拍板的 M1/M2/M3/居中）**：
     分支 run https://github.com/Youzix-Star/NekoPlus/actions/runs/35411778578（绿）
     · tag run https://github.com/Youzix-Star/NekoPlus/actions/runs/35412119217（绿）
@@ -466,6 +473,19 @@ fun PredictiveBackHandler(
   `Preference` / `PreferenceInflater.init` / `PreferenceFragmentCompat` / `EditTextPreference` /
   `PreferenceCategory`（androidx 与 fan 两个包都有）全在、名字带包；
   `BasicSettingsActivity` / `BasicSettingsFragment` 在；APK 有 v2/v3 签名块。
+- **怎么核对一个被 R8 改名的库（本轮学到的，记下来）**：miuix-nav 的类没有 consumer keep 规则，
+  所以 `top.yukonga.miuix.kmp.nav.**` 在 release 里既被改名又被**合并进别的类**；再加上
+  `-renamesourcefileattribute SourceFile` 把 `.kt` 名字也抹了 ⇒ "按名字在 dex 里找" 只能对
+  被 keep 的包（`fan.**`、`androidx.preference.**`）成立。可用的是 CI 上传的 **r8-mapping**
+  artifact（`mapping.txt`，58 MB）：
+  `grep "PredictiveBackHandlerKt.PredictiveBackHandler(boolean" mapping.txt` →
+  `...:87 -> d`，说明这个方法在包里（Preview 9 里落在合并后的类 `s91`：`Ls91;` 有
+  `d(ZLmk0;Lwj0;Lwj0;Lel0;I)V` —— 6 个参数、首参 boolean，正是那个 composable 的形状）。
+  同一份 mapping 里 `androidx.navigationevent.**` 有 21 个类、`NavBackEvent -> vf1`、
+  `NavSwipeEdge -> wf1` 都在。
+- Preview 9 另外用 `checkbrand.py` 核对：八个新预设名（翻译腔/成吉思鸡/阴阳怪气/发疯文学/鲁迅体/
+  浅近文言/机器人客服/猫娘）都在 dex 里；旧的「预见式返回动画」「AOSP」「无动画」全为 0；
+  「连接测试」仍为 0；「无障碍服务」仍在；manifest 里有「2.0.3 Onboarding Preview 9」。
 - 品牌核对（对 `MiaoAssistant-1-merge.apk` 全量扫）：`resources.arsc` 里有「喵喵助手」
   「把输入框里的字改好」「开始使用」，而 HyperCeiler / 迅雷 / sevtinge **在整个 arsc 里是 0 次**
   （label、标题、按钮、提示都没有）；dex 里有 `AppIconText` 那个字串（标记是文字，不是图）。
