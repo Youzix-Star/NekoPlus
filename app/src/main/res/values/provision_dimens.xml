@@ -160,9 +160,4 @@
          text line; this is that same inset, rounded (OURS: the rounding). -->
     <dimen name="provision_guide_list_top_inset">7dp</dimen>
 
-    <!-- Extra top padding that centres the AI page's three rows in the tall page shell. The permission
-         page centres by gravity instead. OURS: with ~558dp of content area and ~230dp of rows, the
-         leftover is ~330dp, so half of it is ~165dp and 96dp is the deliberately conservative start
-         the user approved; the whole knob is this one value. -->
-    <dimen name="provision_guide_list_extra_top">96dp</dimen>
 </resources>

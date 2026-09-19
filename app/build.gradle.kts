@@ -37,8 +37,8 @@ android {
         applicationId = "love.miao.yun"
         minSdk = 33
         targetSdk = 35
-        versionCode = 114
-        versionName = "2.0.3 Onboarding Preview 9"
+        versionCode = 115
+        versionName = "2.0.3 Onboarding Preview 10"
     }
 
     signingConfigs {

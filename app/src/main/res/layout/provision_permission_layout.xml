@@ -42,14 +42,12 @@
     android:layout_height="match_parent"
     android:paddingTop="@dimen/provision_guide_list_top_inset">
 
-    <!-- layout_gravity centres this block in the page: the guide's two rows leave a lot of the tall
-         shell empty, and upstream's own five-row page did not have that problem. The ScrollView stays
-         match_parent, so if the content ever outgrows the page it still scrolls (FrameLayout only
-         applies gravity while the child is smaller than the viewport). -->
+    <!-- Top-aligned, as it was before: the content was briefly centred in the tall shell, and the
+         user's verdict was 「有点太靠低了，还不如上个版本的高度」. The paddingTop above is the
+         alignment shared with the AI page's first row. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
         android:orientation="vertical"
         android:paddingHorizontal="@dimen/miuix_theme_padding_horizontal_common">
 
