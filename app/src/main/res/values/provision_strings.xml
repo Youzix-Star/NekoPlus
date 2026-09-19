@@ -50,6 +50,9 @@
     <string name="provision_ai_model_not_in_list">当前 %1$s 不在列表里</string>
     <string name="provision_ai_models_loading">拉取中…</string>
     <string name="provision_ai_models_failed">拉取失败：%1$s</string>
+    <string name="provision_ai_fetch_models">获取模型</string>
+    <string name="provision_ai_no_models">暂无模型，请先获取</string>
+    <string name="provision_ai_select_model">选择模型</string>
 
     <!-- 开场页应用名下面那一行，与应用 Compose 版引导首屏的副标题同一句话。 -->
     <string name="provision_guide_name">NekoPlus</string>

@@ -23,13 +23,12 @@
 
     接口地址 -> API Key -> 模型
 
-  The model row is upstream's own `<fan.preference.DropDownPreference>` (the same class its language
-  and icon rows use), because the model has to be *chosen* from what the endpoint reports — the list
-  it offers is fetched through AiManager and handed to `setEntries`/`setEntryValues` at runtime. That
-  fetch is also the connection test, which is why there is no separate test row.
+  The model row is a plain Preference — click opens a dialog with a "获取模型" button and a model
+  list. The user manually triggers the fetch, avoiding the auto-fetch icon duplication issue with
+  the old DropDownPreference. The fetch uses AiManager.listModels (the app's own GET {base}/models).
 
-  EditTextPreference and DropDownPreference both have to be spelled out in full: this inflater's
-  default package is `fan.preference`, which has no EditTextPreference.
+  EditTextPreference has to be spelled out in full: this inflater's default package is
+  `fan.preference`, which has no EditTextPreference.
 -->
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -44,9 +43,10 @@
             android:summary="@string/provision_ai_api_key_empty"
             android:title="@string/provision_ai_api_key" />
 
-        <fan.preference.DropDownPreference
+        <androidx.preference.Preference
             android:key="model"
-            android:title="@string/provision_ai_model" />
+            android:title="@string/provision_ai_model"
+            android:summary="@string/provision_ai_model_empty" />
 
     </PreferenceCategory>
 

@@ -18,10 +18,12 @@
  */
 package com.sevtinge.hyperceiler.provision.fragment;
 
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.preference.EditTextPreference;
@@ -30,9 +32,9 @@ import androidx.preference.Preference;
 import love.miao.yun.R;
 import love.miao.yun.ai.AiManager;
 
-import fan.preference.DropDownPreference;
 import fan.preference.PreferenceFragment;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -51,10 +53,9 @@ import java.util.function.Consumer;
  * (`mLanguagePreference.setPersistent(false)` + `AppSettingsStore`): the write goes through the app's
  * own API rather than through a preference file belonging to this fragment.
  *
- * The model row is a {@link DropDownPreference} — the same class upstream's own language/icon rows
- * use — filled from the endpoint's model list. That list is the app's own `GET {base}/models`
- * request ({@link AiManager#listModels}), so *fetching it is the connection test*: there is no
- * separate test row, and a failure is reported where the user is looking, in the row's summary.
+ * The model row is a plain {@link Preference} — click opens a dialog with a "获取模型" button and a
+ * model list. The user manually triggers the fetch, avoiding the auto-fetch icon duplication issue
+ * with the old DropDownPreference.
  */
 public class BasicSettingsFragment extends PreferenceFragment {
 
@@ -64,10 +65,10 @@ public class BasicSettingsFragment extends PreferenceFragment {
 
     private EditTextPreference mBaseUrlPreference;
     private EditTextPreference mApiKeyPreference;
-    private DropDownPreference mModelPreference;
+    private Preference mModelPreference;
 
-    /** The model list is in the dropdown; until it is, tapping the row retries the fetch. */
-    private boolean mModelsLoaded;
+    /** Cached model list from the last successful fetch. */
+    private final List<String> mCachedModels = new ArrayList<>();
     private boolean mFetching;
 
     @Override
@@ -101,9 +102,8 @@ public class BasicSettingsFragment extends PreferenceFragment {
             mBaseUrlPreference.setOnPreferenceChangeListener((preference, newValue) -> {
                 save(updated -> updated.setBaseUrl((String) newValue));
                 preference.setSummary((CharSequence) newValue);
-                // A different endpoint means a different model list.
-                mModelsLoaded = false;
-                fetchModels();
+                // A different endpoint means the cached model list is stale.
+                mCachedModels.clear();
                 return true;
             });
         }
@@ -116,29 +116,17 @@ public class BasicSettingsFragment extends PreferenceFragment {
             mApiKeyPreference.setOnPreferenceChangeListener((preference, newValue) -> {
                 save(updated -> updated.setApiKey((String) newValue));
                 showApiKeySummary((String) newValue);
-                mModelsLoaded = false;
-                fetchModels();
+                mCachedModels.clear();
                 return true;
             });
         }
 
         if (mModelPreference != null) {
             showModelSummary(config.getModel());
-            mModelPreference.setOnPreferenceChangeListener((preference, newValue) -> {
-                save(updated -> updated.setModel((String) newValue));
-                showModelSummary((String) newValue);
-                return true;
-            });
-            // The dropdown only has something to open once the list is in; before that (and after a
-            // failed fetch) a tap retries instead of opening an empty menu.
             mModelPreference.setOnPreferenceClickListener(preference -> {
-                if (mModelsLoaded) {
-                    return false;
-                }
-                fetchModels();
+                showModelDialog();
                 return true;
             });
-            fetchModels();
         }
     }
 
@@ -172,50 +160,91 @@ public class BasicSettingsFragment extends PreferenceFragment {
     }
 
     /**
-     * Ask the endpoint which models it serves, through the app's own call, and put the answer in the
-     * dropdown (names and values are the same string: those are the ids the API takes). The summary
-     * carries the outcome either way, so "拉取失败" and "列表是空的" cannot be confused — the app's
-     * call reports an empty list as an error of its own.
+     * Show a dialog with a "获取模型" button and a model list. If models have been fetched before,
+     * the list is shown directly; otherwise the user taps the button to fetch.
      */
-    private void fetchModels() {
-        if (mFetching || mModelPreference == null || !isAdded()) return;
+    private void showModelDialog() {
+        if (!isAdded()) return;
+
+        AiManager.Config config = AiManager.INSTANCE.load(requireContext());
+        String currentModel = config.getModel();
+
+        // Build the list items: current selection indicator + all cached models.
+        List<String> items = new ArrayList<>();
+        if (mCachedModels.isEmpty()) {
+            items.add(getString(R.string.provision_ai_no_models));
+        } else {
+            for (String m : mCachedModels) {
+                items.add(m);
+            }
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
+            .setTitle(R.string.provision_ai_select_model);
+
+        // If we have models, let the user pick one.
+        if (!mCachedModels.isEmpty()) {
+            int checkedIndex = -1;
+            if (!TextUtils.isEmpty(currentModel)) {
+                checkedIndex = mCachedModels.indexOf(currentModel);
+            }
+            builder.setSingleChoiceItems(
+                mCachedModels.toArray(new CharSequence[0]),
+                checkedIndex,
+                (dialog, which) -> {
+                    String selected = mCachedModels.get(which);
+                    save(updated -> updated.setModel(selected));
+                    showModelSummary(selected);
+                    dialog.dismiss();
+                }
+            );
+        }
+
+        // "获取模型" button — always present so the user can refresh.
+        builder.setNeutralButton(R.string.provision_ai_fetch_models, (dialog, which) -> {
+            fetchModelsAndShowDialog();
+        });
+
+        // If no cached models, just show the empty state with the fetch button.
+        if (mCachedModels.isEmpty()) {
+            builder.setMessage(R.string.provision_ai_no_models);
+        }
+
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.show();
+    }
+
+    /**
+     * Fetch models from the endpoint, then re-open the dialog with the results.
+     */
+    private void fetchModelsAndShowDialog() {
+        if (mFetching || !isAdded()) return;
         mFetching = true;
-        mModelPreference.setSummary(R.string.provision_ai_models_loading);
+
+        // Show a loading toast.
+        Toast.makeText(requireContext(), R.string.provision_ai_models_loading, Toast.LENGTH_SHORT).show();
 
         AiManager.INSTANCE.listModels(AiManager.INSTANCE.load(requireContext()), new AiManager.ListCallback() {
             @Override
             public void onSuccess(List<String> models) {
-                if (!isAdded() || mModelPreference == null) return;
+                if (!isAdded()) return;
                 mFetching = false;
-                mModelsLoaded = true;
+                mCachedModels.clear();
+                mCachedModels.addAll(models);
 
-                CharSequence[] values = models.toArray(new CharSequence[0]);
-                mModelPreference.setEntryValues(values);
-                mModelPreference.setEntries(values);
-
-                String saved = AiManager.INSTANCE.load(requireContext()).getModel();
-                if (!TextUtils.isEmpty(saved) && mModelPreference.findIndexOfValue(saved) >= 0) {
-                    mModelPreference.setValue(saved);
-                    showModelSummary(saved);
-                } else {
-                    // Keep telling the truth about what is stored, and say why the dropdown does not
-                    // show it: it is not one of the models this endpoint reports.
-                    mModelPreference.setSummary(TextUtils.isEmpty(saved)
-                        ? getString(R.string.provision_ai_model_empty)
-                        : getString(R.string.provision_ai_model_not_in_list, saved));
+                // Re-open the dialog with the fetched list.
+                if (isAdded()) {
+                    showModelDialog();
                 }
-                // No notifyChanged() here on purpose: it is `protected` in their class, so a caller
-                // outside `fan.preference` cannot use it. It is not needed either — their
-                // setEntries() posts the rebind itself through mNotifyHandler (visible in the AAR's
-                // method table: setEntries → mNotifyHandler), which is how upstream fills its own
-                // language row from a Fragment.
             }
 
             @Override
             public void onError(String message) {
-                if (!isAdded() || mModelPreference == null) return;
+                if (!isAdded()) return;
                 mFetching = false;
-                mModelPreference.setSummary(getString(R.string.provision_ai_models_failed, message));
+                Toast.makeText(requireContext(),
+                    getString(R.string.provision_ai_models_failed, message),
+                    Toast.LENGTH_LONG).show();
             }
         });
     }
