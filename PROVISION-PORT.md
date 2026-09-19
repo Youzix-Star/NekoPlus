@@ -266,6 +266,13 @@ Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 
 | 开场圆钮与其箭头 | ① | 圆钮 **70dp**、箭头 29×20dp | `provision_next_button_size`（它的 dimen）+ 它布局里的写死值 | 本来就一致 |
 | 行图标 | ③ | **无** | 用户决定（与我们的设置页一致） | 未动 |
 
+**待用户定**：完成页的状态行「系统准备中 / 设置完毕」(`system_state_text`) 上几轮为了四页一致，由它自己的
+24sp（`provision_congratulation_title_text_size_complete`）降到了 `provision_subtitle_text_size` 14sp。
+理由是与开场页那行副标题同级；但它其实是**状态行**而不是副标题，14sp 可能偏轻。备选 **17sp**
+（= 行标题与两个按钮的刻度 `miuix_preference_normal_text_size` / `miuix_appcompat_button_text_size`），
+这样它落在四页三档（32 / 17 / 14）的中档，既不同于副标题也不回到 24sp。
+改的话只动 `provision_congratulation_layout.xml` 里那一个 `android:textSize`。
+
 > 两类"锚点"尺寸不同是**有意的**：品牌标记 104dp（用户要求放大过的）与页面预览图标 70dp（它的 dimen）。
 > 同类之间已经一致（两个极光页的标记、两个内容页的预览图标、所有按钮 17sp）。
 
@@ -273,9 +280,9 @@ Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 
 
 | 项 | 决定 | 落地 |
 |---|---|---|
-| **M1** 两页首行同高 | 采纳 | 先纠正我上一轮的描述错误：权限页并不是"首行从 0 开始"——它上面有那行说明（我两轮前把它移到最前面），首行本来就在 ≈43dp；AI 页是 `miuix_preference_rv_padding_top` 7.27dp + 分类头 35dp ≈ 42.3dp。所以按字面加 42dp 反而会错位 42dp。**按意图落地**：给权限页也加上同样的列表上边距（`provision_guide_list_top_inset` 7dp，= 它 7.27dp 取整）并把说明行的上下边距改成 8dp/8dp（= 它分类头的 8/8dp 配方）⇒ 两页首行都在 **≈42dp**（42.0 vs 42.3） |
+| **M1** 两页首行同高 | 采纳（`ac2b148` 已落地；本轮把内边距挪到 ScrollView 上，`fa1b8cc`） | 先纠正我上一轮的描述错误：权限页并不是"首行从 0 开始"——它上面有那行说明（我两轮前把它移到最前面），首行本来就在 ≈43dp；AI 页是 `miuix_preference_rv_padding_top` 7.27dp + 分类头 35dp ≈ 42.3dp。所以按字面加 42dp 反而会错位 42dp。**按意图落地**：给权限页也加上同样的列表上边距（`provision_guide_list_top_inset` 7dp，= 它 7.27dp 取整）并把说明行的上下边距改成 8dp/8dp（= 它分类头的 8/8dp 配方）⇒ 两页首行都在 **≈42dp**（42.0 vs 42.3） |
 | **M3** 开场页副标题间距 | 4dp → **16dp** | `provision_guide_subtitle_margin_top` = 16dp，两个极光页共用（④ 原来是写死的 30dp）。16dp 是用户选的：它给的两个数（4dp 是"页副标题"、30dp 是完成页）的中间值，因为这两页是品牌块不是页标题 |
-| **空白** 内容居中 | 两页都居中，actionbar/底部按钮原位 | ② `provision_permission_layout.xml` 的内层 `LinearLayout` 加 `android:layout_gravity="center_vertical"`（ScrollView 仍 match_parent：内容比视口小时 FrameLayout 才应用 gravity，变高时照样能滚）；③ 覆盖它自己的钩子 `getListViewPaddingTop()`（**protected、子类可覆盖**，已用 AAR 方法表确认 `onCreateRecyclerView` 会调它）返回 `super + provision_guide_list_extra_top`(96dp，**我们的数**，按 ~558dp 内容区/约 230dp 内容、余量约 330dp 算，居中一半是 ≈165dp，96dp 是保守起点，旋钮就这一个值) |
+| **空白** 内容居中 | 两页都居中（`ac2b148` 已落地），actionbar/底部按钮原位 | ② `provision_permission_layout.xml` 的内层 `LinearLayout` 加 `android:layout_gravity="center_vertical"`（ScrollView 仍 match_parent：内容比视口小时 FrameLayout 才应用 gravity，变高时照样能滚）；③ 覆盖它自己的钩子 `getListViewPaddingTop()`（**protected、子类可覆盖**，已用 AAR 方法表确认 `onCreateRecyclerView` 会调它）返回 `super + provision_guide_list_extra_top`(96dp，**我们的数**，按 ~558dp 内容区/约 230dp 内容、余量约 330dp 算，居中一半是 ≈165dp，96dp 是保守起点，旋钮就这一个值) |
 | **M2** 行高 | 保持上游：② 56dp vs ③ ≈70dp | 回退了我上一轮擅自统一的 65dp：② 重新用它的 `provision_list_item_height`(56dp)。③ 按它库里的数算：14dp + 17sp 行 + 14sp 行 + `miuix_preference_summary_margin_top` 0dp + 14dp ≈ 65dp（用户记作 ≈70dp）。③ 的行有摘要，值这份高度，采纳用户判断 |
 
 ### 2.6 预测性返回：只剩 miuix 官方那一套（本轮）
