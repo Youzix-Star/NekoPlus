@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ This file is part of HyperCeiler.
+  ~
+  ~ HyperCeiler is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU Affero General Public License as
+  ~ published by the Free Software Foundation, either version 3 of the
+  ~ License.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License
+  ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  ~
+  ~ Copyright (C) 2023-2026 HyperCeiler Contributions
+  -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/miuix_default_color_surface_low_light">
+
+    <com.sevtinge.hyperceiler.provision.renderengine.RenderViewLayout
+        android:id="@+id/render_view_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/content_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <View
+            android:id="@+id/space_top"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="18" />
+
+        <RelativeLayout
+            android:id="@+id/logo_content"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="40.0">
+
+            <LinearLayout
+                android:id="@+id/logo_image_wrapper"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <!--
+                  与开场页同一套品牌替换：104dp 这一格是 AppIconText 文字标记（在 Java 里设置，
+                  盒子尺寸与 autoSize 上限 40sp 都与开场页一致），
+                  另一个槽位是应用名。上游这两个是它的 vector，文件仍留在 drawable 里。
+                  这一页用深色（它的 provision_complete_title_color），因为这一页的极光没有开场遮罩、
+                  是亮的 —— 上游这里也用的 _lite 深色稿。
+                  名字下面那行（system_state_text）本轮改成与开场页副标题同一个字号
+                  （provision_subtitle_text_size 14sp）与同一个间距（provision_guide_subtitle_margin_top 30dp），
+                  颜色仍是它的 #BF000000：两页底色相反，字号/间距统一、颜色各随底色。
+                -->
+                <TextView
+                    android:id="@+id/logo_image"
+                    android:layout_width="104dp"
+                    android:layout_height="104dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:layout_gravity="center"
+                    android:autoSizeMaxTextSize="40sp"
+                    android:autoSizeMinTextSize="10sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:textColor="@color/provision_complete_title_color" />
+
+                <TextView
+                    android:id="@+id/text_logo_image"
+                    android:layout_width="@dimen/provision_startup_logo_width_thirteen"
+                    android:layout_height="@dimen/provision_startup_logo_height_thirteen"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center"
+                    android:text="@string/provision_guide_name"
+                    android:textColor="@color/provision_complete_title_color"
+                    android:textSize="@dimen/provision_title_text_size" />
+
+                <TextView
+                    android:id="@+id/system_state_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/provision_guide_subtitle_margin_top"
+                    android:fontFamily="mipro-regular"
+                    android:textColor="#BF000000"
+                    android:textSize="@dimen/provision_subtitle_text_size" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/next_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:layout_centerHorizontal="true"
+                android:layout_marginBottom="44dp"
+                android:paddingHorizontal="20dp">
+
+                <FrameLayout
+                    android:id="@id/next"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_gravity="center_horizontal"
+                    android:maxWidth="336dp">
+
+                    <View
+                        android:id="@+id/btn_bg"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="@drawable/provision_next_btn_background" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="@string/provision_complete_text"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="17sp" />
+                </FrameLayout>
+            </FrameLayout>
+        </RelativeLayout>
+
+        <View
+            android:id="@+id/space_bottom"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="0.2" />
+
+    </LinearLayout>
+</FrameLayout>

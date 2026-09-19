@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ This file is part of HyperCeiler.
+  ~
+  ~ HyperCeiler is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU Affero General Public License as
+  ~ published by the Free Software Foundation, either version 3 of the
+  ~ License.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License
+  ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  ~
+  ~ Copyright (C) 2023-2026 HyperCeiler Contributions
+  -->
+<!--
+  Upstream's BasicSettings page keeps its structure — a PreferenceCategory of miuix preference rows,
+  the page's own title and preview icon — and lists the settings this app needs on a first run
+  instead of HyperCeiler's own (language, launcher icon, scope). Three rows:
+
+    接口地址 -> API Key -> 模型
+
+  The model row is a plain Preference — click opens a dialog with a "获取模型" button and a model
+  list. The user manually triggers the fetch, avoiding the auto-fetch icon duplication issue with
+  the old DropDownPreference. The fetch uses AiManager.listModels (the app's own GET {base}/models).
+
+  EditTextPreference has to be spelled out in full: this inflater's default package is
+  `fan.preference`, which has no EditTextPreference.
+-->
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="@string/provision_ai_category_endpoint">
+
+        <androidx.preference.EditTextPreference
+            android:key="base_url"
+            android:title="@string/provision_ai_base_url" />
+
+        <androidx.preference.EditTextPreference
+            android:key="api_key"
+            android:summary="@string/provision_ai_api_key_empty"
+            android:title="@string/provision_ai_api_key" />
+
+        <androidx.preference.Preference
+            android:key="model"
+            android:title="@string/provision_ai_model"
+            android:summary="@string/provision_ai_model_empty" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

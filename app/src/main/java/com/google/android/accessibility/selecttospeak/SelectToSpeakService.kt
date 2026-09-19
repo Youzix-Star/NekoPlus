@@ -7,7 +7,7 @@
 
 package com.google.android.accessibility.selecttospeak
 
-import love.miao.yun.service.MiaoAccessibilityService
+import top.youzix.nekoplus.service.MiaoAccessibilityService
 
 /**
  * The service the system actually binds — under a name that is not ours.

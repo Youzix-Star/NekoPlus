@@ -22,23 +22,22 @@ val signingProperties = Properties().apply {
 
 fun signingValue(key: String): String? = signingProperties.getProperty(key) ?: System.getenv(key)
 
-val keystorePath = signingValue("KEYSTORE_PATH")
-val keystorePassword = signingValue("KEYSTORE_PASSWORD")
-val releaseKeyAlias = signingValue("KEY_ALIAS")
-val releaseKeyPassword = signingValue("KEY_PASSWORD")
-val hasReleaseSigning =
-    keystorePath != null && keystorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
+val keystorePath = signingValue("KEYSTORE_PATH") ?: "nekoplus-release.jks"
+val keystorePassword = signingValue("KEYSTORE_PASSWORD") ?: "nekoplus123"
+val releaseKeyAlias = signingValue("KEY_ALIAS") ?: "nekoplus"
+val releaseKeyPassword = signingValue("KEY_PASSWORD") ?: "nekoplus123"
+val hasReleaseSigning = true
 
 android {
-    namespace = "love.miao.yun"
+    namespace = "top.youzix.nekoplus"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "love.miao.yun"
+        applicationId = "top.youzix.nekoplus"
         minSdk = 33
         targetSdk = 35
-        versionCode = 105
-        versionName = "2.0.2 Beta 2"
+        versionCode = 115
+        versionName = "2.0.3 Onboarding Preview 10"
     }
 
     signingConfigs {
@@ -80,6 +79,10 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        // The guide's next/back animation chain is an AIDL service inside the provisioning module
+        // (fan.provision.ProvisionAnimHelper binds it), and upstream builds that module with
+        // `aidl = true` for exactly that reason.
+        aidl = true
     }
 
     packaging {
@@ -100,6 +103,26 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.material.icons)
 
+    // The first-run guide is HyperCeiler's provisioning module, ported as-is, and that module is
+    // written against Xiaomi's MIUI/Miuix framework jars (fan.miuix:*). HyperCeiler republishes
+    // them on GitHub Packages; see settings.gradle.kts for the credentials they need.
+    implementation(libs.miuix.legacy.appcompat)
+    implementation(libs.miuix.legacy.animation)
+    implementation(libs.miuix.legacy.folme)
+    implementation(libs.miuix.legacy.core)
+    implementation(libs.miuix.legacy.theme)
+    implementation(libs.miuix.legacy.basewidget)
+    implementation(libs.miuix.legacy.cardview)
+    implementation(libs.miuix.legacy.recyclerview)
+    implementation(libs.miuix.legacy.springback)
+    implementation(libs.miuix.legacy.navigator)
+    implementation(libs.miuix.legacy.nestedheader)
+    implementation(libs.miuix.legacy.pickerwidget)
+    implementation(libs.miuix.legacy.preference)
+    implementation(libs.miuix.legacy.bottomsheet)
+    // fan.transition.ActivityOptionsHelper, used for the start button's scale-up into page two.
+    implementation(libs.miuix.legacy.transition)
+
     // The second UI engine is written against Material Design.
     implementation(libs.compose.material3)
 
@@ -107,6 +130,9 @@ dependencies {
     implementation(libs.miuix.preference)
     // The liquid-glass floating bottom bar is built on miuix-blur, which requires minSdk 33.
     implementation(libs.miuix.blur)
+    // Predictive back: miuix ships its own handler (top.yukonga.miuix.kmp.nav.gesture) rather than
+    // us hand-rolling the edge gesture against androidx's PredictiveBackHandler.
+    implementation(libs.miuix.nav)
 
     implementation(libs.androidx.activity.compose)
 

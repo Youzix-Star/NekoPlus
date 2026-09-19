@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  ~ This file is part of HyperCeiler.
+  ~
+  ~ HyperCeiler is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU Affero General Public License as
+  ~ published by the Free Software Foundation, either version 3 of the
+  ~ License.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  ~ GNU Affero General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU Affero General Public License
+  ~ along with this program.  If not, see <https://www.gnu.org/licenses/>.
+  ~
+  ~ Copyright (C) 2023-2026 HyperCeiler Contributions
+  -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.sevtinge.hyperceiler.provision.renderengine.RenderViewLayout
+            android:id="@+id/render_view_layout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no" />
+
+        <ImageView
+            android:id="@+id/background_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/miui_enter_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:orientation="vertical">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="30.0">
+
+            <View
+                android:id="@+id/show_qr_view"
+                android:layout_width="@dimen/provision_qr_entrance_size"
+                android:layout_height="@dimen/provision_qr_entrance_size"
+                android:layout_alignParentEnd="true"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no" />
+        </RelativeLayout>
+
+        <!--
+          Branding: 上游这两个 view 是 HyperCeiler 的 logo / 字标 vector（文件仍留在 drawable 里，只是不再被引用）。
+          这一格（104dp，见下面 layout_width）放本应用的文字标记：常量 top.youzix.nekoplus.ui.AppIconText，
+          在 Java 里设置，与 About 页同一个（launcher 图标里烤的也是这一串）。位置与入场动画仍是上游的；
+          autoSize 只是让这个窄长（约 5:1）的标记始终填满方块宽，而不是被省略号截掉。
+          两个极光页共用一个尺寸：盒子 104dp、autoSize 上限 40sp（完成页原写 34sp，本轮对齐）。
+        -->
+        <TextView
+            android:id="@+id/logo_image"
+            android:layout_width="104dp"
+            android:layout_height="104dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:layout_gravity="center"
+            android:autoSizeMaxTextSize="40sp"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeStepGranularity="1sp"
+            android:autoSizeTextType="uniform"
+            android:gravity="center"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:textColor="@android:color/white" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="40">
+
+            <!--
+              字标槽位（320x45.28dp，它的 dimens）：上游这里是 "HyperCeiler" 的白色字标 vector，
+              现在是应用名；下面再加一行副标题，与 Compose 版引导首屏那三行（标记 / 应用名 /
+              一句话）一致。容器由 FrameLayout 改成纵向 LinearLayout 只为了叠两行文字，
+              尺寸、居中方式与它原来的写法相同。两行都在 logo_image_wrapper 里，
+              所以上游那套入场动画（对 wrapper 整体做）一字未改地作用在它们身上。
+            -->
+            <LinearLayout
+                android:id="@+id/logo_image_wrapper"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentTop="true"
+                android:layout_centerHorizontal="true"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/text_logo_image"
+                    android:layout_width="@dimen/provision_startup_logo_width_thirteen"
+                    android:layout_height="@dimen/provision_startup_logo_height_thirteen"
+                    android:layout_marginTop="20dp"
+                    android:gravity="center"
+                    android:text="@string/provision_guide_name"
+                    android:textColor="@android:color/white"
+                    android:textSize="@dimen/provision_title_text_size" />
+
+                <TextView
+                    android:id="@+id/text_logo_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/provision_guide_subtitle_margin_top"
+                    android:alpha="1"
+                    android:shadowColor="#99FFFFFF"
+                    android:shadowDx="0"
+                    android:shadowDy="0"
+                    android:shadowRadius="10"
+                    android:text="@string/provision_guide_subtitle"
+                    android:textColor="@color/provision_guide_subtitle_color"
+                    android:textSize="@dimen/provision_subtitle_text_size" />
+            </LinearLayout>
+
+            <FrameLayout
+                android:id="@+id/next_layout"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:layout_centerHorizontal="true"
+                android:padding="4.5dp">
+
+                <ImageButton
+                    android:id="@+id/next"
+                    android:layout_width="@dimen/provision_next_button_size"
+                    android:layout_height="@dimen/provision_next_button_size"
+                    android:clickable="false"
+                    android:contentDescription="@string/provision_start_content_description"
+                    android:importantForAccessibility="no" />
+
+                <ImageView
+                    android:id="@+id/next_arrow"
+                    android:layout_width="29dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:clickable="false"
+                    android:contentDescription="@string/provision_start_content_description"
+                    android:importantForAccessibility="no"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </RelativeLayout>
+
+        <Space
+            android:id="@+id/space_bottom"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="20" />
+
+    </LinearLayout>
+</FrameLayout>
