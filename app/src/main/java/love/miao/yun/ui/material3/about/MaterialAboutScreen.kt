@@ -362,7 +362,6 @@ private fun AppHeader(onVersionTap: () -> Unit = {}) {
             text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.clickable { onVersionTap() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -370,6 +369,7 @@ private fun AppHeader(onVersionTap: () -> Unit = {}) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
+            modifier = Modifier.clickable { onVersionTap() },
         )
     }
 }

@@ -361,7 +361,6 @@ private fun AppHeader(onVersionTap: () -> Unit = {}) {
             text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
             style = MiuixTheme.textStyles.footnote1,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-            modifier = Modifier.clickable { onVersionTap() },
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
@@ -369,6 +368,7 @@ private fun AppHeader(onVersionTap: () -> Unit = {}) {
             style = MiuixTheme.textStyles.footnote2,
             color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
             textAlign = TextAlign.Center,
+            modifier = Modifier.clickable { onVersionTap() },
         )
     }
 }

@@ -168,17 +168,15 @@ fun MaterialSettingsScreen(
                 }
             }
 
-            if (MiaoState.developerMode) {
-                item {
-                    SegmentedColumn(title = "替换") {
-                        item {
-                            NavigationItemWidget(
-                                icon = AppIcons.Rule,
-                                title = "替换规则",
-                                description = "后缀、颜文字、按条件替换",
-                                onClick = onOpenTextRules,
-                            )
-                        }
+            item {
+                SegmentedColumn(title = "替换") {
+                    item {
+                        NavigationItemWidget(
+                            icon = AppIcons.Rule,
+                            title = "替换规则",
+                            description = "后缀、颜文字、按条件替换",
+                            onClick = onOpenTextRules,
+                        )
                     }
                 }
             }

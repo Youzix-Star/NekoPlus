@@ -131,17 +131,15 @@ fun SettingsScreen(
             }
         }
 
-        if (MiaoState.developerMode) {
-            item(key = "text") {
-                Column {
-                    SmallTitle(text = "替换")
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        ArrowPreference(
-                            title = "替换规则",
-                            summary = "后缀、颜文字、按条件替换",
-                            onClick = onOpenTextRules,
-                        )
-                    }
+        item(key = "text") {
+            Column {
+                SmallTitle(text = "替换")
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    ArrowPreference(
+                        title = "替换规则",
+                        summary = "后缀、颜文字、按条件替换",
+                        onClick = onOpenTextRules,
+                    )
                 }
             }
         }
