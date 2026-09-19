@@ -4,7 +4,6 @@
 
     <!-- fan.miuix:* declares minSdk 33; the app targets 31 with graceful degradation. -->
     <uses-sdk
-        android:minSdkVersion="31"
         tools:overrideLibrary="fan.animation,fan.appcompat,fan.basewidget,fan.bottomsheet,fan.cardview,fan.core,fan.folme,fan.navigator,fan.nestedheader,fan.pickerwidget,fan.preference,fan.recyclerview,fan.springback,fan.stretchablewidget,fan.theme,fan.transition" />
 
     <!-- 悬浮窗需要叠加层权限；前台服务让它在后台也能存活 -->
