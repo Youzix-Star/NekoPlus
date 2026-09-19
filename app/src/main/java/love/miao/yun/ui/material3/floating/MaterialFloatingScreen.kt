@@ -159,33 +159,6 @@ fun MaterialFloatingScreen(
                 }
             }
 
-            item {
-                SegmentedColumn(title = "拖动") {
-                    item {
-                        SwitchWidget(
-                            icon = AppIcons.Tune,
-                            title = "贴边吸附",
-                            description = "松手后吸到屏幕边缘",
-                            checked = options.snapToEdge,
-                            onCheckedChange = {
-                                persistOptions(options.copy(snapToEdge = it))
-                            },
-                        )
-                    }
-                    item {
-                        SwitchWidget(
-                            icon = AppIcons.Tune,
-                            title = "拖动反馈",
-                            description = "开始拖动时轻微震动",
-                            checked = options.dragHaptic,
-                            onCheckedChange = {
-                                persistOptions(options.copy(dragHaptic = it))
-                            },
-                        )
-                    }
-                }
-            }
-
             // Each button is its own thing: its own icon or label, its own tap and hold actions,
             // its own size, corner and opacity. Editing happens in place, so a change can be seen
             // on screen as it is made instead of being buried behind a dialog.
@@ -573,27 +546,6 @@ fun MaterialFloatingScreen(
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            item {
-                SegmentedColumn(title = "外观") {
-                    item {
-                        DropDownMenuWidget(
-                            icon = AppIcons.Floating,
-                            title = "取色来源",
-                            description = "悬浮窗的取色来源",
-                            choice = FloatingColorSource.entries
-                                .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
-                            data = FloatingColorSource.entries.map { it.label },
-                            onChoiceChange = { index ->
-                                FloatingColorSource.entries.getOrNull(index)?.let {
-                                    MiaoState.floatingColorSource = it
-                                    UiEnginePrefs.saveFloatingColor(context, it)
-                                }
-                            },
-                        )
                     }
                 }
             }

@@ -148,26 +148,6 @@ fun FloatingScreen(
             }
         }
 
-        item(key = "drag") {
-            Column {
-                SmallTitle(text = "拖动")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    SwitchPreference(
-                        title = "贴边吸附",
-                        summary = "松手后吸到屏幕边缘",
-                        checked = options.snapToEdge,
-                        onCheckedChange = { persistOptions(options.copy(snapToEdge = it)) },
-                    )
-                    SwitchPreference(
-                        title = "拖动反馈",
-                        summary = "开始拖动时轻微震动",
-                        checked = options.dragHaptic,
-                        onCheckedChange = { persistOptions(options.copy(dragHaptic = it)) },
-                    )
-                }
-            }
-        }
-
         // Every button is its own thing. This list is the only place they are configured.
         item(key = "buttons") {
             Column {
@@ -259,26 +239,6 @@ fun FloatingScreen(
             }
         }
 
-        item(key = "appearance") {
-            Column {
-                SmallTitle(text = "外观")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    WindowSpinnerPreference(
-                        title = "取色来源",
-                        summary = "悬浮窗的取色来源",
-                        items = floatingColorItems,
-                        selectedIndex = FloatingColorSource.entries
-                            .indexOf(MiaoState.floatingColorSource).coerceAtLeast(0),
-                        onSelectedIndexChange = { index ->
-                            FloatingColorSource.entries.getOrNull(index)?.let {
-                                MiaoState.floatingColorSource = it
-                                UiEnginePrefs.saveFloatingColor(context, it)
-                            }
-                        },
-                    )
-                }
-            }
-        }
     }
 
     val assistTarget = sendTargetFor(editingTarget)
@@ -293,10 +253,9 @@ fun FloatingScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 520.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .heightIn(max = 520.dp),
             ) {
+                // Preview stays fixed at the top so changes are visible while scrolling settings.
                 SendAssistPreview(
                     config = config,
                     surfaceColor = MiuixTheme.colorScheme.surfaceContainer,
@@ -306,7 +265,13 @@ fun FloatingScreen(
                     labelColor = MiuixTheme.colorScheme.onSurface,
                 )
 
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Card(modifier = Modifier.fillMaxWidth()) {
                     SwitchPreference(
                         title = "启用",
                         summary = "在 ${assistTarget.label} 的发送按钮上方显示",
@@ -384,8 +349,9 @@ fun FloatingScreen(
                     )
                 }
 
-                Button(onClick = { editingTarget = null }, modifier = Modifier.fillMaxWidth()) {
-                    Text("完成")
+                    Button(onClick = { editingTarget = null }, modifier = Modifier.fillMaxWidth()) {
+                        Text("完成")
+                    }
                 }
             }
         }
