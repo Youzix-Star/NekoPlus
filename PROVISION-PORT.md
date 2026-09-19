@@ -372,12 +372,16 @@ Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 
     同一份源码，`sha256 9fa0d93635f29b77315a2abb73319255fa6b6063136b33ab23dfe020e316e704`
     —— 两个 hash 不同只是因为重新构建（zip 条目时间戳/签名块），内容逐项核对一致。
   - **Preview 8（四页大小/字号/图标对齐 + 用户拍板的 M1/M2/M3/居中）**：
-    tag 与产物在最后一轮被**重指到最终 commit**（同一版本号 113 / Preview 8；上一轮那个
-    `sha256 28207f7e…` 的构建已作废）。最终：
-    分支 run https://github.com/Youzix-Star/NekoPlus/actions/runs/35390454728（绿）
-    · tag run https://github.com/Youzix-Star/NekoPlus/actions/runs/35390998138（绿）
+    分支 run https://github.com/Youzix-Star/NekoPlus/actions/runs/35411778578（绿）
+    · tag run https://github.com/Youzix-Star/NekoPlus/actions/runs/35412119217（绿）
     · Release 产物 `https://github.com/Youzix-Star/NekoPlus/releases/download/v2.0.3-onboarding-preview8/MiaoAssistant-v2.0.3-onboarding-preview8.apk`
-    8 104 672 字节，`sha256 28207f7ee82555e8ff14ee1b008332eab58f745b69592659cbdb0af7a5c9cba1`（本地 `~/rel-p8/`）
+    **8 104 824 字节，`sha256 1ac70327017aafe4a5bf0ee3115632c1fa0c5dc17964623ea3d9a50715aed8da`**（本地 `~/rel-p8b/`）。
+    注意：tag 与产物被**重指到最终 commit**（版本号仍是 113 / Preview 8）；更早那次同名构建
+    `sha256 28207f7e…` 已作废。
+    核对（`checkbrand.py` / `dexmethods.py`，跑在发布的那份 APK 上）：manifest 里有
+    「2.0.3 Onboarding Preview 8」；「连接测试」在 arsc/manifest/dex 全 0；
+    `BasicSettingsFragment.getListViewPaddingTop()I`（居中钩子）、`fetchModels()V`、
+    `Lfan/preference/DropDownPreference;` 的 setEntries/setEntryValues/findIndexOfValue 都在。
   - 更早的：Preview 7 run 35388714409（`~/rel-p7/`）、四步 + 品牌 run 35378199008（`~/apk-brand/`）
   - 产物：artifact `MiaoAssistant-release-apk`，解出来是 `MiaoAssistant-1-merge.apk`，
     5 196 963 字节，`sha256 4e898517ca852be8ff3b4868778e754591bc291a7c3221437c7fcd413d100d30`
