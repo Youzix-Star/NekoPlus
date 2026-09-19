@@ -236,35 +236,39 @@ Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 
   所以阴影用浅色、无偏移（不是投影，是光晕）；深色阴影只会把中深色字糊成一团；
 - 名字那行（`NekoPlus`，白）没动。
 
-### 2.5 四个步骤的尺寸审计（结论 + 建议数值，**尚未改动，等用户定**）
+### 2.5 四个步骤的大小对齐（本轮已改）
 
-用户反馈「感觉跟新手引导各个界面还是有点不协调，大小不合适」。下面所有数字都来自
-上游自己的 dimens、miuix preference 包的 dimens（`~/miuix-aar2`）或我们页面里实际引用到的值。
+用户反馈「各个界面感觉图标大小、文字大小都有点不一样」。把四页并排量了一遍：
+**同一个元素在不同页用了不同的数**，而且多数不是上游的锅，是我们的内容替换后没回头统一。
+下表左列是改前的实测值，右列是现在用的值，来源写清"上游哪个 dimen/样式"还是"我们的数"。
 
-**外壳（三个内容页完全一致，都是上游的，没变）**：actionbar `marginTop 50dp` + `minHeight 56dp`
-= 106dp；预览图标 `provision_preview_image_size 70dp` + 10/8dp 边距 = 88dp；标题 32sp（minHeight 42dp）
-+ `provision_title_padding_bottom 30dp` ≈ 72dp ⇒ **内容开始前约 266dp**。底部按钮 50dp +
-`group_buttons_layout_extra_padding_bottom 16dp`。1080×2400@420dpi 上内容区约 **558dp**。
+| 元素 | ① 开场 | ② 权限 | ③ AI | ④ 完成 | 来源 | 本轮动作 |
+|---|---|---|---|---|---|---|
+| 标题 / 品牌名 | 32sp | 32sp | 32sp | 32sp | `provision_title_text_size`（它的） | 已一致，未动 |
+| 次级行（副标题/说明/摘要/状态） | 14sp | 13sp→**14sp** | 14sp | 24sp→**14sp** | ①`provision_subtitle_text_size`、②`miuix_appcompat_secondary_text_size`、③`miuix_preference_secondary_text_size`、④ 原来用它 `provision_congratulation_title_text_size_complete` | **统一 14sp**：② 去掉布局里写死的 13sp 覆盖；④ 由 24sp 改为 `provision_subtitle_text_size` |
+| 行标题 | — | 17sp（`TextAppearance.PreferenceList`） | 17sp（同一样式） | — | `miuix_preference_normal_text_size`（它的库 dimen） | ② 补上显式 17sp，写明出处 |
+| 行高 | — | 56dp→**65dp** | ≈65dp | — | 65dp 是**派生**：miuix 行 = `miuix_preference_item_padding_top/bottom` 14dp + 17sp 行 + 14sp 行 + `miuix_preference_summary_margin_top` 0dp | **统一 65dp**（新 `provision_guide_row_height`）；它原来的 `provision_list_item_height` 56dp 保留未改 |
+| 行内图标 | — | 勾的 drawable 自己声明 `android:width="64px"`（**px**，密集屏≈24dp、mdpi≈64dp） | 按用户要求无行图标 | — | 上游 drawable 的写法有问题，没有 dp 数可抄 | 钉成 **24dp**（`provision_guide_row_icon_size`，**我们的数**，MIUI 常规行图标尺寸） |
+| 页面预览图标 | — | 70dp | 70dp | — | `provision_preview_image_size`（它的） | 已一致，未动 |
+| 品牌标记 | 104dp / autoSize ≤40sp | — | — | 104dp / ≤34sp→**≤40sp** | 盒子 104dp 是上一轮调过的；autoSize 上限原来两页不同 | **都 40sp** |
+| 名字下面那行 | 4dp→**30dp** | — | — | 30dp（写死） | 30dp 取它完成页布局同一位置的值；4dp 是 `provision_subtitle_margin_top`，那是"页副标题"的数 | **统一 `provision_guide_subtitle_margin_top` 30dp** |
+| 按钮文字 | — | — | — | 17dp→**17sp** | 它的布局写 17dp（数字保留） | 改成 sp，跟随系统字体缩放 |
+| 行左右内边距 / 圆角 | — | 16dp / 16dp | 16dp / 16dp | — | `miuix_theme_content_padding_horizontal_common` / `miuix_theme_radius_common`（它的） | 已一致，未动 |
+| 行有没有摘要 | — | 没有（状态由勾表示） | 有（值 / 拉取结果） | — | — | 有意保留：③ 的摘要就是拉列表的反馈 |
 
-**每步的内容高度**：② 权限 = 2×`provision_list_item_height 56dp` + 说明行(13sp+16/8dp≈42dp) ≈ **154dp**；
-③ AI = miuix 行(14+14dp 内边距 + 17sp 标题 + 14sp 摘要 ≈ 70dp)×3 + 分类头(8+14sp+8dp≈35dp) +
-列表内边距(`miuix_preference_rv_padding_top/bottom` 7.27/32dp) ≈ **284dp**；
-（对照上游：它的权限页 4 行≈266dp，它的基础设置页 5 行 + 2 个分类≈370-400dp。）
+结果：四页共用三个字号刻度 —— **32sp**（标题/品牌名）、**17sp**（行标题、按钮）、**14sp**（所有次级行）；
+行高 65dp；行左右 16dp、圆角 16dp；页面预览图标 70dp；品牌标记 104dp/≤40sp。
+字体族仍是它们的 MIUI 专有值（② 的 `TextAppearance.PreferenceList`、④ 的 `mipro-regular`），
+非 MIUI 上都会回退成系统字体，实际是同一套字形，未动。
 
-**结论**：不是"某个控件尺寸写错了"，而是**我们的内容比上游短** ⇒ 空白全堆在按钮上方：
-② 空 ≈404dp（上游 292dp），③ 空 ≈274dp（上游 ≈168dp）。另有两条可证的"相邻两步不一致"：
+**还没动的两件**（都不属于"四页互相不一致"，等用户定）：
 
-| # | 现象 | 数字 | 建议（择一，供决定） |
-|---|---|---|---|
-| M1 | ③ 的第一行比 ② 的第一行低一截 | ③ 列表上方有 `miuix_preference_rv_padding_top` 7.27dp **+ 分类头 35dp ≈ 42dp**；② 的 ScrollView 只有左右内边距，第一行从 0 开始 | 给 `provision_permission_layout.xml` 的 ScrollView 加同样的上边距（42dp），或去掉 ③ 的分类头（那 35dp） |
-| M2 | ② 行高 56dp（17sp、无摘要） vs ③ 行高 ≈70dp（17sp + 14sp 摘要） | 56 vs 70dp | 上游本来也是这两种行，所以是"忠实"的；若要完全统一，只能两边都有摘要或都没有——建议保留现状（③ 的摘要就是拉列表的反馈） |
-| M3 | 两个极光页"名字下面那行"的间距差 7 倍 | ① 用 `provision_subtitle_margin_top` **4dp**（上游这个 dimen 是给"页副标题"的）；④ 的 `system_state_text` 是 **30dp** | ① 改成 **16dp**（两句都是品牌/落款行，取 4 与 30 之间） |
-
-若想真正把空白消化掉，最省事的一条：**让内容在容器里居中**——
-② 给 ScrollView 加 `android:layout_gravity="center_vertical"`（上游的 `CustomDispatchFrameLayout`
-认 child gravity）；③ 覆盖它自己的钩子 `getListViewPaddingTop()`（**protected，子类可覆盖**，已核对 AAR）
-返回 `7.27dp + 96dp`：③ 的 274dp 空白一半在 137dp，96dp 是保守起点。
-这属于"改它布局的排布"，所以我没动，等用户点头。
+1. ③ 第一行比 ② 第一行低 ≈42dp：③ 列表上方有 `miuix_preference_rv_padding_top` 7.27dp + 分类头 35dp，
+   ② 的 ScrollView 只有左右内边距、第一行从 0 开始。要么给 ② 加同样上边距，要么去掉 ③ 的分类头。
+2. 内容比上游短 ⇒ 空白堆在按钮上方（按 1080×2400@420dpi、内容区 ≈558dp 算：② 空 ≈404dp vs 上游 292dp；
+   ③ 空 ≈274dp vs 上游 ≈168dp）。想消化就让内容在容器里居中：② 的 ScrollView 加
+   `android:layout_gravity="center_vertical"`；③ 覆盖它自己的 `getListViewPaddingTop()`（protected、子类可覆盖）
+   返回 `7.27dp + 96dp`（③ 空白的一半是 137dp，96dp 是保守起点）。
 
 ## 3. 主题：占位值删了，真值来自 `fan.miuix:*`
 
@@ -359,7 +363,12 @@ Preview 4 的 dex 里 `Landroidx/preference/` 有 80 个类（改之前只有 1 
     （v2/v3 签名；本地 `~/rel-p4/`）。CI artifact 是另一次构建：`~/apk-p4/MiaoAssistant-1-merge.apk`，
     同一份源码，`sha256 9fa0d93635f29b77315a2abb73319255fa6b6063136b33ab23dfe020e316e704`
     —— 两个 hash 不同只是因为重新构建（zip 条目时间戳/签名块），内容逐项核对一致。
-  - 更早的：四步 + 品牌 run 35378199008（`~/apk-brand/`）
+  - **Preview 8（四页大小对齐 + 副标题深紫）**：
+    分支 run https://github.com/Youzix-Star/NekoPlus/actions/runs/35390454728（绿）
+    · tag run https://github.com/Youzix-Star/NekoPlus/actions/runs/35390998138（绿）
+    · Release 产物 `https://github.com/Youzix-Star/NekoPlus/releases/download/v2.0.3-onboarding-preview8/MiaoAssistant-v2.0.3-onboarding-preview8.apk`
+    8 104 672 字节，`sha256 28207f7ee82555e8ff14ee1b008332eab58f745b69592659cbdb0af7a5c9cba1`（本地 `~/rel-p8/`）
+  - 更早的：Preview 7 run 35388714409（`~/rel-p7/`）、四步 + 品牌 run 35378199008（`~/apk-brand/`）
   - 产物：artifact `MiaoAssistant-release-apk`，解出来是 `MiaoAssistant-1-merge.apk`，
     5 196 963 字节，`sha256 4e898517ca852be8ff3b4868778e754591bc291a7c3221437c7fcd413d100d30`
     （artifact id 10561376128；本地在 `~/apk-brand/MiaoAssistant-1-merge.apk`）。
