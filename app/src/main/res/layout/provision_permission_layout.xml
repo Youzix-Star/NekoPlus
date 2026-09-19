@@ -27,9 +27,20 @@
   page's category header uses, so both pages' first row lands at the same height (7dp list inset +
   8dp + 14sp line + 8dp ≈ 42dp, against the AI page's 7.27dp + 8dp + 14sp + 8dp ≈ 42.3dp).
 -->
+<!--
+  The top inset sits on the ScrollView itself (M1): its job is to make this page's first row start
+  where the AI page's first row starts. The AI page's list carries
+  `miuix_preference_rv_padding_top` (7.27dp) above its leading text line and then its 35dp category
+  header, so its first row lands at ~42.3dp. Here the leading line is this page's note, so the same
+  ~42dp is made of: this 7dp inset (= their 7.27dp, rounded) + the note's 8dp top margin + its 14sp
+  line (~19dp) + its 8dp bottom margin, and the note's margins are the very recipe their category
+  header uses (8dp + 14sp + 8dp). Putting the whole 42dp here *instead* would push the first row to
+  ~84dp — it is already spoken for by the note, which is why it is split this way.
+-->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:paddingTop="@dimen/provision_guide_list_top_inset">
 
     <!-- layout_gravity centres this block in the page: the guide's two rows leave a lot of the tall
          shell empty, and upstream's own five-row page did not have that problem. The ScrollView stays
@@ -40,7 +51,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center_vertical"
         android:orientation="vertical"
-        android:paddingTop="@dimen/provision_guide_list_top_inset"
         android:paddingHorizontal="@dimen/miuix_theme_padding_horizontal_common">
 
         <TextView
