@@ -70,6 +70,23 @@ public class BasicSettingsFragment extends PreferenceFragment {
     private boolean mModelsLoaded;
     private boolean mFetching;
 
+    /**
+     * Centres this page's three rows in the tall shell.
+     *
+     * Upstream's own page for this slot had five rows in two categories, so it filled the area under
+     * the title; ours has three, and the leftover collected above the button group. Their
+     * {@code PreferenceFragment} calls this hook (protected, so a subclass may override it) when it
+     * builds the list, and the permission page next door centres its content with
+     * {@code layout_gravity="center_vertical"} — same result, two mechanisms, because one page is a
+     * preference list and the other is a plain scroll view.
+     */
+    @Override
+    protected int getListViewPaddingTop() {
+        // Both sides are pixels: the base is upstream's own list inset (miuix_preference_rv_padding_top).
+        return super.getListViewPaddingTop()
+            + Math.round(getResources().getDimension(R.dimen.provision_guide_list_extra_top));
+    }
+
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         setPreferencesFromResource(R.xml.provision_basic_settings, rootKey);

@@ -23,16 +23,24 @@
   leads the list rather than sitting after the first row, because here neither row is a
   prerequisite for the next button. Its 13sp override is gone so the line uses its own style's size
   (miuix_appcompat_secondary_text_size, 14sp) — the same secondary size the AI page's row summaries
-  and the two aurora pages' sub-lines use.
+  and the two aurora pages' sub-lines use — and its 16dp top margin is now 8dp, which is what the AI
+  page's category header uses, so both pages' first row lands at the same height (7dp list inset +
+  8dp + 14sp line + 8dp ≈ 42dp, against the AI page's 7.27dp + 8dp + 14sp + 8dp ≈ 42.3dp).
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- layout_gravity centres this block in the page: the guide's two rows leave a lot of the tall
+         shell empty, and upstream's own five-row page did not have that problem. The ScrollView stays
+         match_parent, so if the content ever outgrows the page it still scrolls (FrameLayout only
+         applies gravity while the child is smaller than the viewport). -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
         android:orientation="vertical"
+        android:paddingTop="@dimen/provision_guide_list_top_inset"
         android:paddingHorizontal="@dimen/miuix_theme_padding_horizontal_common">
 
         <TextView
@@ -40,7 +48,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingHorizontal="@dimen/miuix_theme_content_padding_horizontal_common"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="8dp"
             android:layout_marginBottom="8dp"
             android:text="@string/provision_set_permission_later" />
 

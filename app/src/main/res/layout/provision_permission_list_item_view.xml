@@ -19,7 +19,7 @@
   -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/provision_guide_row_height"
+    android:layout_height="@dimen/provision_list_item_height"
     android:background="@drawable/provision_list_item_background"
     android:layoutDirection="locale"
     android:paddingStart="@dimen/miuix_theme_content_padding_horizontal_common"
