@@ -18,7 +18,7 @@
  */
 package com.sevtinge.hyperceiler.provision.fragment;
 
-import android.app.AlertDialog;
+import fan.appcompat.app.AlertDialog;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
