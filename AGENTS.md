@@ -87,7 +87,8 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
 
 ## 4. 本机已有的工具（用它们，不要重新发明）
 
-都在 `/data/data/com.termux/files/home/`：
+**已经随仓库提供**：`scripts/dexmethods.py`、`scripts/checkbrand.py`、`scripts/kcheck.py`
+（`scripts/README.md` 有用法）。下面的路径是同一批工具在设备上的家目录副本：
 
 - **`dexmethods.py <dex文件> "<类描述符>"`** —— 最小 DEX 解析器，列某个类的方法表。
   用途：问"R8 到底有没有把某个方法裁掉"。**别用 grep 在 dex 里找方法签名 —— dex 不这么存**（它按类型池拆）。
@@ -182,7 +183,28 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
 
 ---
 
-## 8. 怎么跟这位用户协作（很重要）
+## 8. 工作区布局与卫生（用户明确要求过：别把仓库根目录搞乱）
+
+**原则：仓库里只放仓库的东西。日志、APK、AAR、临时解包目录一律放在家目录。**
+
+```
+~/NekoPlus/              唯一的 svn 检出（分支 feat/provision-port 通常在这里）
+~/scratch/               所有临时物：logs/（CI 日志）、aar/（下下来的依赖包）、下载的 APK、解包目录
+~/crash-reports/         用户给的崩溃日志副本（按日期+版本命名，便于回溯）
+~/hcp-work/HyperCeiler-HEAD/  上游全量快照（只读参考）
+~/hc-provision-notes.md       上游 provision 模块的勘察笔记（中文，含 file:line）
+scripts/                 三个验证小工具（见 §4）
+docs/provision-port.md   移植工作的完整记录（真因、决定、尺寸表、验收清单）
+```
+
+- **不要 `git worktree add` 一堆副本然后忘了**。多个 agent 并行时用一个 worktree 是对的，
+  但收工后要 `git worktree remove`，只留一个检出 —— 用户被"根目录一堆文件 + 多个副本"困过一次。
+- 任何 `*.log` / `*.apk` / `*.jks` 都已在 `.gitignore` 里（`miao-release.jks` 是本地签名密钥，
+  **永远不要提交**），但它们仍然会躺在工作目录里碍眼 —— 直接往 `~/scratch/` 写，不要写进仓库。
+- 崩溃日志（`Android/data/love.miao.yun/files/crash/latest.txt`）拷进 `~/crash-reports/`，
+  文件名带上版本与现象，下一个 agent 才看得出先后。
+
+## 9. 怎么跟这位用户协作（很重要）
 
 - **他要结果，不要流程。** 反复问"要不要我这样做"会挨骂；**能自己决定的小事就决定**，
   把"我做了什么、为什么、代价是什么"讲清楚即可。真正需要他拍的只有产品口味（配色、文案、位置）。
