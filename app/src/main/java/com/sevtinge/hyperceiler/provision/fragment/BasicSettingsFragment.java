@@ -18,13 +18,13 @@
  */
 package com.sevtinge.hyperceiler.provision.fragment;
 
-import fan.appcompat.app.AlertDialog;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.Nullable;
 import androidx.preference.EditTextPreference;
 import androidx.preference.Preference;
@@ -32,6 +32,7 @@ import androidx.preference.Preference;
 import love.miao.yun.R;
 import love.miao.yun.ai.AiManager;
 
+import fan.appcompat.app.AlertDialog;
 import fan.preference.PreferenceFragment;
 
 import java.util.ArrayList;
@@ -71,6 +72,21 @@ public class BasicSettingsFragment extends PreferenceFragment {
     private final List<String> mCachedModels = new ArrayList<>();
     private boolean mFetching;
 
+    /**
+     * Back-press callback that intercepts the gesture while the model dialog is showing,
+     * so the dialog dismisses with the system's predictive-back animation instead of the
+     * activity's page-level animation swallowing the event.
+     */
+    private AlertDialog mModelDialog;
+    private final OnBackPressedCallback mBackCallback = new OnBackPressedCallback(false) {
+        @Override
+        public void handleOnBackPressed() {
+            if (mModelDialog != null && mModelDialog.isShowing()) {
+                mModelDialog.dismiss();
+            }
+        }
+    };
+
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         setPreferencesFromResource(R.xml.provision_basic_settings, rootKey);
@@ -91,6 +107,9 @@ public class BasicSettingsFragment extends PreferenceFragment {
     @Override
     public void onViewCreated(View view, Bundle bundle) {
         super.onViewCreated(view, bundle);
+
+        // Register the back callback so it is available before any dialog opens.
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), mBackCallback);
 
         AiManager.Config config = AiManager.INSTANCE.load(requireContext());
 
@@ -162,22 +181,16 @@ public class BasicSettingsFragment extends PreferenceFragment {
     /**
      * Show a dialog with a "获取模型" button and a model list. If models have been fetched before,
      * the list is shown directly; otherwise the user taps the button to fetch.
+     *
+     * The dialog is tracked in [mModelDialog] so the back callback can intercept the predictive-back
+     * gesture and dismiss it with the system animation instead of letting the activity's page-level
+     * animation swallow the event.
      */
     private void showModelDialog() {
         if (!isAdded()) return;
 
         AiManager.Config config = AiManager.INSTANCE.load(requireContext());
         String currentModel = config.getModel();
-
-        // Build the list items: current selection indicator + all cached models.
-        List<String> items = new ArrayList<>();
-        if (mCachedModels.isEmpty()) {
-            items.add(getString(R.string.provision_ai_no_models));
-        } else {
-            for (String m : mCachedModels) {
-                items.add(m);
-            }
-        }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
             .setTitle(R.string.provision_ai_select_model);
@@ -211,7 +224,15 @@ public class BasicSettingsFragment extends PreferenceFragment {
         }
 
         builder.setNegativeButton(android.R.string.cancel, null);
-        builder.show();
+
+        // Track the dialog for back-press interception.
+        mModelDialog = builder.create();
+        mModelDialog.setOnShowListener(dialog -> mBackCallback.setEnabled(true));
+        mModelDialog.setOnDismissListener(dialog -> {
+            mBackCallback.setEnabled(false);
+            mModelDialog = null;
+        });
+        mModelDialog.show();
     }
 
     /**

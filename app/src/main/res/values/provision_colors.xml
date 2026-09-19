@@ -24,7 +24,7 @@
 
     <color name="provision_item_normal_bg_color">@color/miuix_default_color_container_list_light</color>
     <color name="provision_item_pressed_bg_color">#14000000</color>
-    <color name="provision_item_selected_bg_color">@color/miuix_color_blue_light_primary_default</color>
+    <color name="provision_item_selected_bg_color">?attr/colorPrimary</color>
 
     <color name="provision_title_text_color">@color/miuix_default_color_on_surface_light</color>
     <color name="provision_subtitle_text_color">@color/miuix_default_color_on_surface_tertiary_light</color>
@@ -35,11 +35,12 @@
     <color name="provision_service_name_color">#000000</color>
     <color name="provision_service_desc_color">#80000000</color>
 
-    <color name="provision_item_policy_text_color">#0d84ff</color>
+    <!-- Monet: link / accent text follows the theme primary, not a hardcoded MIUI blue. -->
+    <color name="provision_item_policy_text_color">?attr/colorPrimary</color>
 
     <color name="provision_service_agree_color">#000000</color>
 
-    <color name="provision_button_text_high_color_light">#0d84ff</color>
+    <color name="provision_button_text_high_color_light">?attr/colorPrimary</color>
 
 
 
