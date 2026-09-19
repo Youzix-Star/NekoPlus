@@ -29,8 +29,8 @@ import androidx.annotation.Nullable;
 import androidx.preference.EditTextPreference;
 import androidx.preference.Preference;
 
-import love.miao.yun.R;
-import love.miao.yun.ai.AiManager;
+import top.youzix.nekoplus.R;
+import top.youzix.nekoplus.ai.AiManager;
 
 import fan.appcompat.app.AlertDialog;
 import fan.preference.PreferenceFragment;

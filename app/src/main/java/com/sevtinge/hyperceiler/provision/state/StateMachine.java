@@ -10,7 +10,7 @@ import android.util.SparseArray;
 import androidx.annotation.Nullable;
 
 import com.sevtinge.hyperceiler.common.log.AndroidLog;
-import love.miao.yun.R;
+import top.youzix.nekoplus.R;
 import com.sevtinge.hyperceiler.provision.activity.BasicSettingsActivity;
 import com.sevtinge.hyperceiler.provision.activity.CongratulationActivity;
 import com.sevtinge.hyperceiler.provision.activity.DefaultActivity;

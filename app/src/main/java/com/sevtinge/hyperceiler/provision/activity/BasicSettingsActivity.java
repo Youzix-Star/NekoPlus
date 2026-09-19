@@ -20,7 +20,7 @@ package com.sevtinge.hyperceiler.provision.activity;
 
 import androidx.fragment.app.Fragment;
 
-import love.miao.yun.R;
+import top.youzix.nekoplus.R;
 import com.sevtinge.hyperceiler.provision.fragment.BasicSettingsFragment;
 
 public class BasicSettingsActivity extends BaseActivity {

@@ -18,8 +18,8 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 
 import com.sevtinge.hyperceiler.common.log.AndroidLog;
-import love.miao.yun.R;
-import love.miao.yun.ui.AppIconsKt;
+import top.youzix.nekoplus.R;
+import top.youzix.nekoplus.ui.AppIconsKt;
 import com.sevtinge.hyperceiler.provision.activity.DefaultActivity;
 import com.sevtinge.hyperceiler.provision.renderengine.GlowController;
 import com.sevtinge.hyperceiler.provision.renderengine.RenderViewLayout;

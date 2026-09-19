@@ -30,9 +30,9 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import love.miao.yun.R;
-import love.miao.yun.ui.AppIconsKt;
-import love.miao.yun.ui.provision.ProvisionGuide;
+import top.youzix.nekoplus.R;
+import top.youzix.nekoplus.ui.AppIconsKt;
+import top.youzix.nekoplus.ui.provision.ProvisionGuide;
 import com.sevtinge.hyperceiler.provision.renderengine.GlowController;
 import com.sevtinge.hyperceiler.provision.renderengine.RenderViewLayout;
 import com.sevtinge.hyperceiler.provision.utils.IOnFocusListener;
@@ -361,7 +361,7 @@ public class CongratulationFragment extends BaseFragment implements IOnFocusList
         intent.setPackage(requireContext().getPackageName());
         // Upstream sends this to its own SplashActivity (or to HomePageActivity in debug OOBE); in
         // this app the guide hands over to the one activity that owns the window.
-        intent.setClassName(requireContext(), "love.miao.yun.MainActivity");
+        intent.setClassName(requireContext(), "top.youzix.nekoplus.MainActivity");
         if (OobeUtils.isDebugOobeMode(requireActivity())) {
             intent.putExtra(OobeUtils.EXTRA_DEBUG_OOBE, true);
         }

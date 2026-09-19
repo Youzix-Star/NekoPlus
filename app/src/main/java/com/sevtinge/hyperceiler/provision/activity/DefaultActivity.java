@@ -34,7 +34,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityOptionsCompat;
 
 import com.sevtinge.hyperceiler.common.log.AndroidLog;
-import love.miao.yun.ui.provision.ProvisionGuide;
+import top.youzix.nekoplus.ui.provision.ProvisionGuide;
 import com.sevtinge.hyperceiler.provision.state.StartupState;
 import com.sevtinge.hyperceiler.provision.state.StateMachine;
 import com.sevtinge.hyperceiler.provision.utils.IKeyEvent;

@@ -6,7 +6,7 @@ import android.graphics.RenderEffect;
 import android.graphics.RuntimeShader;
 import android.util.Log;
 
-import love.miao.yun.R;
+import top.youzix.nekoplus.R;
 
 import java.io.InputStream;
 import java.util.Scanner;

@@ -22,19 +22,18 @@ val signingProperties = Properties().apply {
 
 fun signingValue(key: String): String? = signingProperties.getProperty(key) ?: System.getenv(key)
 
-val keystorePath = signingValue("KEYSTORE_PATH")
-val keystorePassword = signingValue("KEYSTORE_PASSWORD")
-val releaseKeyAlias = signingValue("KEY_ALIAS")
-val releaseKeyPassword = signingValue("KEY_PASSWORD")
-val hasReleaseSigning =
-    keystorePath != null && keystorePassword != null && releaseKeyAlias != null && releaseKeyPassword != null
+val keystorePath = signingValue("KEYSTORE_PATH") ?: "nekoplus-release.jks"
+val keystorePassword = signingValue("KEYSTORE_PASSWORD") ?: "nekoplus123"
+val releaseKeyAlias = signingValue("KEY_ALIAS") ?: "nekoplus"
+val releaseKeyPassword = signingValue("KEY_PASSWORD") ?: "nekoplus123"
+val hasReleaseSigning = true
 
 android {
-    namespace = "love.miao.yun"
+    namespace = "top.youzix.nekoplus"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "love.miao.yun"
+        applicationId = "top.youzix.nekoplus"
         minSdk = 33
         targetSdk = 35
         versionCode = 115

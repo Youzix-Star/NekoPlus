@@ -4,7 +4,7 @@
 # release APK would carry several thousand unused ImageVector definitions.
 #
 # The floating window service is declared in the manifest and instantiated by the system.
--keep class love.miao.yun.service.FloatingWindowService { *; }
+-keep class top.youzix.nekoplus.service.FloatingWindowService { *; }
 
 # --- The ported first-run guide (HyperCeiler's library/provision, AGPL-3.0-only) ---
 #

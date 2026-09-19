@@ -58,7 +58,7 @@
 
           组件名伪装成系统自带的 select-to-speak 服务：微信 8.0.52+ 对不认识的无障碍服务会
           返回一棵空节点树（窗口在、根节点没有 class/bounds/子节点），换个组件名就绕过去了。
-          真正的实现仍是 love.miao.yun.service.MiaoAccessibilityService，这里只声明这个壳 ——
+          真正的实现仍是 top.youzix.nekoplus.service.MiaoAccessibilityService，这里只声明这个壳 ——
           两个都声明会让系统设置里出现两条，也会把真名暴露给微信。
         -->
         <service

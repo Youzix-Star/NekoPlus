@@ -28,7 +28,7 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
-import love.miao.yun.R;
+import top.youzix.nekoplus.R;
 import com.sevtinge.hyperceiler.provision.activity.BaseActivity;
 
 import java.lang.reflect.Field;

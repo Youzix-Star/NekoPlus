@@ -31,7 +31,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
-import love.miao.yun.R;
+import top.youzix.nekoplus.R;
 import com.sevtinge.hyperceiler.provision.utils.PageIntercepHelper;
 
 import fan.provision.OobeUtils;

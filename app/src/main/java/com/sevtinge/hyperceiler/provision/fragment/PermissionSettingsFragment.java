@@ -27,8 +27,8 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import love.miao.yun.R;
-import love.miao.yun.service.MiaoAccessibilityService;
+import top.youzix.nekoplus.R;
+import top.youzix.nekoplus.service.MiaoAccessibilityService;
 import com.sevtinge.hyperceiler.provision.widget.PermissionItemView;
 
 /**

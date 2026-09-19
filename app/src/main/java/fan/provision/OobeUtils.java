@@ -32,7 +32,7 @@ import android.view.View;
 import android.view.Window;
 import android.widget.Toast;
 
-import love.miao.yun.R;
+import top.youzix.nekoplus.R;
 
 import java.security.SecureRandom;
 import java.util.Locale;

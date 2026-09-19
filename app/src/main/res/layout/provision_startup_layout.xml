@@ -63,7 +63,7 @@
 
         <!--
           Branding: 上游这两个 view 是 HyperCeiler 的 logo / 字标 vector（文件仍留在 drawable 里，只是不再被引用）。
-          这一格（104dp，见下面 layout_width）放本应用的文字标记：常量 love.miao.yun.ui.AppIconText，
+          这一格（104dp，见下面 layout_width）放本应用的文字标记：常量 top.youzix.nekoplus.ui.AppIconText，
           在 Java 里设置，与 About 页同一个（launcher 图标里烤的也是这一串）。位置与入场动画仍是上游的；
           autoSize 只是让这个窄长（约 5:1）的标记始终填满方块宽，而不是被省略号截掉。
           两个极光页共用一个尺寸：盒子 104dp、autoSize 上限 40sp（完成页原写 34sp，本轮对齐）。

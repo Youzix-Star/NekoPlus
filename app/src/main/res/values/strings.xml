@@ -5,10 +5,10 @@
   through toasts. Screen copy is written where the screens are.
 -->
 <resources>
-    <string name="app_name">喵喵助手</string>
+    <string name="app_name">NekoPlus</string>
 
     <!-- 无障碍服务（系统设置里显示） -->
-    <string name="accessibility_service_label">喵喵助手文本捕获</string>
+    <string name="accessibility_service_label">NekoPlus 文本捕获</string>
     <string name="accessibility_service_description">点击「AI 修改」时读取当前输入框的文字并写回结果，平时不读取任何内容。</string>
 
     <!-- 常驻通知 -->

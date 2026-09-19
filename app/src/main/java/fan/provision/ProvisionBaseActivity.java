@@ -41,7 +41,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 
-import love.miao.yun.R;
+import top.youzix.nekoplus.R;
 
 import fan.appcompat.app.AppCompatActivity;
 import fan.appcompat.app.GroupButtonsConfig;

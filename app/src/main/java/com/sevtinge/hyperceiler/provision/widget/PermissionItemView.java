@@ -29,7 +29,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import love.miao.yun.R;
+import top.youzix.nekoplus.R;
 
 public class PermissionItemView extends FrameLayout implements Checkable {
 
