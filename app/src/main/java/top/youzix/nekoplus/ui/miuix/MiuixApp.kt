@@ -133,23 +133,6 @@ fun MiuixShell(
         )
     }
 
-    val toggleFloating: () -> Unit = {
-        when {
-            !Settings.canDrawOverlays(context) -> requestOverlay()
-            MiaoState.floatingRunning ->
-                context.stopService(Intent(context, FloatingWindowService::class.java))
-            else -> {
-                // Plain startService on purpose: the service promotes itself to a foreground
-                // service when the system allows it. A refused promotion then leaves it running as
-                // a background service, instead of tripping the startForegroundService contract
-                // (which kills the process — that is the crash HyperOS caused on 2026-10-25).
-                runCatching {
-                    context.startService(Intent(context, FloatingWindowService::class.java))
-                }.onFailure { onNotify("无法启动悬浮窗：" + it.message) }
-            }
-        }
-    }
-
     val navigationItems = remember {
         listOf(
             NavigationItem(label = "首页", icon = AppIcons.Home),
@@ -166,6 +149,23 @@ fun MiuixShell(
     val snackbarHostState = remember { SnackbarHostState() }
     val notify: (String) -> Unit = { message ->
         coroutineScope.launch { snackbarHostState.showSnackbar(message) }
+    }
+
+    val toggleFloating: () -> Unit = {
+        when {
+            !Settings.canDrawOverlays(context) -> requestOverlay()
+            MiaoState.floatingRunning ->
+                context.stopService(Intent(context, FloatingWindowService::class.java))
+            else -> {
+                // Plain startService on purpose: the service promotes itself to a foreground
+                // service when the system allows it. A refused promotion then leaves it running as
+                // a background service, instead of tripping the startForegroundService contract
+                // (which kills the process — that is the crash HyperOS caused on 2026-10-25).
+                runCatching {
+                    context.startService(Intent(context, FloatingWindowService::class.java))
+                }.onFailure { onNotify("无法启动悬浮窗：" + it.message) }
+            }
+        }
     }
 
     val surfaceColor = MiuixTheme.colorScheme.surface
