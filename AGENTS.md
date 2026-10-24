@@ -144,6 +144,19 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
 - 模糊（`MiuiBlurUtils`）在非 MIUI 上不生效，属上游行为，不要"修"。
 - miuix 的 `Colors` 没有 `tertiary`，只有 `tertiaryContainer` 之类；写之前查 AAR。
 
+**HyperOS / MIUI**
+
+- **前台服务校验看 appop，不看 manifest 权限。** HyperOS 会把
+  `FOREGROUND_SERVICE_SPECIAL_USE` 的 appop 设成 `ignore`（`dumpsys package` 里该权限仍显示
+  `granted=true`），而 Android 14+ 在 `startForeground(..., SPECIAL_USE)` 时按 appop 校验 ⇒
+  `SecurityException` 从 `Service.onCreate` 抛出，进程直接被杀。2026-10-25 用户连崩两次就是这个：
+  旧包 `love.miao.yun` 的 appop 早就是 allow，新包名 `top.youzix.nekoplus` 是全新安装，拿到 ignore。
+- App **无法**设置 appop，只能 `AppOpsManager.unsafeCheckOpNoThrow("android:foreground_service_special_use")`
+  探测后降级。**悬浮窗一律用 `startService` 启动，再在 `onStartCommand` 里尝试升级为前台服务**；
+  升不上去就继续以普通服务跑（发一条普通通知）。**不要再用 `startForegroundService`** ——
+  它的 5 秒契约会让进程在升级失败时被系统杀掉。
+- 诊断入口：关于 → 设备信息里有「前台服务」一行；启动时也会写进崩溃面包屑（`悬浮窗服务：…`）。
+
 **HyperCeiler（上游，AGPL-3.0-only）**
 - 本地全量快照：`~/hcp-work/HyperCeiler-HEAD`；勘察笔记：`~/hc-provision-notes.md`（中文，含大量 file:line）。
 - 引导模块是 `library/provision`；它自己的 keep 规则在 `library/*/src/main/keepRules/` 与 `app/src/main/keepRules/`。

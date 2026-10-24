@@ -33,6 +33,7 @@ object DeviceInfo {
         appendLine("Android Version: ${Build.VERSION.RELEASE} API${Build.VERSION.SDK_INT}")
         appendLine("Language: ${Locale.getDefault().toLanguageTag()}")
         appendLine("UI Engine: ${MiaoState.engine.label}")
+        appendLine("前台服务: " + (top.youzix.nekoplus.service.FloatingWindowService.foregroundLimitation(context) ?: "可用"))
         appendLine("Screen Density: ${context.resources.displayMetrics.densityDpi} dpi")
         append("Dark Theme: ${isDarkNow(context)}")
     }

@@ -5,6 +5,8 @@
 
 package top.youzix.nekoplus.service
 
+import android.Manifest
+import android.app.AppOpsManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -12,8 +14,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.content.res.ColorStateList
 import android.graphics.PixelFormat
@@ -21,6 +25,7 @@ import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
+import android.os.Process
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -36,6 +41,7 @@ import android.widget.Toast
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import top.youzix.nekoplus.MainActivity
+import top.youzix.nekoplus.crash.CrashHandler
 import top.youzix.nekoplus.MiaoState
 import top.youzix.nekoplus.R
 import top.youzix.nekoplus.floating.FloatingAction
@@ -102,7 +108,6 @@ class FloatingWindowService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        startForegroundNotification()
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         FloatingWindowPrefs.register(this, prefsListener)
         UiEnginePrefs.registerListener(this, prefsListener)
@@ -110,7 +115,28 @@ class FloatingWindowService : Service() {
         MiaoState.floatingRunning = true
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // The service is always started with a plain `startService` (the app is in the foreground
+        // when the button is tapped), so if promoting it to a foreground service is refused there
+        // is no pending FGS contract to break: it simply keeps running as a background service.
+        val limitation = foregroundLimitation(this)
+        CrashHandler.note("悬浮窗服务：" + (limitation ?: "前台服务可用"))
+        if (limitation != null) {
+            postNotification()
+            if (intent != null) toast("系统限制了前台服务，悬浮窗改用普通服务运行")
+            return START_STICKY
+        }
+        val entered = runCatching { startForegroundNotification() }
+        if (entered.isFailure) {
+            CrashHandler.note(
+                "前台服务启动失败：" + entered.exceptionOrNull()?.let {
+                    it.javaClass.simpleName + ": " + it.message
+                },
+            )
+            postNotification()
+        }
+        return START_STICKY
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -122,6 +148,9 @@ class FloatingWindowService : Service() {
         }
         buttons.clear()
         MiaoState.floatingRunning = false
+        runCatching {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).cancel(NOTIFICATION_ID)
+        }
         super.onDestroy()
     }
 
@@ -564,10 +593,12 @@ class FloatingWindowService : Service() {
 
     // ------------------------------------------------------------------ notification
 
-    private fun startForegroundNotification() {
-        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+    private fun notificationManager(): NotificationManager =
+        getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+    private fun createChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
+            notificationManager().createNotificationChannel(
                 NotificationChannel(
                     CHANNEL_ID,
                     getString(R.string.notif_channel_name),
@@ -577,7 +608,9 @@ class FloatingWindowService : Service() {
                 },
             )
         }
+    }
 
+    private fun buildNotification(): Notification {
         val contentIntent = PendingIntent.getActivity(
             this,
             0,
@@ -592,14 +625,18 @@ class FloatingWindowService : Service() {
             Notification.Builder(this)
         }
 
-        val notification = builder
+        return builder
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(getString(R.string.notif_text))
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(contentIntent)
             .setOngoing(true)
             .build()
+    }
 
+    private fun startForegroundNotification() {
+        createChannel()
+        val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
                 NOTIFICATION_ID,
@@ -611,9 +648,53 @@ class FloatingWindowService : Service() {
         }
     }
 
-    private companion object {
-        const val CHANNEL_ID = "miao_floating_window"
-        const val NOTIFICATION_ID = 1001
+    /** Same notification without the foreground-service contract, for the HyperOS fallback. */
+    private fun postNotification() {
+        runCatching {
+            createChannel()
+            notificationManager().notify(NOTIFICATION_ID, buildNotification())
+        }
+    }
+
+    companion object {
+        private const val CHANNEL_ID = "miao_floating_window"
+        private const val NOTIFICATION_ID = 1001
+
+        /**
+         * App op behind `FOREGROUND_SERVICE_TYPE_SPECIAL_USE`. Android 14+ validates the type
+         * against this op, not against the manifest permission.
+         */
+        private const val OP_SPECIAL_USE = "android:foreground_service_special_use"
+
+        /**
+         * What stops this app from running a `specialUse` foreground service, or `null` if nothing
+         * does.
+         *
+         * HyperOS/MIUI can flip this app op to `ignore` while the manifest permission stays
+         * `granted=true` (it is a normal, install-time permission), and there is no API for the
+         * app to set it back. Calling `startForeground(... SPECIAL_USE)` then throws
+         * `SecurityException` inside `Service.onCreate`, which kills the whole process — the crash
+         * seen on 2026-10-25. Looking first is the only thing the app can do; the return value is
+         * also written into the crash breadcrumb so a report says which of the two it was.
+         */
+        @JvmStatic
+        fun foregroundLimitation(context: Context): String? {
+            if (context.checkSelfPermission(
+                    Manifest.permission.FOREGROUND_SERVICE_SPECIAL_USE,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                return "权限未授予"
+            }
+            val ops = context.getSystemService(AppOpsManager::class.java) ?: return null
+            val mode = runCatching {
+                ops.unsafeCheckOpNoThrow(OP_SPECIAL_USE, Process.myUid(), context.packageName)
+            }.getOrNull() ?: return null
+            return if (mode == AppOpsManager.MODE_ALLOWED || mode == AppOpsManager.MODE_DEFAULT) {
+                null
+            } else {
+                "appop=$mode"
+            }
+        }
 
         /** Share of the button's edge the icon leaves as padding, so the art is ~55% of it. */
         const val ICON_INSET_FRACTION = 0.225f

@@ -36,8 +36,8 @@ android {
         applicationId = "top.youzix.nekoplus"
         minSdk = 33
         targetSdk = 35
-        versionCode = 116
-        versionName = "2.1.0 NekoUi Shell"
+        versionCode = 117
+        versionName = "2.1.1 NekoUi Shell"
     }
 
     signingConfigs {
