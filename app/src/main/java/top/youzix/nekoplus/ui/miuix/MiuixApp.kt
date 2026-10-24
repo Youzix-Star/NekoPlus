@@ -415,7 +415,7 @@ private fun FloatingTab(
     onToggleFloating: () -> Unit,
     onNotify: (String) -> Unit,
 ) {
-    val pageScrollBehavior = remember { MiuixScrollBehavior() }
+    val pageScrollBehavior = MiuixScrollBehavior()
     Scaffold(
         topBar = {
             BlurredBar(backdrop = null) {

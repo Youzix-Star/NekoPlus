@@ -28,8 +28,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -77,6 +79,14 @@ fun IntNumberPickerWidget(
     } else {
         0
     }
+    val sliderState = remember(stepsCount, startInt, endInt) {
+        SliderState(
+            value = value.toFloat(),
+            steps = stepsCount,
+            trackRange = startInt.toFloat()..endInt.toFloat(),
+        )
+    }
+    LaunchedEffect(value) { sliderState.value = value.toFloat() }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -114,7 +124,7 @@ fun IntNumberPickerWidget(
             modifier = Modifier.padding(start = sliderStartPadding, end = sliderEndPadding),
         ) {
             Slider(
-                value = value.toFloat(),
+                state = sliderState,
                 onValueChange = {
                     val intValue = it.roundToInt()
                     if (intValue != lastIntValue) {
@@ -127,13 +137,11 @@ fun IntNumberPickerWidget(
                         onValueChange(intValue)
                     }
                 },
-                valueRange = startInt.toFloat()..endInt.toFloat(),
-                steps = stepsCount, // Apply the dynamically calculated steps
                 enabled = enabled,
                 modifier = Modifier.weight(1f),
                 interactionSource = interactionSource,
                 // Highly customized thumb slot for seamless visual experience
-                thumb = {
+                thumb = { _ ->
                     TooltipSliderThumbDefinitive(
                         interactionSource = interactionSource,
                         enabled = enabled,
