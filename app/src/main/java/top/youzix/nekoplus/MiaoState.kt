@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import top.youzix.nekoplus.ui.FloatingColorSource
 import top.youzix.nekoplus.ui.UiEngine
+import top.youzix.nekoplus.ui.theme.ColorMode
 
 /**
  * Process-wide UI state for the shell.
@@ -42,7 +43,21 @@ object MiaoState {
     /** Which palette the floating window uses; persisted alongside the engine. */
     var floatingColorSource by mutableStateOf(FloatingColorSource.Dynamic)
 
-    /** Which predictive-back animation plays on second-level pages. */
+    /**
+     * Light/dark choice, shared by both engines and persisted next to the engine.
+     *
+     * The miuix engine always renders dynamic colour; this only decides which side of it
+     * (light, dark, or the system's) is used.
+     */
+    var colorMode by mutableStateOf(ColorMode.System)
+
+    /**
+     * Whether the diagnostic tools are on show.
+     *
+     * Two switches gate them on purpose: [developerMode] unlocks the section (three taps on the
+     * Ciallo line in About), and this one turns the diagnostics themselves on.
+     */
+    var debugMode by mutableStateOf(false)
 
     /**
      * Whether the first-run guide is on screen.
@@ -56,6 +71,6 @@ object MiaoState {
     var todayCount by mutableStateOf(0)
     var ruleCount by mutableStateOf(0)
 
-    /** Whether developer mode is unlocked (triple-tap on version in About). */
+    /** Whether developer mode is unlocked (three taps on the Ciallo line in About). */
     var developerMode by mutableStateOf(false)
 }

@@ -14,11 +14,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,25 +33,39 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import top.youzix.nekoplus.BuildConfig
 import top.youzix.nekoplus.MiaoState
 import top.youzix.nekoplus.ui.AppIcons
+import top.youzix.nekoplus.ui.miuix.components.BlurredBar
 import top.yukonga.miuix.kmp.basic.BasicComponent
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.CardDefaults
 import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
+/**
+ * 首页 — the status board.
+ *
+ * Three things in the order they matter: whether the floating window is doing anything, whether
+ * the accessibility service is on (AI rewriting dies without it), and the counters. The two big
+ * blocks are deliberately not equal: the floating window is the main action and gets the hero
+ * card; accessibility is one compact row under it.
+ */
 @Composable
 fun HomeScreen(
-    contentPadding: PaddingValues,
-    scrollBehavior: ScrollBehavior,
+    bottomPadding: Dp,
     floatingRunning: Boolean,
     hasOverlayPermission: Boolean,
     onToggleFloating: () -> Unit,
@@ -53,135 +73,160 @@ fun HomeScreen(
     onNotify: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val scrollBehavior = MiuixScrollBehavior()
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .overScrollVertical(),
-        contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        // Two status cards on equal footing: the two things the user has to switch on for this
-        // app to do anything. Both are tappable straight from here.
-        item(key = "status-floating") {
-            StatusCard(
-                active = hasOverlayPermission && floatingRunning,
-                icon = AppIcons.Floating,
-                title = when {
-                    !hasOverlayPermission -> "需要悬浮窗权限"
-                    floatingRunning -> "正在作为悬浮窗"
-                    else -> "悬浮窗未运行"
-                },
-                description = when {
-                    !hasOverlayPermission -> "缺少叠加层权限"
-                    floatingRunning -> "已在屏幕上"
-                    else -> "当前未运行"
-                },
-                hint = when {
-                    !hasOverlayPermission -> "去授权"
-                    floatingRunning -> "点击收起"
-                    else -> "点击启动"
-                },
-                onClick = {
-                    if (hasOverlayPermission) {
-                        onToggleFloating()
-                        onNotify(if (floatingRunning) "悬浮窗已收起" else "悬浮窗已启动")
-                    } else {
-                        onRequestOverlay()
-                    }
-                },
-            )
-        }
-
-        item(key = "status-accessibility") {
-            val enabled = MiaoState.accessibilityEnabled
-            CompactStatusCard(
-                active = enabled,
-                icon = AppIcons.Grant,
-                title = if (enabled) "无障碍服务已开启" else "无障碍服务未开启",
-                summary = if (enabled) {
-                    "可读写当前输入框"
-                } else {
-                    "AI 修改依赖它"
-                },
-                hint = if (enabled) "已开启" else "去开启",
-                onClick = {
-                    runCatching {
-                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                    }
-                    onNotify(if (enabled) "已开启" else "请在系统设置中找到「喵喵助手文本捕获」")
-                },
-            )
-        }
-
-        item(key = "stats") {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatisticCard(
-                    title = "今日处理",
-                    value = MiaoState.todayCount.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-                StatisticCard(
-                    title = "启用规则",
-                    value = MiaoState.ruleCount.toString(),
-                    modifier = Modifier.weight(1f),
-                )
-                StatisticCard(
-                    title = "运行状态",
-                    value = if (floatingRunning) "运行中" else "已停止",
-                    modifier = Modifier.weight(1f),
+    Scaffold(
+        topBar = {
+            BlurredBar(backdrop = null) {
+                TopAppBar(
+                    title = "NekoPlus",
+                    largeTitle = "NekoPlus",
+                    scrollBehavior = scrollBehavior,
                 )
             }
-        }
+        },
+        contentWindowInsets = WindowInsets.systemBars
+            .add(WindowInsets.displayCutout)
+            .only(WindowInsetsSides.Horizontal),
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(scrollBehavior.nestedScrollConnection)
+                .overScrollVertical(),
+            contentPadding = PaddingValues(
+                start = 12.dp,
+                end = 12.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
+                bottom = innerPadding.calculateBottomPadding() + bottomPadding,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item(key = "floating") {
+                HeroStatusCard(
+                    active = hasOverlayPermission && floatingRunning,
+                    icon = AppIcons.Floating,
+                    title = when {
+                        !hasOverlayPermission -> "需要悬浮窗权限"
+                        floatingRunning -> "悬浮窗运行中"
+                        else -> "悬浮窗未运行"
+                    },
+                    description = when {
+                        !hasOverlayPermission -> "没有叠加层权限，按钮放不上屏幕"
+                        floatingRunning -> "按钮已经在屏幕上了"
+                        else -> "点一下把按钮放到屏幕上"
+                    },
+                    action = when {
+                        !hasOverlayPermission -> "去授权"
+                        floatingRunning -> "收起"
+                        else -> "启动"
+                    },
+                    onClick = {
+                        if (hasOverlayPermission) {
+                            onToggleFloating()
+                            onNotify(if (floatingRunning) "悬浮窗已收起" else "悬浮窗已启动")
+                        } else {
+                            onRequestOverlay()
+                        }
+                    },
+                )
+            }
 
-        item(key = "overview") {
-            Column {
-                SmallTitle(text = "概览")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    BasicComponent(
-                        title = "应用版本",
-                        summary = BuildConfig.VERSION_NAME,
-                        startAction = {
-                            Icon(
-                                imageVector = AppIcons.About,
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        },
-                    )
-                    BasicComponent(
-                        title = "系统版本",
-                        summary = "Android ${Build.VERSION.RELEASE}",
-                        startAction = {
-                            Icon(
-                                imageVector = AppIcons.Phones,
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        },
-                    )
+            item(key = "accessibility") {
+                val enabled = MiaoState.accessibilityEnabled
+                CompactStatusCard(
+                    active = enabled,
+                    icon = AppIcons.Grant,
+                    title = if (enabled) "无障碍服务已开启" else "无障碍服务未开启",
+                    summary = if (enabled) "可以读写当前输入框" else "AI 修改依赖它",
+                    hint = if (enabled) "已开启" else "去开启",
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                        }
+                        onNotify(
+                            if (enabled) "已开启" else "请在系统设置里打开「NekoPlus 文本捕获」",
+                        )
+                    },
+                )
+            }
 
+            item(key = "stats") {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    StatisticCard(
+                        title = "今日处理",
+                        value = MiaoState.todayCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatisticCard(
+                        title = "启用规则",
+                        value = MiaoState.ruleCount.toString(),
+                        modifier = Modifier.weight(1f),
+                    )
+                    StatisticCard(
+                        title = "运行状态",
+                        value = if (floatingRunning) "运行中" else "已停止",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            item(key = "overview") {
+                Column {
+                    SmallTitle(text = "概览")
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        BasicComponent(
+                            title = "应用版本",
+                            summary = BuildConfig.VERSION_NAME,
+                            startAction = {
+                                Icon(
+                                    imageVector = AppIcons.Update,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            },
+                        )
+                        BasicComponent(
+                            title = "系统版本",
+                            summary = "Android ${Build.VERSION.RELEASE}",
+                            startAction = {
+                                Icon(
+                                    imageVector = AppIcons.Phones,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            },
+                        )
+                        BasicComponent(
+                            title = "界面引擎",
+                            summary = MiaoState.engine.label,
+                            startAction = {
+                                Icon(
+                                    imageVector = AppIcons.Gallery,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            },
+                        )
+                    }
                 }
             }
         }
-
-
     }
 }
 
 /**
- * The big status block that owns the top of the home page, in the same spirit as the reference
- * app's "acting as the default installer" card: one colour-coded, tappable surface that says what
- * the app is doing right now.
+ * The big status block that owns the top of the page, in the spirit of SukiSU's "acting as the
+ * default installer" card: one colour-coded surface, a watermark of the action's icon, and a
+ * button that does the thing.
  */
 @Composable
-private fun StatusCard(
+private fun HeroStatusCard(
     active: Boolean,
     icon: ImageVector,
     title: String,
     description: String,
-    hint: String,
+    action: String,
     onClick: () -> Unit,
 ) {
     val containerColor = if (active) {
@@ -197,8 +242,7 @@ private fun StatusCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        // miuix's card carries no padding of its own, so the content pads itself.
-        insideMargin = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+        insideMargin = PaddingValues(horizontal = 22.dp, vertical = 22.dp),
         colors = CardDefaults.defaultColors(color = containerColor, contentColor = contentColor),
         onClick = onClick,
         showIndication = true,
@@ -209,33 +253,36 @@ private fun StatusCard(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .size(88.dp)
-                    .alpha(0.16f),
+                    .align(Alignment.BottomEnd)
+                    .size(120.dp)
+                    .alpha(0.14f),
                 tint = contentColor,
             )
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = title,
                     color = contentColor,
-                    style = MiuixTheme.textStyles.title4,
+                    fontSize = 22.sp,
                 )
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = description,
                     color = contentColor,
                     style = MiuixTheme.textStyles.body2,
+                    modifier = Modifier.alpha(0.85f),
                 )
-                Text(
-                    text = hint,
-                    color = contentColor,
-                    style = MiuixTheme.textStyles.footnote1,
-                    modifier = Modifier.padding(top = 8.dp).alpha(0.75f),
+                Spacer(modifier = Modifier.height(14.dp))
+                TextButton(
+                    text = action,
+                    onClick = onClick,
+                    colors = ButtonDefaults.textButtonColorsPrimary(),
                 )
             }
         }
     }
 }
 
+/** One number and its label: the three tiles under the hero card. */
 @Composable
 private fun StatisticCard(
     title: String,
@@ -247,24 +294,20 @@ private fun StatisticCard(
         insideMargin = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
-            text = title,
-            style = MiuixTheme.textStyles.footnote2,
-            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
             text = value,
             style = MiuixTheme.textStyles.title3,
             color = MiuixTheme.colorScheme.onSurface,
         )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = title,
+            style = MiuixTheme.textStyles.footnote2,
+            color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+        )
     }
 }
 
-/**
- * The small companion to [StatusCard]: one line saying whether something is on, and what to do
- * about it. Two full-height blocks stacked on top of each other read as a wall, so the second of
- * the two things this app has to have switched on gets the compact treatment instead.
- */
+/** The compact companion to [HeroStatusCard]: one line, one tap, straight to system settings. */
 @Composable
 private fun CompactStatusCard(
     active: Boolean,
@@ -275,14 +318,14 @@ private fun CompactStatusCard(
     onClick: () -> Unit,
 ) {
     val containerColor = if (active) {
-        MiuixTheme.colorScheme.primaryContainer
+        MiuixTheme.colorScheme.secondaryContainer
     } else {
-        MiuixTheme.colorScheme.errorContainer
+        MiuixTheme.colorScheme.surfaceContainer
     }
     val contentColor = if (active) {
-        MiuixTheme.colorScheme.onPrimaryContainer
+        MiuixTheme.colorScheme.onSecondaryContainer
     } else {
-        MiuixTheme.colorScheme.onErrorContainer
+        MiuixTheme.colorScheme.onSurface
     }
 
     Card(
@@ -297,24 +340,16 @@ private fun CompactStatusCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
+                modifier = Modifier.size(24.dp),
                 tint = contentColor,
-                modifier = Modifier.size(20.dp),
             )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 12.dp),
-            ) {
-                Text(
-                    text = title,
-                    color = contentColor,
-                    style = MiuixTheme.textStyles.body2,
-                )
+            Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
+                Text(text = title, color = contentColor, style = MiuixTheme.textStyles.body2)
                 Text(
                     text = summary,
                     color = contentColor,
-                    style = MiuixTheme.textStyles.footnote1,
-                    modifier = Modifier.alpha(0.75f),
+                    style = MiuixTheme.textStyles.footnote2,
+                    modifier = Modifier.alpha(0.7f),
                 )
             }
             Text(

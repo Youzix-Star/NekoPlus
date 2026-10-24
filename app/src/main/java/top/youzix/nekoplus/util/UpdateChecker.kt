@@ -18,9 +18,9 @@ import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 import java.nio.charset.StandardCharsets
-import top.youzix.nekoplus.BuildConfig
 import org.json.JSONArray
 import org.json.JSONObject
+import top.youzix.nekoplus.BuildConfig
 
 /** What a version check found. */
 sealed interface UpdateResult {
@@ -92,7 +92,7 @@ object UpdateChecker {
         // at every release, because that is the channel it is on, while a stable build only ever
         // sees stable ones — otherwise an alpha would be pushed at everyone.
         val trackPreReleases = current.contains('-')
-        val releases = fetchReleases(if (trackPreReleases) API_LIST else API_LATEST, current)
+        val releases = fetchReleases(if (trackPreReleases) API_LIST else API_LATEST)
             ?: return viaPage(current)
         val newest = releases
             .filter { release ->
@@ -124,7 +124,7 @@ object UpdateChecker {
     }
 
     /** Both endpoints answer with JSON; one gives an object, the other an array. */
-    private fun fetchReleases(url: String, current: String): List<JSONObject>? {
+    private fun fetchReleases(url: String): List<JSONObject>? {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 10_000

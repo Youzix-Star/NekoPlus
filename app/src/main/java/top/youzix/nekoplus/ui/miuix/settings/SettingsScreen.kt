@@ -1,6 +1,10 @@
 /*
  * Copyright 2026, Youzix-Star
  * SPDX-License-Identifier: AGPL-3.0-only
+ *
+ * Row layout follows SukiSU-Ultra's SettingsMiuix.kt (GPL-3.0): appearance in one card, then the
+ * engine, then the feature entries. The diagnostic rows and the backup live on About, which is a
+ * tab of its own in this app.
  */
 
 package top.youzix.nekoplus.ui.miuix.settings
@@ -8,74 +12,92 @@ package top.youzix.nekoplus.ui.miuix.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.add
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import top.youzix.nekoplus.MiaoState
 import top.youzix.nekoplus.ui.AppIcons
 import top.youzix.nekoplus.ui.UiEngine
 import top.youzix.nekoplus.ui.UiEnginePrefs
-import top.youzix.nekoplus.ui.miuix.ThemeModeOptions
-import top.youzix.nekoplus.ui.rememberBackupActions
-import top.youzix.nekoplus.util.DebugDump
+import top.youzix.nekoplus.ui.miuix.components.BlurredBar
+import top.youzix.nekoplus.ui.theme.ColorMode
 import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.DropdownItem
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
-import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.overlay.OverlayDialog
+import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
-import top.yukonga.miuix.kmp.preference.WindowSpinnerPreference
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme
 import top.yukonga.miuix.kmp.utils.overScrollVertical
 
 @Composable
 fun SettingsScreen(
-    contentPadding: PaddingValues,
-    scrollBehavior: ScrollBehavior,
-    colorSchemeMode: ColorSchemeMode,
-    onColorSchemeModeChange: (ColorSchemeMode) -> Unit,
-    useLiquidGlass: Boolean,
-    onUseLiquidGlassChange: (Boolean) -> Unit,
+    bottomPadding: Dp,
     engine: UiEngine,
     onEngineChange: (UiEngine) -> Unit,
-    onNotify: (String) -> Unit,
     onOpenAiConfig: () -> Unit,
     onOpenTextRules: () -> Unit,
+    onNotify: (String) -> Unit,
 ) {
-    val backup = rememberBackupActions(onNotify)
+    val scrollBehavior = MiuixScrollBehavior()
+    Scaffold(
+        topBar = {
+            BlurredBar(backdrop = null) {
+                TopAppBar(title = "设置", scrollBehavior = scrollBehavior)
+            }
+        },
+        contentWindowInsets = WindowInsets.systemBars
+            .add(WindowInsets.displayCutout)
+            .only(WindowInsetsSides.Horizontal),
+    ) { innerPadding ->
+        SettingsContent(
+            contentPadding = PaddingValues(
+                start = 12.dp,
+                end = 12.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
+                bottom = innerPadding.calculateBottomPadding() + bottomPadding,
+            ),
+            scrollBehavior = scrollBehavior,
+            engine = engine,
+            onEngineChange = onEngineChange,
+            onOpenAiConfig = onOpenAiConfig,
+            onOpenTextRules = onOpenTextRules,
+            onNotify = onNotify,
+        )
+    }
+}
 
-    // One row that opens a chooser, mirroring how the reference app picks its UI engine.
-    val themeItems = remember { ThemeModeOptions.map { DropdownItem(text = it.second) } }
-    val engineItems = remember { UiEngine.entries.map { DropdownItem(text = it.label) } }
+@Composable
+private fun SettingsContent(
+    contentPadding: PaddingValues,
+    scrollBehavior: ScrollBehavior,
+    engine: UiEngine,
+    onEngineChange: (UiEngine) -> Unit,
+    onOpenAiConfig: () -> Unit,
+    onOpenTextRules: () -> Unit,
+    onNotify: (String) -> Unit,
+) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
-    var debugMode by remember { mutableStateOf(UiEnginePrefs.loadDebugMode(context)) }
-    var dump by remember { mutableStateOf(DebugDump.read(context)) }
-    var showDump by remember { mutableStateOf(false) }
-    val selectedThemeIndex = ThemeModeOptions
-        .indexOfFirst { it.first == colorSchemeMode }
-        .coerceAtLeast(0)
+    val engineLabels = remember { UiEngine.entries.map { it.label } }
+    val modeLabels = remember { ColorMode.entries.map { it.label } }
 
     LazyColumn(
         modifier = Modifier
@@ -89,25 +111,41 @@ fun SettingsScreen(
             Column {
                 SmallTitle(text = "外观")
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    WindowSpinnerPreference(
+                    OverlayDropdownPreference(
                         title = "主题模式",
-                        items = themeItems,
-                        selectedIndex = selectedThemeIndex,
+                        summary = "浅色 / 深色 / 跟随系统",
+                        items = modeLabels,
+                        selectedIndex = ColorMode.entries.indexOf(MiaoState.colorMode).coerceAtLeast(0),
+                        startAction = {
+                            Icon(AppIcons.Palette, null, Modifier.size(22.dp), colorScheme.onBackground)
+                        },
                         onSelectedIndexChange = { index ->
-                            ThemeModeOptions.getOrNull(index)?.let { onColorSchemeModeChange(it.first) }
+                            ColorMode.entries.getOrNull(index)?.let {
+                                MiaoState.colorMode = it
+                                UiEnginePrefs.saveColorMode(context, it)
+                            }
                         },
                     )
                     SwitchPreference(
-                        title = "液态玻璃底栏",
-                        summary = "底栏实时模糊与高光",
-                        checked = useLiquidGlass,
-                        onCheckedChange = onUseLiquidGlassChange,
+                        title = "模糊",
+                        summary = "底栏与顶栏的毛玻璃",
+                        startAction = {
+                            Icon(AppIcons.BlurOn, null, Modifier.size(22.dp), colorScheme.onBackground)
+                        },
+                        checked = MiaoState.useBlur,
+                        onCheckedChange = {
+                            MiaoState.useBlur = it
+                            UiEnginePrefs.saveUseBlur(context, it)
+                        },
                     )
-                    WindowSpinnerPreference(
+                    OverlayDropdownPreference(
                         title = "界面引擎",
-                        summary = "切换整套界面实现",
-                        items = engineItems,
+                        summary = "换一套界面实现",
+                        items = engineLabels,
                         selectedIndex = UiEngine.entries.indexOf(engine).coerceAtLeast(0),
+                        startAction = {
+                            Icon(AppIcons.Gallery, null, Modifier.size(22.dp), colorScheme.onBackground)
+                        },
                         onSelectedIndexChange = { index ->
                             UiEngine.entries.getOrNull(index)?.let(onEngineChange)
                         },
@@ -120,11 +158,12 @@ fun SettingsScreen(
             Column {
                 SmallTitle(text = "AI")
                 Card(modifier = Modifier.fillMaxWidth()) {
-                    // The accessibility switch itself lives on the home page as a status card;
-                    // this page only configures the feature.
                     ArrowPreference(
                         title = "AI 配置",
                         summary = "接口、密钥与提示词",
+                        startAction = {
+                            Icon(AppIcons.Sparkle, null, Modifier.size(22.dp), colorScheme.onBackground)
+                        },
                         onClick = onOpenAiConfig,
                     )
                 }
@@ -138,137 +177,11 @@ fun SettingsScreen(
                     ArrowPreference(
                         title = "替换规则",
                         summary = "后缀、颜文字、按条件替换",
+                        startAction = {
+                            Icon(AppIcons.Rule, null, Modifier.size(22.dp), colorScheme.onBackground)
+                        },
                         onClick = onOpenTextRules,
                     )
-                }
-            }
-        }
-
-        if (MiaoState.developerMode) {
-            item(key = "debug") {
-                Column {
-                    SmallTitle(text = "调试")
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        SwitchPreference(
-                            title = "调试模式",
-                            summary = "排查「抓不到输入框」这类问题",
-                            checked = debugMode,
-                            onCheckedChange = {
-                                debugMode = it
-                                UiEnginePrefs.saveDebugMode(context, it)
-                            },
-                        )
-                        if (debugMode) {
-                            ArrowPreference(
-                                title = "查看最近一次抓取",
-                                summary = dump?.let { "共 ${it.lineSequence().count()} 行" } ?: "还没有抓取过",
-                                startAction = {
-                                    Icon(
-                                        imageVector = AppIcons.Rule,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                },
-                                onClick = {
-                                    dump = DebugDump.read(context)
-                                    showDump = true
-                                },
-                            )
-                            // Verifying the crash screen needs a crash, and waiting for a real bug to
-                            // happen is not a test. Deliberately thrown on the main thread so the
-                            // uncaught handler (and the report screen) see it exactly like a real one.
-                            ArrowPreference(
-                                title = "模拟崩溃",
-                                summary = "让应用崩一次，看看崩溃报告页长什么样",
-                                onClick = { throw IllegalStateException("模拟崩溃：这是调试里手动触发的") },
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        item(key = "backup") {
-            Column {
-                SmallTitle(text = "备份")
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    ArrowPreference(
-                        title = "导出配置",
-                        summary = "全部设置存成一个 JSON",
-                        startAction = {
-                            Icon(
-                                imageVector = AppIcons.Update,
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        },
-                        onClick = backup.export,
-                    )
-                    ArrowPreference(
-                        title = "导入配置",
-                        summary = "从 JSON 恢复，注意文件里含 API Key",
-                        startAction = {
-                            Icon(
-                                imageVector = AppIcons.Refresh,
-                                contentDescription = null,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        },
-                        onClick = backup.import,
-                    )
-                }
-            }
-        }
-
-    }
-
-    if (showDump) {
-        val text = dump
-        OverlayDialog(
-            show = true,
-            title = "最近一次抓取",
-            summary = DebugDump.location(context),
-            onDismissRequest = { showDump = false },
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (text.isNullOrBlank()) {
-                    Text("还没有抓取过。把「导出界面元素」设成某个悬浮窗按钮的动作，在目标应用里点一下即可。")
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 380.dp)
-                            .verticalScroll(rememberScrollState()),
-                    ) {
-                        Text(
-                            text = text,
-                            style = MiuixTheme.textStyles.footnote2,
-                            fontFamily = FontFamily.Monospace,
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            clipboard.setText(AnnotatedString(text))
-                            onNotify("已复制抓取结果")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("复制")
-                    }
-                    Button(
-                        onClick = {
-                            DebugDump.clear(context)
-                            dump = null
-                            showDump = false
-                            onNotify("已清空")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("清空")
-                    }
-                }
-                Button(onClick = { showDump = false }, modifier = Modifier.fillMaxWidth()) {
-                    Text("关闭")
                 }
             }
         }

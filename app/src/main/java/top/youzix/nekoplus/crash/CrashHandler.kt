@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-package top.youzix.nekoplus.util
+package top.youzix.nekoplus.crash
 
 import android.content.Context
 import android.content.Intent
@@ -17,7 +17,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.system.exitProcess
 import top.youzix.nekoplus.BuildConfig
-import top.youzix.nekoplus.ui.crash.CrashReportActivity
 
 /**
  * Records the last crash to a file the user can actually get at, together with where the app was.
@@ -45,7 +44,7 @@ object CrashHandler {
     }
 
     /**
-     * Installs the handler. Call once, from [top.youzix.nekoplus.MiaoApp], and only in the main process:
+     * Installs the handler. Call once, from [top.youzix.nekoplus.NekoApp], and only in the main process:
      * the crash screen runs in its own, and it must not install a handler that could put a second
      * crash screen on top of the first.
      */
@@ -84,7 +83,7 @@ object CrashHandler {
         error.printStackTrace(PrintWriter(trace))
 
         val report = buildString {
-            appendLine("喵喵助手 崩溃报告")
+            appendLine("NekoPlus 崩溃报告")
             appendLine("时间: ${stampFormat.format(Date())}")
             appendLine("版本: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
             appendLine(

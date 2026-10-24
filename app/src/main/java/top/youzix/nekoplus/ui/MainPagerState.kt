@@ -38,10 +38,8 @@ import kotlinx.coroutines.launch
  * [isNavigating] keeps the two from fighting while an animated jump is in flight, so the
  * pager's own progress reports do not yank the highlight back to the outgoing tab.
  *
- * Level-1 navigation deliberately carries **no predictive back visual**: see
- * [top.youzix.nekoplus.ui.miuix.MiuixApp] and [top.youzix.nekoplus.ui.material3.MaterialApp], which only
- * route the back gesture here through `onBackCompleted`. Predictive back belongs to
- * level-2 pages.
+ * Level-1 navigation deliberately carries no back visual: the platform gesture belongs to the
+ * miuix-nav back stack, which owns every second-level page.
  */
 class MainPagerState(val pagerState: PagerState, private val coroutineScope: CoroutineScope) {
     var selectedPage by mutableIntStateOf(pagerState.currentPage)

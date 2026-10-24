@@ -5,12 +5,11 @@
 
 package top.youzix.nekoplus.ui.miuix
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
-import top.yukonga.miuix.kmp.theme.ColorSchemeMode
+import top.youzix.nekoplus.ui.theme.ColorMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 
@@ -25,26 +24,15 @@ private val LocalIsDarkTheme = staticCompositionLocalOf { false }
 @Composable
 fun isInDarkTheme(): Boolean = LocalIsDarkTheme.current
 
-/** Theme modes offered in Settings, in display order. */
-val ThemeModeOptions: List<Pair<ColorSchemeMode, String>> = listOf(
-    ColorSchemeMode.System to "跟随系统",
-    ColorSchemeMode.Light to "浅色",
-    ColorSchemeMode.Dark to "深色",
-    ColorSchemeMode.MonetSystem to "动态取色 · 跟随系统",
-    ColorSchemeMode.MonetLight to "动态取色 · 浅色",
-    ColorSchemeMode.MonetDark to "动态取色 · 深色",
-)
-
+/** The miuix engine's theme: one colour mode, handed to miuix's own [ThemeController]. */
 @Composable
 fun MiuixAppTheme(
-    colorSchemeMode: ColorSchemeMode,
+    colorMode: ColorMode,
     content: @Composable () -> Unit,
 ) {
-    val controller = remember(colorSchemeMode) { ThemeController(colorSchemeMode = colorSchemeMode) }
-    val isDark = when (colorSchemeMode) {
-        ColorSchemeMode.Light, ColorSchemeMode.MonetLight -> false
-        ColorSchemeMode.Dark, ColorSchemeMode.MonetDark -> true
-        else -> isSystemInDarkTheme()
+    val isDark = colorMode.isDark()
+    val controller = remember(colorMode) {
+        ThemeController(colorSchemeMode = colorMode.toMiuix())
     }
     MiuixTheme(controller = controller) {
         CompositionLocalProvider(LocalIsDarkTheme provides isDark, content = content)

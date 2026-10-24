@@ -6,6 +6,7 @@
 package top.youzix.nekoplus.ui
 
 import android.content.Context
+import top.youzix.nekoplus.ui.theme.ColorMode
 
 /**
  * Which UI engine draws the app.
@@ -29,6 +30,7 @@ object UiEnginePrefs {
     private const val KEY_ENGINE = "ui_engine"
     private const val KEY_USE_BLUR = "use_blur"
     private const val KEY_FLOATING_COLOR = "floating_color"
+    private const val KEY_COLOR_MODE = "color_mode"
     private const val KEY_DEBUG_MODE = "debug_mode"
     private const val KEY_DEVELOPER_MODE = "developer_mode"
 
@@ -51,6 +53,14 @@ object UiEnginePrefs {
 
     fun saveUseBlur(context: Context, useBlur: Boolean) {
         prefs(context).edit().putBoolean(KEY_USE_BLUR, useBlur).apply()
+    }
+
+    /** Light/dark/monet choice, by enum name. */
+    fun loadColorMode(context: Context): ColorMode =
+        ColorMode.fromName(prefs(context).getString(KEY_COLOR_MODE, null))
+
+    fun saveColorMode(context: Context, mode: ColorMode) {
+        prefs(context).edit().putString(KEY_COLOR_MODE, mode.name).apply()
     }
 
     /** Which palette the floating window draws itself with. */

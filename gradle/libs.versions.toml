@@ -1,17 +1,19 @@
 [versions]
 agp = "9.4.0"
 kotlin = "2.4.20"
-composeBom = "2026.08.00"
+composeBom = "2026.09.00"
 # miuix is built against Compose 1.12, which is what this project's BOM resolves to.
-miuix = "0.9.4-rc01"
+# 0.9.4 is the version NekoUi (the source of the shell) was built and verified against.
+miuix = "0.9.4"
 # Xiaomi's MIUI/Miuix framework jars, as republished by HyperCeiler on GitHub Packages.
 miuixLegacy = "1.0.13.0"
 # material-icons-extended is frozen upstream at 1.7.8; R8 strips what is unused.
 materialIcons = "1.7.8"
 activityCompose = "1.13.0"
-# Pinned: LargeFlexibleTopAppBar and the public *Emphasized typography only exist from alpha27.
+# Pinned: LargeFlexibleTopAppBar, the public *Emphasized typography and ListItemDefaults
+# .segmentedColors/.segmentedShapes (used by the ported SegmentedList) need alpha28.
 # The Compose BOM does not carry material3 yet in the version this project resolves.
-material3 = "1.5.0-alpha27"
+material3 = "1.5.0-alpha28"
 
 [libraries]
 compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "material3" }

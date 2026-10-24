@@ -19,8 +19,8 @@ import top.youzix.nekoplus.ui.provision.ProvisionGuide
 /**
  * Picks the UI engine and hands the whole window to it.
  *
- * Two complete implementations of the same app live side by side — [MiuixApp] and [MaterialApp] —
- * and the choice is persisted, so switching in Settings takes effect immediately.
+ * Two complete implementations of the same four tabs live side by side — [MiuixApp] and
+ * [MaterialApp] — and the choice is persisted, so switching in Settings takes effect immediately.
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,7 +38,9 @@ class MainActivity : ComponentActivity() {
         }
         MiaoState.engine = UiEnginePrefs.load(this)
         MiaoState.useBlur = UiEnginePrefs.loadUseBlur(this)
+        MiaoState.colorMode = UiEnginePrefs.loadColorMode(this)
         MiaoState.floatingColorSource = UiEnginePrefs.loadFloatingColor(this)
+        MiaoState.debugMode = UiEnginePrefs.loadDebugMode(this)
         MiaoState.developerMode = UiEnginePrefs.loadDeveloperMode(this)
         setContent {
             when (MiaoState.engine) {

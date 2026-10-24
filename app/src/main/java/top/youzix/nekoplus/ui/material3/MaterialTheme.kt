@@ -6,46 +6,32 @@
 package top.youzix.nekoplus.ui.material3
 
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-
-/** Light/dark choice for the Material Design engine. */
-enum class ThemeMode(val label: String) {
-    System("跟随系统"),
-    Light("浅色"),
-    Dark("深色"),
-    ;
-
-    companion object {
-        fun fromLabel(label: String?): ThemeMode = entries.firstOrNull { it.label == label } ?: System
-    }
-}
+import androidx.compose.runtime.Composable
+import top.youzix.nekoplus.ui.theme.ColorMode
+import top.youzix.nekoplus.ui.theme.defaultMaterialScheme
 
 /**
- * Material Design theme.
+ * The Material engine's theme.
  *
- * Dynamic colour is on by default, so on Android 12+ the palette is taken from the wallpaper and
- * the fallback scheme is only used when the user turns it off.
+ * A plain mode uses Material's own scheme; a dynamic-colour mode takes the wallpaper palette where
+ * the platform has one and falls back to the plain scheme where it does not.
  */
 @Composable
 fun MaterialAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    colorMode: ColorMode,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-
-        darkTheme -> darkColorScheme()
-        else -> lightColorScheme()
+    val isDark = colorMode.isDark()
+    // Dynamic colour is the only palette this shell uses; the mode picks light or dark.
+    val scheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else {
+        defaultMaterialScheme(isDark)
     }
-    MaterialTheme(colorScheme = colorScheme, content = content)
+    MaterialTheme(colorScheme = scheme, content = content)
 }

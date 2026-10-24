@@ -33,17 +33,23 @@
           it cannot fail the way the app just did.
         -->
         <activity
-            android:name=".ui.crash.CrashReportActivity"
+            android:name=".crash.CrashReportActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:process=":crash"
             android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 
+        <!--
+          adjustNothing: the window is never resized or panned for the keyboard, so the layout
+          cannot be pushed around by it — the floating bottom bar in particular has to stay on the
+          bottom edge.
+        -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:windowSoftInputMode="adjustNothing"
             android:theme="@style/Theme.MiaoAssistant">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

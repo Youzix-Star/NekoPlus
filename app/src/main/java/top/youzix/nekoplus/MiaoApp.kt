@@ -7,7 +7,7 @@ package top.youzix.nekoplus
 
 import android.app.Application
 import android.os.Build
-import top.youzix.nekoplus.util.CrashHandler
+import top.youzix.nekoplus.crash.CrashHandler
 
 /** Installs the crash recorder before anything else in the app has a chance to fail. */
 class MiaoApp : Application() {
@@ -15,7 +15,10 @@ class MiaoApp : Application() {
         super.onCreate()
         // The crash screen has its own process (`:crash`); installing the handler there would let a
         // failure on that screen open another crash screen, and so on.
-        if (!isCrashProcess()) CrashHandler.install(this)
+        if (!isCrashProcess()) {
+            CrashHandler.install(this)
+            CrashHandler.note("应用启动")
+        }
     }
 
     private fun isCrashProcess(): Boolean {

@@ -33,8 +33,8 @@ import androidx.compose.ui.unit.dp
 import top.youzix.nekoplus.ui.material3.material3AppBarColor
 import top.youzix.nekoplus.ui.material3.material3BlurEffect
 import top.youzix.nekoplus.ui.material3.rememberMaterial3BlurBackdrop
-import top.youzix.nekoplus.ui.material3.widgets.NavigationItemWidget
-import top.youzix.nekoplus.ui.material3.widgets.SegmentedColumn
+import top.youzix.nekoplus.ui.material3.components.SegmentedColumn
+import top.youzix.nekoplus.ui.material3.components.SegmentedListItem
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 private data class LicenseEntry(val name: String, val license: String, val url: String)
@@ -47,11 +47,30 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
     val backdrop = rememberMaterial3BlurBackdrop(useBlur)
     val entries = remember {
         listOf(
-            LicenseEntry("NekoPlus（本项目）", "AGPL-3.0", "https://github.com/Youzix-Star/NekoPlus"),
+            LicenseEntry(
+                "NekoPlus（本项目）",
+                "AGPL-3.0",
+                "https://github.com/Youzix-Star/NekoPlus",
+            ),
+            LicenseEntry(
+                "NekoUi（界面框架来源）",
+                "AGPL-3.0",
+                "https://github.com/Youzix-Star/NekoUi",
+            ),
+            LicenseEntry(
+                "SukiSU-Ultra（界面参考）",
+                "GPL-3.0",
+                "https://github.com/SukiSU-Ultra/SukiSU-Ultra",
+            ),
             LicenseEntry(
                 "HyperCeiler（新手引导的极光与版式）",
                 "AGPL-3.0",
                 "https://github.com/ReChronoRain/HyperCeiler",
+            ),
+            LicenseEntry(
+                "NekoNeko（AI 与无障碍来源）",
+                "GPL-3.0",
+                "https://github.com/Youzix-Star/NekoNeko",
             ),
             LicenseEntry("miuix", "Apache License 2.0", "https://github.com/compose-miuix-ui/miuix"),
             LicenseEntry(
@@ -115,13 +134,16 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
         contentPadding = paddingValues + PaddingValues(bottom = 24.dp),
     ) {
         item {
-            SegmentedColumn(title = "本项目基于 AGPL-3.0 开源") {
+            SegmentedColumn(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                title = "本项目基于 AGPL-3.0 开源",
+            ) {
                 entries.forEach { entry ->
                     item(key = entry.name) {
-                        NavigationItemWidget(
-                            title = entry.name,
-                            description = entry.license,
+                        SegmentedListItem(
                             onClick = { uriHandler.openUri(entry.url) },
+                            headlineContent = { Text(entry.name) },
+                            supportingContent = { Text(entry.license) },
                         )
                     }
                 }
@@ -130,7 +152,7 @@ fun MaterialLicensesScreen(onBack: () -> Unit, useBlur: Boolean) {
 
         item {
             Text(
-                text = "点按可在浏览器中查看原文。",
+                text = "点一下看原文 ٩(ˊᗜˋ*)و",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),

@@ -9,7 +9,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.Article
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.BlurOn
+import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Description
@@ -18,17 +21,21 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Key
 import androidx.compose.material.icons.rounded.OpenWith
+import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.PanTool
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PictureInPicture
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Widgets
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
@@ -59,6 +66,15 @@ object AppIcons {
     val Grant: ImageVector = Icons.Rounded.CheckCircle
     val Tune: ImageVector = Icons.Rounded.Tune
     val Back: ImageVector = Icons.AutoMirrored.Rounded.ArrowBack
+    val ChevronRight: ImageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight
+
+    // The shell's own rows (appearance, engine, diagnostics).
+    val Palette: ImageVector = Icons.Rounded.Palette
+    val BlurOn: ImageVector = Icons.Rounded.BlurOn
+    val Gallery: ImageVector = Icons.Rounded.Widgets
+    val Debug: ImageVector = Icons.Rounded.BugReport
+    val Play: ImageVector = Icons.Rounded.PlayArrow
+    val Pause: ImageVector = Icons.Rounded.Stop
 
     // Used by the first-run guide.
     val Sparkle: ImageVector = Icons.Rounded.AutoAwesome
