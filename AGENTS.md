@@ -7,18 +7,27 @@
 
 ## 0. 项目现状（先看清你在哪个世界）
 
-- **仓库**：`Youzix-Star/NekoPlus`，包名 `love.miao.yun`，主干 `main`。
+- **仓库**：`Youzix-Star/NekoPlus`，包名 `top.youzix.nekoplus`，主干 `main`。
 - **两套 UI 引擎**：miuix（`top.yukonga.miuix.kmp.*`）和 Material 3（`ui/material3/*`）。
   同一套功能两套页面树，**互不共享 Composable**，切换在 `设置 → 外观`。
 - **默认无本地构建**：全部靠 GitHub Actions 验证（见 §2）。这台设备是 Android/Termux，没有 Android SDK。
-- **`main` 的状态**：CI 绿、`testDebugUnitTest` 38 个测试、release APK 可出；版本 `2.0.2 Beta 2 (105)`。
-- **新手引导**：移植版在分支 **`feat/provision-port`**（草稿 PR #1），相对 main 有 100+ 文件。
-  它把 HyperCeiler 的 `library/provision` 原样搬了进来（布局/动画/drawable/Java/状态机/发光引擎）。
-  **main 上还是旧的 Compose 版引导**（`ui/onboarding/*`），**用户还没批准删除**，别自作主张删。
-- 用户手上装的是分支构建的 **preview 包**（`v2.0.3-onboarding-previewN`），最新 **Preview 10（115）**，
-  他对这一版的评价是「基本上就很好了」。
-- **`main` 的版本号是 `2.0.2 Beta 2 (105)`，分支是 `2.0.3 Onboarding Preview 10 (115)`** ——
-  分支还没合并，别把两者的版本号搞混。
+  本机有 JDK 21 与 Gradle 9.7.1，缺的只有 SDK 本身。
+- **`main` 的状态**：仍是旧外壳，版本 `2.0.2 Beta 2 (105)`。
+- **外壳已迁到 NekoUi**（分支 `feat/nekoui-shell`，2026-10-24，版本 `2.1.0 NekoUi Shell (116)`）：
+  外壳、导航、组件、崩溃页、主题都来自 NekoUi（`a3703a5`，AGPL-3.0），业务层（AI / 悬浮窗 /
+  发送助手 / 替换规则 / 无障碍 / HyperCeiler 引导）原样保留。**下面几节的"四页签"就指这个版本**：
+  首页 / 悬浮窗 / 设置 / 关于，**关于是页签、不是二级页**（所以它没有返回箭头）。
+- **导航**：`ui/nav/Routes.kt` + miuix-nav 的 `NavDisplay`，二级页只有 AI 配置 / 文本替换 / 开源许可。
+  旧的 `PredictiveBackHost` 已删除，**不要再手写返回动画**。
+- **设置 / 关于的分工**（用户拍板，别挪）：设置 = 外观（3 档主题 / 模糊 / 引擎）+ AI + 替换；
+  关于 = 源码 / 许可 / 新手引导 / 崩溃日志 / 设备信息 / 检查更新 + 开发者 + **备份** + **调试**
+  （连点 Ciallo 3 下解锁开发者模式）。
+- **新手引导**：HyperCeiler 的 `library/provision` 原样搬入（布局/动画/drawable/Java/状态机/发光引擎），
+  入口 `ui/provision/ProvisionGuide`。旧的 Compose 版（`ui/onboarding/*`）仍在树里，
+  **用户还没批准删除**，别自作主张删。
+- 用户手上最新装的是 **Preview 10（115）**（旧外壳、包名 `top.youzix.nekoplus`），
+  他对那一版的评价是「基本上就很好了」。`2.1.0` 还没打 tag、没发 release。
+
 
 ---
 
@@ -152,21 +161,21 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
 
 - 流程：`Startup（开场）→ Permission（权限）→ BasicSettings（改造为 AI 配置）→ Congratulation（完成）`，
   上游 `state/StateMachine.java` 的四步链，result code `-1` 前进 / `0` 后退。
-- 入口：`love.miao.yun.ui.provision.ProvisionGuide`（`isDone` / `markDone` / `launch`）接到 `OnboardingPrefs`，
+- 入口：`top.youzix.nekoplus.ui.provision.ProvisionGuide`（`isDone` / `markDone` / `launch`）接到 `OnboardingPrefs`，
   首次启动出现一次，「关于 → 新手引导」可重进。
 - 权限页：两行 = 无障碍服务 / 悬浮窗权限（实时状态，跳系统设置），
   骨架与行样式是 `PermissionItemView`（**未改**）；网络/root/LSP/installed_apps 全去。
 - AI 页：三行 = 接口地址 / API Key / **模型（`DropDownPreference`，进页面拉 `GET {base}/models` 后可选）**。
   **「连接测试」行已删**（拉列表本身就是连通性验证 —— 用户的原话"那个测试有点多余了"）。
-  读写只走 `love.miao.yun.ai.AiManager` 的 `ai_config`（键 `base_url`/`api_key`/`model`），**不许有第二份真相**。
-- 品牌：标记 = `love.miao.yun.ui.AppIconText` 文本（不是图片），名字 = `NekoPlus`，
+  读写只走 `top.youzix.nekoplus.ai.AiManager` 的 `ai_config`（键 `base_url`/`api_key`/`model`），**不许有第二份真相**。
+- 品牌：标记 = `top.youzix.nekoplus.ui.AppIconText` 文本（不是图片），名字 = `NekoPlus`，
   副标题 = `Ciallo～(∠・ω c)⌒★`（深饱和紫 + 浅光晕，压在彩色极光上）。
 - 尺寸刻度（用户要求跨页一致，**只剩三个字号**）：32sp 标题/品牌名、17sp 行标题与按钮、14sp 所有次级行。
   图标：标记 104dp、页面预览 70dp、权限勾 24dp。行高：权限页 56dp（上游值）、AI 页约 65dp（上游库的推导值）。
-- 崩溃报告页：`ui/crash/CrashReportActivity.kt`，**独立进程 `:crash`**（主进程正在死，它得活下来），
+- 崩溃报告页：`crash/CrashReportActivity.kt`（`crash/CrashHandler.kt` 写报告），**独立进程 `:crash`**（主进程正在死，它得活下来），
   纯代码搭 View、复制/分享/重启/关闭；`CrashHandler` 写完文件 → 起页面 → 杀进程，**不转交平台默认 handler**
   （否则系统"应用已停止"弹窗会盖住它）。**调试模式里有「模拟崩溃」**，用来验证这条路径。
-- 报告落在 `Android/data/love.miao.yun/files/crash/latest.txt`；用户会通过报告页「复制」把内容贴出来。
+- 报告落在 `Android/data/top.youzix.nekoplus/files/crash/latest.txt`；用户会通过报告页「复制」把内容贴出来。
 
 ---
 
@@ -180,7 +189,7 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
 | 引导四步链 | 开场 → 权限 → AI 配置 → 完成，入口 `ProvisionGuide` 接 `OnboardingPrefs` |
 | 品牌 | 标记 = `AppIconText` 文本、名字 = `NekoPlus`、副标题 = `Ciallo～(∠・ω c)⌒★`（深饱和紫 + 浅光晕） |
 | AI 页三行 | 接口地址 / API Key / **模型（`DropDownPreference`，进页面拉 `GET {base}/models` 后可选）**；「连接测试」按用户要求**已删** |
-| 预测返回 | 改用 miuix 官方 `PredictiveBackHandler`（`miuix-nav`），`Aosp`/`None` 与外观里的选择项**已删** |
+| 返回 | miuix-nav 的 `NavDisplay` 拥有返回栈与平台手势；旧自绘 `PredictiveBackHost` 已删 |
 | AI 模板 | 3 → **11 套**（翻译腔、成吉思鸡、阴阳怪气、发疯文学、鲁迅体、浅近文言、机器人客服、猫娘 + 原有三套） |
 | 崩溃报告页 | 独立进程 `:crash` + `CrashHandler`，调试模式里有「模拟崩溃」可主动验证 |
 | 崩溃堆栈可读 | `-keepattributes SourceFile,LineNumberTable` + CI 上传 `r8-mapping` artifact |
@@ -188,10 +197,12 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
 
 ### 7.2 真正还悬着、要用户点头的
 
-1. **把 `feat/provision-port` 合进 `main`**（草稿 PR #1）。用户评价已是「基本上就很好了」但**没说过 merge**；
+1. **把 `feat/nekoui-shell` 合进 `main`**（它已经包含 `feat/provision-port` 的全部内容，以及 2026-10-24 的
+   NekoUi 外壳迁移）。用户对 Preview 10 的评价是「基本上就很好了」，但**没说过 merge**；
    合并前别改 `main` 的 `2.0.2 Beta 2 (105)`。
 2. **删掉旧 Compose 版引导**：`ui/onboarding/*`（含 `GlowPalette`/`GlowPainter`/`GlowBackground`/`GuideWizard`/`OnboardingPages`）
-   及其测试、`MiuixApp`/`MaterialApp` 两个调用点 —— **必须等用户明确认可移植版之后再删**。
+   及其测试 —— **必须等用户明确认可移植版之后再删**。外壳迁移后它已没有任何调用点，
+   但文件仍在树里，别自作主张删。
 3. **收窄 `-keep class fan.** { *; }`**：APK 因此从 5.2 MB 涨到 8.1 MB。验收后只保留 `fan.animation.**`
    与被 XML 按名 inflate 的 widget，把体积要回来（改完必须用 `scripts/dexmethods.py` 复核 `spring(FF)` 等仍在）。
 4. **完成页「设置完毕」字号**：现为 14sp（为跨页一致压下来的），备选 **17sp**（行标题/按钮那一档）。
@@ -201,12 +212,16 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
    问过一次，他还没答。
 6. **本地构建**：要不要在这台设备上装 JDK + Android cmdline-tools（编译从 3~6 分钟压到 20 秒）。
    我建议装；它与"不在本地构建"的旧约定冲突，属于用户的决定。
-7. 还没被真机验证过的观感（问用户才知道）：PredictiveBack 的跟手度、11 套模板的味道、
-   深紫副标题 + 浅光晕在极光暗谷的可读性、开场圆钮的放大转场（非 MIUI 可能是 no-op，属上游自带分支）。
+7. **`2.1.0 NekoUi Shell (116)` 还没打 tag、没发 release**：CI 只产出 artifact
+   （`MiaoAssistant-release-apk` + `r8-mapping`，run `40112560591` 绿）。要发版得先问用户。
+8. 还没被真机验证过的观感（问用户才知道）：新首页的主卡/瓷砖比例、四个页签切换的顺滑度、
+   NavDisplay 的返回动画、关于页放进页签后的滚动与底栏遮挡、两次点击 Ciallo 的时序。
 
 ### 7.3 边界（用户明确说过，别越界）
 
-- **只改新手引导**。设置页、Compose 版 AI 配置页、文本替换页一律不动（原话：「我仅仅是让改新手引导」）。
+- **界面归属先问用户**：按钮/选项放哪一页、哪一页做成页签，属于产品口味，不自己拍。
+- 早期还有一条「只改新手引导」的边界（设置页、Compose 版 AI 配置页、文本替换页不动）——
+  那只针对当时那次任务；2026-10 的外壳迁移是用户明确要求的全量迁移，不适用。
 - 文案一行一句、不放营销话：「我们是以逻辑主导设计的」。多出来的入口会被骂（「删除表单编辑那个按钮，神经病！」）。
 
 ## 8. 工作区布局与卫生（用户明确要求过：别把仓库根目录搞乱）
@@ -214,7 +229,7 @@ grep -oE "(e|error): [^ ]*(java|kt):[0-9]+:[0-9]+ .{0,90}" ~/ci.log | head -30
 **原则：仓库里只放仓库的东西。日志、APK、AAR、临时解包目录一律放在家目录。**
 
 ```
-~/NekoPlus/              唯一的 svn 检出（分支 feat/provision-port 通常在这里）
+~/NekoPlus/              唯一的检出（分支 feat/nekoui-shell 通常在这里）
 ~/scratch/               所有临时物：logs/（CI 日志）、aar/（下下来的依赖包）、下载的 APK、解包目录
 ~/crash-reports/         用户给的崩溃日志副本（按日期+版本命名，便于回溯）
 ~/hcp-work/HyperCeiler-HEAD/  上游全量快照（只读参考）
@@ -227,7 +242,7 @@ docs/provision-port.md   移植工作的完整记录（真因、决定、尺寸�
   但收工后要 `git worktree remove`，只留一个检出 —— 用户被"根目录一堆文件 + 多个副本"困过一次。
 - 任何 `*.log` / `*.apk` / `*.jks` 都已在 `.gitignore` 里（`miao-release.jks` 是本地签名密钥，
   **永远不要提交**），但它们仍然会躺在工作目录里碍眼 —— 直接往 `~/scratch/` 写，不要写进仓库。
-- 崩溃日志（`Android/data/love.miao.yun/files/crash/latest.txt`）拷进 `~/crash-reports/`，
+- 崩溃日志（`Android/data/top.youzix.nekoplus/files/crash/latest.txt`）拷进 `~/crash-reports/`，
   文件名带上版本与现象，下一个 agent 才看得出先后。
 
 ## 9. 怎么跟这位用户协作（很重要）

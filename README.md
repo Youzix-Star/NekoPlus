@@ -36,58 +36,37 @@
 
 ## 导航模型
 
-界面严格分成两层，**预见式返回（predictive back）只存在于第二层**：
+界面分成两层，**导航栈由 miuix-nav 的 `NavDisplay` 拥有**（`ui/nav/Routes.kt` 定义路由）：
 
-- **一级页面**：首页 / 悬浮窗 / 设置 / 关于 四个页签。点底栏或左右翻页切换，
-  **不挂** `PredictiveBackHandler`，因此页签之间不会因为边缘返回手势而误触发返回动画
-  ——这正是早期版本的 bug。
+- **一级页面**：首页 / 悬浮窗 / 设置 / 关于 四个页签。点底栏或左右翻页切换，页签不进出导航栈，
+  所以返回手势不会在页签之间误触发页面动画 —— 非首个页签按返回，是滑回首页。
 
-  切换动画用的是从参考项目移植的 `ui/MainPagerState.kt`：`selectedPage` 在点击瞬间更新，
-  所以底栏高亮与大标题立刻跟上，而 pager 用 `EaseInOut` tween 滑过去
-  （时长 `100ms × 跨越页数`，最少按两页算），由 `PagerState.scroll(MutatePriority.UserInput)`
-  手动驱动，避免默认的吸附行为；用户中途手滑会中断动画并以实际落点为准。
+  切换动画用的是 `ui/MainPagerState.kt`：`selectedPage` 在点击瞬间更新，所以底栏高亮立刻跟上，
+  而 pager 用 `EaseInOut` tween 滑过去（`100ms × 跨越页数`，最少按两页算），
+  由 `PagerState.scroll(MutatePriority.UserInput)` 手动驱动。
 
-  一级页面的返回键在非首个页签时，用同一个动画滑回首页，全程没有预见式视觉。
-- **二级页面**：AI 配置、开源许可。这一层是唯一挂载 `PredictiveBackHandler` 的位置，
-  返回时的跟手动画可选三种风格（见下）。
+- **二级页面**：AI 配置 / 文本替换 / 开源许可。它们是 `NavDisplay` 的 `entry<Route.X>`，
+  平台返回手势、跟手动画和层叠都由 miuix-nav 提供，**不要再手写返回动画**。
 
-  二级页面自己就是一个完整页面，**自己带顶栏**（MD 用小的 pinned `TopAppBar`，miuix 用
-  带大标题的 `TopAppBar`）。之前 MD 那侧是外壳先画一条 `LargeFlexibleTopAppBar`、页面里再画
-  一条，两条叠起来把第一个控件压到了屏幕三分之一以下——现在外壳只负责两个层叠的层与动画。
+- **每个页面自带顶栏**（含四个页签）：miuix 是 `BlurredBar` + `TopAppBar`，Material 是
+  `LargeFlexibleTopAppBar` / pinned `TopAppBar`。外壳的 Scaffold 只负责底栏与横向 inset，
+  所以页面标题不会被两层顶栏压下去。
 
-  顺带一个坑：miuix 的 `TopAppBar` 必须和页面拿到**同一个** `ScrollBehavior`。只把
-  `MiuixScrollBehavior()` 给列表、不给顶栏时，`TopAppBarState.heightOffsetLimit` 会停在
-  `-Float.MAX_VALUE`，于是那个 nested-scroll 连接会把每一次向上滚动全部吃掉——
-  AI 配置页因此完全滑不动。
+  坑：miuix 的 `TopAppBar` 必须和页面拿到**同一个** `ScrollBehavior`。只给列表、不给顶栏时，
+  `TopAppBarState.heightOffsetLimit` 会停在 `-Float.MAX_VALUE`，那个 nested-scroll 连接会把
+  每一次向上滚动全部吃掉 —— 页面就完全滑不动。
 
-### 预见式返回动画
-
-**整套自己实现，只读 androidx 的 `PredictiveBackHandler`**，不再依赖 `miuix-nav`。
-设置里三选一：**AOSP**（默认）、**Miuix**、**无动画**。
-
-之前的版本把参考项目的变换代码原样搬过来，再手工拼一个 `NavTransitionScope` 喂给它，
-bug 就出在这一层：手势取消时，`androidx` 会立刻取消回调所在的协程，而从那个协程里启动的
-回弹动画会被一起取消——页面就那样卡在半路。现在：
-
-- `ui/predictiveback/PredictiveBackHost.kt` 是所有状态与几何的唯一实现，两个引擎都挂它。
-- **一个驱动值**：`progress` 从 `0`（二级页面完全展开）到 `1`（已经消失）。手指按下时
-  `snapTo` 直接跟手，松手后从手指离开的位置继续。
-- **释放动画跑在独立的 scope 上**（`rememberCoroutineScope`），手势协程被取消也杀不掉它。
-- **每个样式只是一组数字**（`BackMotionConfig`）：AOSP 是「缩小 + 跟手横移 + 随手势上下
-  漂移」，Miuix 是「整屏 1:1 跟手滑出 + 下层视差 1/4 屏」，无动画则完全不跟手。
-- 几何在 `graphicsLayer { }` 里**按绘制期求值**，整个手势期间零重组；不滑动时这个 modifier
-  根本不挂，所以一级页面（含液态玻璃底栏的 backdrop）在静止时与以前完全一致。
-- 关闭按钮与返回手势走同一条路径：页面先走完剩下的位移，再从组合里摘掉，不会出现「半路消失」。
+- **关于是页签，不是二级页**：它没有返回箭头，底栏一直在；备份、调试、开发者都放在这里。
 
 ## 两套引擎的排版差异
 
-同一批设置页在两个引擎里的内边距来源不同，改布局时容易多塞一层：
+同一批页面在两个引擎里的内边距来源不同，改布局时容易多塞一层：
 
-- **miuix**：`SegmentedColumn` 没有对应物，卡片自己不带外边距，所以页面要给
-  `innerPadding + 12.dp`。
-- **Material Design**：`SegmentedColumn` **自带** `PADDING_HORIZONTAL = 16`，
-  所以页面再补一层 16 dp 就会让卡片比参考项目窄一圈 —— 二级页面只补
-  `PaddingValues(bottom = 24.dp)`，横向交给 `SegmentedColumn`。
+- **每个页面自带顶栏**，外壳的 Scaffold 只给底栏高度，所以页面自己算
+  `innerPadding + 12.dp`（miuix）或把底栏留白交给 `outerPadding`（Material）。
+- **Material 的 `SegmentedColumn` 自带 16 dp 横向内边距**，页面再补一层就会让卡片窄一圈。
+- **二级页沿用老契约**：miuix 的 AI / 替换页接收 `(contentPadding, scrollBehavior)`，
+  由 `MiuixApp.SubPage` 包一层 Scaffold 提供；Material 的同类页面自带 Scaffold 与返回箭头。
 
 miuix 输入框的颜色也是在这一节定的：默认 `secondaryContainer` 在动态取色下偏深，
 `ui/miuix/MiuixFields.kt` 里的 `miaoTextFieldColors()` 改用参考项目那套
@@ -105,8 +84,7 @@ miuix 输入框的颜色也是在这一节定的：默认 `secondaryContainer` �
   与 `deepseek-v4-flash`。`GET {base}/models` 用来拉模型列表并顺带验证连通性。
 - **提示词**：用户提示词里含 `{text}` 时整体替换为捕获文本，否则作为人设拼在正文前；
   系统提示词单独发送。内置「微软式翻译」「微软式中文」「Emoji」三个预设。
-- **配置**：两套引擎各有一个「AI 配置」二级页面（接口 / 连接测试 / 提示词 / 预设 /
-  用量统计）。改动即时落盘，没有保存按钮。SharedPreferences 的文件名与键名与原项目
+- **配置**：两套引擎各有一个「AI 配置」二级页面（接口 / 提示词 / 预设 / 用量统计）。改动即时落盘，没有保存按钮。SharedPreferences 的文件名与键名与原项目
   逐字一致，可以直接沿用原来的配置。
 - **入口**：任何一个动作为「AI 修改」的悬浮窗按钮（默认那一个就是）。走完整条链路，
   结果与失败原因用 Toast 告知。
@@ -116,16 +94,16 @@ miuix 输入框的颜色也是在这一节定的：默认 `secondaryContainer` �
 
 ## 首页
 
-首页是状态面板，两张卡片是让这个应用真正能做事的两个开关，都可直接点按
-（启动/收起悬浮窗、跳转无障碍设置），配色随状态在 `primaryContainer` 与
-`errorContainer` 之间切换。
+首页是状态面板，版式照 NekoUi（SukiSU 那套）：
 
-两张不是等重的：**悬浮窗**是主操作，占一张大卡片；**无障碍服务**改成一行高的紧凑卡片
-（`CompactStatusCard`），两条大色块叠在一起只会读成一堵墙。MD 引擎那侧保留两张等重卡片，
-但列表加了 `Arrangement.spacedBy(12.dp)`——它们原本是两个相邻 item，中间一条缝都没有。
+- **主状态卡**：悬浮窗是主操作，占一张大卡片（图标水印 + 状态 + 动作按钮），
+  配色随状态在 `primaryContainer` 与 `errorContainer` 之间切换，整张卡可点（授权 / 启动 / 收起）。
+- **无障碍服务**：一行高的紧凑卡片，点一下跳系统设置。两条大色块叠起来只会读成一堵墙。
+- **数字瓷砖**：今日处理 / 启用规则 / 运行状态。
+- **概览**：应用版本 / 系统版本 / 界面引擎。
 
 无障碍状态由 `MainActivity.onResume` 刷新：这个开关只能在系统设置里改，
-回到前台正是它可能变化的时刻。
+回到前台正是它可能变化的时刻。MD 引擎是同一套内容，用 `SegmentedColumn` 与 `TonalCard` 画。
 
 ## 悬浮窗
 
@@ -195,56 +173,18 @@ SharedPreferences），**每个按钮各自独立**：
 
 ## 新手引导
 
-首次启动会先走一遍五步引导（`ui/onboarding/`），两套引擎各有一份实现，盖在整个界面上：
+首次启动走的是 **HyperCeiler 的新手引导**（`library/provision`，AGPL-3.0-only，原样搬入）：
+开场（极光）→ 权限（无障碍 / 悬浮窗）→ AI 配置（接口 / Key / 模型）→ 完成。
+入口 `ui/provision/ProvisionGuide` 只回答两件事——"该不该显示"和"启动它"，
+状态仍存在应用自己的 `OnboardingPrefs` 里：首次出现一次，「关于 → 新手引导」可重进。
 
-1. **开场** —— 文字标记 + 应用名 + 一个圆形开始按钮，背景是那道会动的极光；
-2. **它是怎么工作的** —— 抓取 / 改写 / 写回，外加「只在你点的时候才动」；
-3. **两个开关** —— 无障碍服务与悬浮窗权限，**带实时状态**，点一下直接跳系统设置；
-4. **悬浮窗按钮** —— 点按 / 长按 / 拖动贴边；
-5. **设置完毕** —— 底部一个「开始使用」。
-
-**版式与极光来自 [HyperCeiler](https://github.com/ReChronoRain/HyperCeiler) 的 `library/provision`**
-（AGPL-3.0-only，版权归 HyperCeiler Contributions，文件头注明）：
-
-- `res/raw/glow.glsl` 是它那份 AGSL 着色器，**原样搬来**（37 个 uniform 的默认值也一条没改，
-  见 `GlowPainter.kt`）：双层 3D simplex 噪声 + 三色 Oklab 渐变 + screen 提亮，
-  时间在 2 s ↔ 120 s 之间来回走，所以画面永不重复；
-- 三个颜色**不抄它的品牌色**，而是从当前主题的 primary/secondary/tertiary 推出来并排成
-  「暗 → 亮 → 中间」的次序（`GlowPalette.fromTheme`）—— 动态取色开着时，引导页会跟着壁纸变；
-  暗色主题下整体压暗（`DARK_DIM`），否则白字压在亮极光上没法看；
-- 开场那道**环带**就是同一个着色器的 `uShowCircle`，只在第一页打开；
-- 页头 56 dp（左返回、右跳过）、标题 + 副标题、圆角 16 dp 的条目行、底部 336×50 dp 的动作按钮，
-  都是照着它的 `provision_*_layout.xml` 的尺寸来的；
-- **入场动画**照它的动画参数（`AnimHelper`/Folme）：文字块上浮 90 dp 并淡入约 1.4 s，
-  圆形按钮延后 0.9 s 再淡入 + 0.9→1.0 放大，与开场环带扫过的时间对得上；
-- 开场环带的圆心**对准文字标记**，不是屏幕正中 —— 上游用 `setCircleYOffsetWithView()` 干这件事，
-  这里用 `onGloballyPositioned` 取标记的中线再换算成着色器要的偏移。
-
-**流程和转场也是抄的**（`GuideWizard.kt`，这是这个页面真正的骨架）：
-
-- 走的是它 `state/StateMachine.java` 那套：**一次一步、单向链**，`forward`/`backward`
-  到边界就停，不会绕回去（`GuideFlow`，有单元测试）。没有 pager，所以**不能左右滑** ——
-  上游也不能，页面只由按钮推进，这是拿到下面两个转场的前提；
-- **页间转场**照它的 `provision_slide_in_right.xml` + `provision_slide_out_left.xml`：
-  两页各平移一整屏、**350 ms**、`@android:anim/accelerate_decelerate_interpolator`
-  （＝ `CubicBezierEasing(0.4f, 0f, 0.2f, 1f)`）；返回时方向镜像；
-- **开场按圆钮那一下是「撑开」的**，照它 `StartupFragment.launchPermissionPickPage` +
-  `utils/ViewUtils.captureRoundedBitmap` 的做法：圆钮的圆从按钮的位置一直长到盖住整屏，
-  透过这个圆露出下一页；圆外压 `#99000000`（`colors.xml: anim_foreground_color`）——
-  那一层暗色才是「一个亮洞在变暗的屏幕上张开」的观感来源。按钮在动画开始时隐藏
-  （上游 `exitStartedCallback`）、结束时恢复（`exitFinishCallback`），所以退回第一页仍然有按钮。
-
-一处**有意的不同**（记在文件头里，免得以后当成漏做）：上游把着色器画在 20 % 尺寸的 View 上
-再放大 5×（省算力 + 柔化噪点），这里改成整屏直画 —— Compose 没有 shader 版的 `RenderEffect`
-工厂（`ui-graphics` 里只有 `BlurEffect`/`OffsetEffect`），而在 Compose 里塞一个被缩放的平台 View
-要受互操作层裁剪的摆布；代价用**帧率**补回来：时钟按 30 fps 走，极光本来就是两分钟一循环，
-看不出来。另外上游真正的页间动画其实是 MIUI 那个 OOBE 系统服务（`fan.action.PROVISION_ANIM_START`
-经 AIDL 回跳）在播，它的时长在闭源包里查不到，所以「撑开」的时长（420 ms）是照着它其它转场的
-量级自己定的，不是抄来的数。
-
-「跳过」「继续」和「开始使用」都会把 `onboarding` 这个 SharedPreferences 标记为已看过，
-所以引导只在自己会出来的时候出现一次；想再看就去 **关于 → 新手引导**，那只是把
-`MiaoState.showOnboarding` 重新置为 true，不会动那个标记。返回键等于「跳过」。
+- 页面本体是 `com.sevtinge.hyperceiler.provision.**` 与 `fan.provision.**` 的 Activity/Fragment，
+  布局、动画、drawable、`glow.glsl` 都是上游文件；品牌与文案已换成 NekoPlus 的。
+- 权限页两行 = 无障碍服务 / 悬浮窗权限，实时状态、点一下跳系统设置。
+- AI 页三行 = 接口地址 / API Key / 模型（进页面拉 `GET {base}/models` 后可选）；
+  读写只走 `ai/AiManager` 的 `ai_config`，没有第二份真相。
+- **旧的 Compose 版引导仍留在 `ui/onboarding/`**（含极光与两份引擎实现），
+  用户还没批准删除，别自作主张删。
 
 ## 图标
 
@@ -430,7 +370,7 @@ AI 修改后自动套用                  [开关]
 - **默认不自动发送**。改写和发送是两件事，后者不可撤销，所以自动发送要单独打开；而且
   **改写失败时绝不会发送**（只有真的写回成功才会按）；
 - **谁发的的事件不决定任何事**：每次事件只是让助手重新看一眼真实窗口状态。踩过的两个坑都在这：
-  注入按钮这个动作本身会产生一条 `love.miao.yun` 的事件，输入法也在不停发事件，早期「不是目标
+  注入按钮这个动作本身会产生一条 `top.youzix.nekoplus` 的事件，输入法也在不停发事件，早期「不是目标
   应用就隐藏」的写法会让按钮在微信里闪一下就没；
 - **窗口不只看前台那个**：键盘弹起时获得焦点的窗口可能不是聊天应用，`rootInActiveWindow` 也不
   一定是它，所以前台窗口不是目标应用时会继续在所有窗口里找，找不到才收起；
@@ -487,7 +427,7 @@ AI 修改后自动套用                  [开关]
 - 打开后可以查看**最近一次抓取**（可复制、可清空）；
 - 抓取动作本身是一个悬浮窗动作 —— **导出界面元素**，把它设成某个按钮的点击动作，
   在出问题的那应用里点一下，它会把当时的界面写进
-  `Android/data/love.miao.yun/files/debug/ui-dump.txt`。
+  `Android/data/top.youzix.nekoplus/files/debug/ui-dump.txt`。
 
 文件内容分两段：先是一段**诊断**（前台包名、窗口数、按分数排好序的候选输入节点，以及
 「当前会选中哪一个」），后面是**完整树** —— 每个窗口、每个节点一行，含 class、viewId、
@@ -502,7 +442,7 @@ text/desc/hint、屏幕坐标、全部状态位与 action 列表。
 
 `util/CrashHandler.kt`（同样来自 1.1.8 的功能清单）在 `MiaoApp` 里安装，崩溃时把
 时间、版本、机型、线程、**最近经过的界面**与完整堆栈写到
-`Android/data/love.miao.yun/files/crash/latest.txt`；两个外壳在每个页签与二级页面上都留了
+`Android/data/top.youzix.nekoplus/files/crash/latest.txt`；两个外壳在每个页签与二级页面上都留了
 面包屑。关于页的「崩溃日志」可以查看、复制、清空。
 
 ## 文案
@@ -526,8 +466,8 @@ text/desc/hint、屏幕坐标、全部状态位与 action 列表。
 
 工具链版本见 `gradle/libs.versions.toml`：AGP 9.4.0（自带 Kotlin 支持，因此
 **不应用** `org.jetbrains.kotlin.android`）、Kotlin/Compose 插件 2.4.20、
-Gradle 9.7.1、Compose BOM 2026.08.00、compileSdk 37 / minSdk 33 / targetSdk 35。
-`material3` 显式固定为 `1.5.0-alpha27`——`LargeFlexibleTopAppBar` 与公开的
+Gradle 9.7.1、Compose BOM 2026.09.00、compileSdk 37 / minSdk 33 / targetSdk 35。
+`material3` 显式固定为 `1.5.0-alpha28`——`LargeFlexibleTopAppBar` 与公开的
 `*Emphasized` 字体只从该版本开始存在，BOM 里钉的 1.4.0 没有。
 
 > `minSdk 33` 是被 miuix 的 `miuix-blur` 拉高的：液态玻璃底栏依赖真实的
@@ -536,38 +476,34 @@ Gradle 9.7.1、Compose BOM 2026.08.00、compileSdk 37 / minSdk 33 / targetSdk 35
 ## 目录结构
 
 ```
-app/src/main/java/love/miao/yun/
-├── MainActivity.kt              35 行分发器：读引擎选择 → 挂对应引擎的根 Composable
-├── MiaoState.kt                 跨引擎共享的少量状态（悬浮窗运行中、今日计数、规则数）
-├── floating/                    悬浮窗按钮的模型与持久化
-│   └── FloatingWindowPrefs.kt   图标 / 文字 / 点击与长按动作 / 大小 / 圆角 / 透明度 / 位置
+app/src/main/java/top/youzix/nekoplus/
+├── MainActivity.kt              分发器：读引擎选择 → MiuixApp / MaterialApp
+├── MiaoState.kt                 跨引擎共享状态（引擎 / 模糊 / 主题 / 调试 / 悬浮窗 / 无障碍 / 计数）
+├── MiaoApp.kt                   Application：装崩溃处理器（:crash 进程除外）
+├── crash/                       崩溃记录 + 独立进程 :crash 的报告页
 ├── ai/                          AI 层（移植自原 NekoNeko）
 │   ├── AiManager.kt             OpenAI 兼容接口、配置、预设
 │   └── TokenStats.kt            用量统计
+├── floating/                    悬浮窗按钮的模型与持久化
+├── sendassist/                  发送按钮助手：识别发送键、配置
+├── text/                        文本替换：语法、引擎、偏好
+├── service/                     悬浮窗服务 / 无障碍服务 / 发送助手浮层
+├── util/                        更新检查、配置备份、设备信息、调试抓取
 ├── ui/
-│   ├── AppIcons.kt              统一图标入口
-│   ├── onboarding/              新手引导（两套引擎各一份 + 偏好）
-│   ├── predictiveback/          预见式返回：自成一体的实现，只依赖 androidx
-│   │   ├── PredictiveBackHost.kt   两个层叠的层 + 手势驱动 + 每帧几何
-│   │   └── PredictiveBackStyle.kt  AOSP / Miuix / 无动画，每个只是一组数字
-│   ├── MainPagerState.kt        一级页签切换动画（移植自参考项目）
-│   ├── FloatingColorSource.kt   悬浮窗取色来源（动态取色 / Miuix / MD）
-│   ├── FloatingPalette.kt       把取色来源解析成 ARGB 调色板
-│   ├── UiEngine.kt              引擎枚举、毛玻璃开关、悬浮窗取色与持久化
-│   ├── miuix/                   miuix 引擎：MiuixApp + home/floating/settings/about/licenses
-│   │   ├── ai/                  AI 配置页（miuix 组件）
-│   │   ├── liquid/              液态玻璃底栏与镜片效果（Apache-2.0，来自 NekoEdit）
+│   ├── AppIcons.kt / AppMark.kt 图标入口与文字标记
+│   ├── UiEngine.kt              引擎枚举与偏好（引擎/模糊/主题/调试/开发者/悬浮窗取色）
+│   ├── MainPagerState.kt        一级页签切换动画
+│   ├── nav/Routes.kt            NavDisplay 的二级页路由
+│   ├── theme/ColorMode.kt       浅色 / 深色 / 跟随系统
+│   ├── miuix/                   miuix 引擎：四个页签 + components/（BlurredBar、StatusTag、WarningCard）
+│   │   ├── home/ settings/ about/ floating/ ai/ text/
+│   │   ├── liquid/              液态玻璃底栏与镜片效果（Apache-2.0）
 │   │   └── animation/           DampedDragAnimation、InteractiveHighlight
-│   └── material3/               Material Design 引擎：MaterialApp + 同名页面树
-│       ├── ai/                  AI 配置页（MD 组件）
-│       ├── Backdrop.kt          MD 顶栏的毛玻璃（复用 miuix 的 backdrop 引擎）
-│       └── widgets/             SegmentedColumn、BaseWidget、SwitchWidget、
-│                                NavigationItemWidget、NumberPickerWidget、
-│                                DropDownMenuWidget、SwipeableSnackbarHost
-│                                （GPL-3.0-only，来自 InstallerX-Revived）
-└── service/
-    ├── FloatingWindowService.kt 悬浮窗：一组可拖拽按钮（普通 View）
-    └── MiaoAccessibilityService.kt  读取/写回当前输入框
+│   ├── material3/               Material 3 引擎：同一批页面 + components/（分段列表、TonalCard）
+│   ├── onboarding/              旧 Compose 版引导（保留未删，等用户点头）
+│   └── provision/               引导入口：接 HyperCeiler 的四步流程
+├── com/sevtinge/hyperceiler/provision/**   上游引导本体（原样搬入，AGPL-3.0）
+└── fan/provision/**                        上游引导的 AIDL helper
 ```
 
 ## 许可
